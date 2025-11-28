@@ -5,7 +5,7 @@ Contains methods for processing multiple documents in batch mode
 """
 
 import asyncio
-import logging
+from raganything.logger import logger as rag_logger
 from pathlib import Path
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import time
@@ -21,7 +21,7 @@ class BatchMixin:
 
     # Type hints for mixin attributes (will be available when mixed into RAGAnything)
     config: "RAGAnythingConfig"
-    logger: logging.Logger
+    logger: rag_logger.__class__
 
     # Type hints for methods that will be available from other mixins
     async def _ensure_lightrag_initialized(self) -> None: ...

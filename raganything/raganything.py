@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 load_dotenv(dotenv_path=".env", override=False)
 
 from lightrag import LightRAG
-from lightrag.utils import logger
+from raganything.logger import logger
 
 # Import configuration and modules
 from raganything.config import RAGAnythingConfig
@@ -145,8 +145,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 # Run cleanup synchronously
                 asyncio.run(self.finalize_storages())
         except Exception as e:
-            # Use print instead of logger since logger might be cleaned up already
-            print(f"Warning: Failed to finalize RAGAnything storages: {e}")
+            logger.warning(f"Warning: Failed to finalize RAGAnything storages: {e}")
 
     def _create_context_config(self) -> ContextConfig:
         """Create context configuration from RAGAnything config"""
