@@ -6,7 +6,7 @@ with progress reporting and error handling.
 """
 
 import asyncio
-import logging
+from raganything.logger import logger
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -78,7 +78,7 @@ class BatchParser:
         self.max_workers = max_workers
         self.show_progress = show_progress
         self.timeout_per_file = timeout_per_file
-        self.logger = logging.getLogger(__name__)
+        self.logger = logger
 
         # Initialize parser
         if parser_type == "mineru":
@@ -390,10 +390,7 @@ def main():
     args = parser.parse_args()
 
     # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+        # 使用统一的 loguru logger，移除本地 basicConfig
 
     try:
         # Create batch parser
@@ -412,8 +409,8 @@ def main():
             recursive=args.recursive,
         )
 
-        # Print summary
-        print("\n" + result.summary())
+        # 输出概要
+        logger.info("\n" + result.summary())
 
         # Exit with error code if any files failed
         if result.failed_files:
@@ -422,7 +419,7 @@ def main():
         return 0
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        logger.error(f"Error: {str(e)}")
         return 1
 
 

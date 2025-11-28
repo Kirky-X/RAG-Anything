@@ -11,7 +11,7 @@ This module provides improved Markdown to PDF conversion with:
 """
 
 import os
-import logging
+from raganything.logger import logger
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
@@ -38,7 +38,7 @@ try:
 
     spec = importlib.util.find_spec("pandoc")
     PANDOC_AVAILABLE = spec is not None
-except ImportError:
+except Exception:
     PANDOC_AVAILABLE = False
 
 
@@ -87,7 +87,7 @@ class EnhancedMarkdownConverter:
             config: Configuration for conversion
         """
         self.config = config or MarkdownConfig()
-        self.logger = logging.getLogger(__name__)
+        self.logger = logger
 
         # Check available backends
         self.available_backends = self._check_backends()
@@ -486,10 +486,7 @@ def main():
     args = parser.parse_args()
 
     # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    # 统一使用全局 logger，不在此处配置
 
     # Create converter
     config = MarkdownConfig()
@@ -501,11 +498,11 @@ def main():
     # Show backend info if requested
     if args.info:
         info = converter.get_backend_info()
-        print("Backend Information:")
+        logger.info("Backend Information:")
         for backend, available in info["available_backends"].items():
             status = "✅" if available else "❌"
-            print(f"  {status} {backend}")
-        print(f"Recommended backend: {info['recommended_backend']}")
+            logger.info(f"  {status} {backend}")
+        logger.info(f"Recommended backend: {info['recommended_backend']}")
         return 0
 
     # Check if input file is provided
@@ -519,14 +516,14 @@ def main():
         )
 
         if success:
-            print(f"✅ Successfully converted {args.input} to PDF")
+            logger.info(f"✅ Successfully converted {args.input} to PDF")
             return 0
         else:
-            print("❌ Conversion failed")
+            logger.error("❌ Conversion failed")
             return 1
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        logger.error(f"❌ Error: {str(e)}")
         return 1
 
 
