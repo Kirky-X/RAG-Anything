@@ -103,6 +103,32 @@ class RAGAnythingConfig:
     content_format: str = field(default=get_env_value("CONTENT_FORMAT", "minerU", str))
     """Default content format for context extraction when processing documents."""
 
+    # LLM Provider Configuration
+    # ---
+    llm_provider: str = field(default=get_env_value("LLM_PROVIDER", "openai", str))
+    llm_model: str = field(default=get_env_value("LLM_MODEL", "gpt-4o-mini", str))
+    llm_api_base: str = field(default=get_env_value("LLM_API_BASE", "", str))
+    llm_api_key: str = field(default=get_env_value("LLM_API_KEY", "", str))
+    llm_timeout: int = field(default=get_env_value("LLM_TIMEOUT", 60, int))
+    llm_max_retries: int = field(default=get_env_value("LLM_MAX_RETRIES", 2, int))
+
+    # Embedding Configuration
+    embedding_provider: str = field(default=get_env_value("EMBEDDING_PROVIDER", "openai", str))
+    embedding_model: str = field(default=get_env_value("EMBEDDING_MODEL", "text-embedding-3-small", str))
+    embedding_api_base: str = field(default=get_env_value("EMBEDDING_API_BASE", "", str))
+    embedding_api_key: str = field(default=get_env_value("EMBEDDING_API_KEY", "", str))
+    embedding_dim: int = field(default=get_env_value("EMBEDDING_DIM", 1536, int))
+    embedding_func_max_async: int = field(default=get_env_value("EMBEDDING_FUNC_MAX_ASYNC", 32, int))
+    embedding_batch_num: int = field(default=get_env_value("EMBEDDING_BATCH_NUM", 16, int))
+
+    # Vision Model Configuration
+    vision_provider: str = field(default=get_env_value("VISION_PROVIDER", "openai", str))
+    vision_model: str = field(default=get_env_value("VISION_MODEL", "gpt-4o-mini", str))
+    vision_api_base: str = field(default=get_env_value("VISION_API_BASE", "", str))
+    vision_api_key: str = field(default=get_env_value("VISION_API_KEY", "", str))
+    vision_timeout: int = field(default=get_env_value("VISION_TIMEOUT", 60, int))
+    vision_max_retries: int = field(default=get_env_value("VISION_MAX_RETRIES", 2, int))
+
     def __post_init__(self):
         """Post-initialization setup for backward compatibility"""
         # Support legacy environment variable names for backward compatibility
