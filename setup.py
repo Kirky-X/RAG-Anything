@@ -69,6 +69,11 @@ extras_require = {
         "weasyprint>=60.0",
         "pygments>=2.10.0",
     ],  # Enhanced markdown conversion
+    "llm": [
+        "langchain-core>=0.2",
+        "langchain-openai>=0.2",
+        "langchain-ollama>=0.1",
+    ],
 }
 
 setuptools.setup(

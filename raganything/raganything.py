@@ -34,6 +34,9 @@ from raganything.processor import ProcessorMixin
 from raganything.batch import BatchMixin
 from raganything.utils import get_processor_supports
 from raganything.parser import MineruParser, DoclingParser
+from raganything.llm import LLMProviderConfig, build_llm
+from raganything.llm.embedding import build_embedding_func
+from raganything.llm.validation import validate_provider, ensure_non_empty
 
 # Import specialized processors
 from raganything.modalprocessors import (
@@ -215,6 +218,48 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         self.logger.info(f"Available processors: {list(self.modal_processors.keys())}")
         self.logger.info(f"Context configuration: {self._create_context_config()}")
 
+    def _maybe_build_llm_functions(self):
+        """Build LangChain-backed llm/vision functions when not provided, based on config."""
+        # LLM text function
+        if self.llm_model_func is None:
+            if not validate_provider(self.config.llm_provider):
+                self.logger.warning(f"Invalid llm provider: {self.config.llm_provider}")
+                return
+            cfg = LLMProviderConfig(
+                provider=self.config.llm_provider,
+                model=self.config.llm_model,
+                api_base=self.config.llm_api_base or None,
+                api_key=self.config.llm_api_key or None,
+                timeout=self.config.llm_timeout,
+                max_retries=self.config.llm_max_retries,
+            )
+            try:
+                lc_llm = build_llm(cfg)
+                self.llm_model_func = lc_llm
+                self.logger.info(f"LLM function built via LangChain provider: {cfg.provider}")
+            except Exception as e:
+                self.logger.warning(f"Failed to build LangChain LLM: {e}")
+
+        # Vision function
+        if self.vision_model_func is None:
+            if not validate_provider(self.config.vision_provider):
+                self.logger.warning(f"Invalid vision provider: {self.config.vision_provider}")
+                return
+            vcfg = LLMProviderConfig(
+                provider=self.config.vision_provider,
+                model=self.config.vision_model,
+                api_base=self.config.vision_api_base or None,
+                api_key=self.config.vision_api_key or None,
+                timeout=self.config.vision_timeout,
+                max_retries=self.config.vision_max_retries,
+            )
+            try:
+                lc_vlm = build_llm(vcfg)
+                self.vision_model_func = lc_vlm
+                self.logger.info(f"Vision function built via LangChain provider: {vcfg.provider}")
+            except Exception as e:
+                self.logger.warning(f"Failed to build LangChain Vision: {e}")
+
     def update_config(self, **kwargs):
         """Update configuration with new values"""
         for key, value in kwargs.items():
@@ -286,16 +331,32 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     self.logger.error(error_msg, exc_info=True)
                     return {"success": False, "error": error_msg}
 
+            # Try build llm/vision functions from config if missing
+            self._maybe_build_llm_functions()
+
             # Validate required functions for creating new LightRAG instance
             if self.llm_model_func is None:
-                error_msg = "llm_model_func must be provided when LightRAG is not pre-initialized"
+                error_msg = "llm_model_func must be provided or buildable from config when LightRAG is not pre-initialized"
                 self.logger.error(error_msg)
                 return {"success": False, "error": error_msg}
 
             if self.embedding_func is None:
-                error_msg = "embedding_func must be provided when LightRAG is not pre-initialized"
-                self.logger.error(error_msg)
-                return {"success": False, "error": error_msg}
+                try:
+                    self.embedding_func = build_embedding_func(
+                        provider=self.config.embedding_provider,
+                        model=self.config.embedding_model,
+                        api_base=self.config.embedding_api_base or None,
+                        api_key=self.config.embedding_api_key or None,
+                        embedding_dim=self.config.embedding_dim,
+                        max_token_size=8192,
+                    )
+                    self.logger.info(
+                        f"Embedding function built via provider: {self.config.embedding_provider}"
+                    )
+                except Exception as e:
+                    error_msg = f"embedding_func must be provided and building from config failed: {e}"
+                    self.logger.error(error_msg)
+                    return {"success": False, "error": error_msg}
 
             from lightrag.kg.shared_storage import initialize_pipeline_status
 
