@@ -1,17 +1,19 @@
-import tiktoken
 import os
+from pathlib import Path
 
-# Define the directory where you want to store the cache
-cache_dir = "./tiktoken_cache"
-if "TIKTOKEN_CACHE_DIR" not in os.environ:
-    os.environ["TIKTOKEN_CACHE_DIR"] = cache_dir
+import tiktoken
 
-# Create the directory if it doesn't exist
-if not os.path.exists(cache_dir):
-    os.makedirs(cache_dir)
+try:
+    from raganything.config import RAGAnythingConfig
+
+    cfg = RAGAnythingConfig()
+    cache_dir = cfg.tiktoken.cache_dir or "./tiktoken_cache"
+except Exception:
+    cache_dir = "./tiktoken_cache"
+
+os.environ.setdefault("TIKTOKEN_CACHE_DIR", cache_dir)
+Path(cache_dir).mkdir(parents=True, exist_ok=True)
 
 print("Downloading and caching tiktoken models...")
 tiktoken.get_encoding("cl100k_base")
-# tiktoken.get_encoding("p50k_base")
-
 print(f"tiktoken models have been cached in '{cache_dir}'")
