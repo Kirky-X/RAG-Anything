@@ -25,6 +25,7 @@ dependencies = [
     "lightrag-hku",
     "mineru[core]",
     "tqdm",
+    "tomli>=2.0.1",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,159 @@
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict, Any, Tuple
+
+
+def _import_toml_loader():
+    try:
+        import tomllib as _tl
+        return _tl
+    except Exception:
+        try:
+            import tomli as _tl  # type: ignore
+            return _tl
+        except Exception:
+            return None
+
+
+def _file_exists(path: str) -> bool:
+    try:
+        import os
+        return os.path.exists(path)
+    except Exception:
+        return False
+
+
+@dataclass
+class SSLConfig:
+    enabled: bool = False
+    certfile: str = ""
+    keyfile: str = ""
+
+
+@dataclass
+class ServerConfig:
+    host: str = "0.0.0.0"
+    port: int = 8000
+    workers: int = 1
+    cors_origins: List[str] = field(default_factory=list)
+    webui_title: str = ""
+    webui_description: str = ""
+    ssl: SSLConfig = field(default_factory=SSLConfig)
+
+
+@dataclass
+class APIAuthConfig:
+    lightrag_api_key: str = ""
+    whitelist_paths: List[str] = field(default_factory=list)
+
+
+def _env(name: str, default: Optional[str] = None) -> Optional[str]:
+    import os
+    return os.getenv(name, default)
+
+
+def _as_int(v: Any, default: int) -> int:
+    try:
+        return int(v)
+    except Exception:
+        return default
+
+
+def _split_csv(v: Optional[str]) -> List[str]:
+    if not v:
+        return []
+    return [s.strip() for s in v.split(",") if s.strip()]
+
+
+def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerConfig, APIAuthConfig]:
+    loader = _import_toml_loader()
+    data: Dict[str, Any] = {}
+    if config_toml_path is None:
+        path_env = _env("CONFIG_TOML")
+        if path_env is not None:
+            if path_env.strip() == "":
+                config_toml_path = None
+            else:
+                config_toml_path = path_env
+        else:
+            if _file_exists("config.toml"):
+                config_toml_path = "config.toml"
+    if config_toml_path:
+        if loader is None:
+            raise RuntimeError("TOML parsing requires Python 3.11+ or 'tomli' installed")
+        with open(config_toml_path, "rb") as f:
+            data = loader.load(f)  # type: ignore
+
+    server_section = data.get("server", {})
+    ssl_section = data.get("ssl", {})
+    api_section = data.get("api", {})
+
+    # Build initial from TOML
+    ssl_cfg = SSLConfig(
+        enabled=bool(ssl_section.get("enabled", False)),
+        certfile=str(ssl_section.get("certfile", "")),
+        keyfile=str(ssl_section.get("keyfile", "")),
+    )
+
+    srv = ServerConfig(
+        host=str(server_section.get("host", "0.0.0.0")),
+        port=_as_int(server_section.get("port", 8000), 8000),
+        workers=_as_int(server_section.get("workers", 1), 1),
+        cors_origins=list(server_section.get("cors_origins", [])),
+        webui_title=str(server_section.get("webui_title", "")),
+        webui_description=str(server_section.get("webui_description", "")),
+        ssl=ssl_cfg,
+    )
+
+    api = APIAuthConfig(
+        lightrag_api_key=str(api_section.get("lightrag_api_key", "")),
+        whitelist_paths=list(api_section.get("whitelist_paths", [])),
+    )
+
+    # Env overrides (secrets first)
+    api_env_key = _env("LIGHTRAG_API_KEY")
+    if api_env_key:
+        api.lightrag_api_key = api_env_key
+
+    # Server overrides
+    # If TOML is present, only honor SERVER_* variables to avoid ambient HOST/PORT interference
+    toml_present = bool(config_toml_path)
+    env_host = _env("SERVER_HOST") if toml_present else (_env("SERVER_HOST") or _env("HOST"))
+    env_port = _env("SERVER_PORT") if toml_present else (_env("SERVER_PORT") or _env("PORT"))
+    env_workers = _env("SERVER_WORKERS") if toml_present else (_env("SERVER_WORKERS") or _env("WORKERS"))
+    env_cors = _env("CORS_ORIGINS")
+
+    if env_host:
+        srv.host = str(env_host)
+    if env_port:
+        srv.port = _as_int(env_port, srv.port)
+    if env_workers:
+        srv.workers = _as_int(env_workers, srv.workers)
+    if env_cors:
+        srv.cors_origins = _split_csv(env_cors)
+
+    # SSL overrides
+    env_ssl_enabled = _env("SSL")
+    env_ssl_cert = _env("SSL_CERTFILE")
+    env_ssl_key = _env("SSL_KEYFILE")
+    if env_ssl_enabled is not None:
+        srv.ssl.enabled = str(env_ssl_enabled).lower() in {"1", "true", "yes"}
+    if env_ssl_cert:
+        srv.ssl.certfile = str(env_ssl_cert)
+    if env_ssl_key:
+        srv.ssl.keyfile = str(env_ssl_key)
+
+    return srv, api
+
+
+def uvicorn_run_params(server: ServerConfig) -> Dict[str, Any]:
+    params: Dict[str, Any] = {
+        "host": server.host,
+        "port": server.port,
+        "workers": server.workers,
+    }
+    if server.ssl.enabled and server.ssl.certfile and server.ssl.keyfile:
+        params.update({
+            "ssl_certfile": server.ssl.certfile,
+            "ssl_keyfile": server.ssl.keyfile,
+        })
+    return params

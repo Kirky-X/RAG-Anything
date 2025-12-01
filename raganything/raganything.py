@@ -24,8 +24,18 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # The OS environment variables take precedence over the .env file
 load_dotenv(dotenv_path=".env", override=False)
 
+# Load tiktoken cache dir from TOML config early so LightRAG/tiktoken can see it
+try:
+    from raganything.config import RAGAnythingConfig
+
+    _pre_cfg = RAGAnythingConfig()
+    if getattr(_pre_cfg, "tiktoken", None) and _pre_cfg.tiktoken.cache_dir:
+        os.environ.setdefault("TIKTOKEN_CACHE_DIR", _pre_cfg.tiktoken.cache_dir)
+except Exception:
+    pass
+
 from lightrag import LightRAG
-from raganything.logger import logger
+from raganything.logger import logger, init_logger
 
 # Import configuration and modules
 from raganything.config import RAGAnythingConfig
@@ -108,7 +118,29 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         # Set working directory
         self.working_dir = self.config.working_dir
 
-        # Set up logger (use existing logger, don't configure it)
+        # Configure logger from config (env variables still override inside init_logger)
+        try:
+            rotation_arg = self.config.logging.rotation
+            retention_arg = self.config.logging.retention
+            if rotation_arg == "00:00" and self.config.logging.max_bytes > 0:
+                mb = self.config.logging.max_bytes // (1024 * 1024)
+                kb = self.config.logging.max_bytes // 1024
+                if mb > 0 and self.config.logging.max_bytes % (1024 * 1024) == 0:
+                    rotation_arg = f"{mb} MB"
+                elif kb > 0 and self.config.logging.max_bytes % 1024 == 0:
+                    rotation_arg = f"{kb} KB"
+                else:
+                    rotation_arg = f"{self.config.logging.max_bytes} B"
+            if (not retention_arg or retention_arg.strip() == "" or retention_arg == "7 days") and self.config.logging.backup_count > 0:
+                retention_arg = f"{self.config.logging.backup_count} files"
+            init_logger(
+                level=self.config.logging.level,
+                log_dir=Path(self.config.logging.dir) if self.config.logging.dir else None,
+                rotation=rotation_arg,
+                retention=retention_arg,
+            )
+        except Exception:
+            pass
         self.logger = logger
 
         # Set up document parser

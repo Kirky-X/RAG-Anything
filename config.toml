@@ -1,0 +1,165 @@
+# Default TOML configuration for RAG-Anything
+# Sensitive fields (e.g., api_key) are intentionally left blank; set via environment variables.
+
+[directory]
+working_dir = "./rag_storage"
+parser_output_dir = "./output"
+
+[raganything.parsing]
+parser = "mineru"
+parse_method = "auto"
+display_content_stats = true
+
+[raganything.multimodal]
+enable_image_processing = true
+enable_table_processing = true
+enable_equation_processing = true
+
+[raganything.batch]
+max_concurrent_files = 1
+supported_file_extensions = [
+  ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp",
+  ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".md",
+]
+recursive_folder_processing = true
+
+[raganything.context]
+context_window = 1
+context_mode = "page"
+max_context_tokens = 2000
+include_headers = true
+include_captions = true
+context_filter_content_types = ["text"]
+content_format = "minerU"
+
+[raganything.llm]
+provider = "openai"
+model = "gpt-4o-mini"
+api_base = ""
+api_key = ""
+timeout = 60
+max_retries = 2
+
+[raganything.embedding]
+provider = "openai"
+model = "text-embedding-3-small"
+api_base = ""
+api_key = ""
+dim = 1536
+func_max_async = 32
+batch_num = 16
+
+[raganything.vision]
+provider = "openai"
+model = "gpt-4o-mini"
+api_base = ""
+api_key = ""
+timeout = 60
+max_retries = 2
+
+[server]
+host = "0.0.0.0"
+port = 9621
+workers = 2
+cors_origins = ["http://localhost:3000", "http://localhost:8080"]
+webui_title = "My Graph KB"
+webui_description = "Simple and Fast Graph Based RAG System"
+
+[tiktoken]
+cache_dir = ""
+
+[ollama]
+emulating_model_tag = "latest"
+
+[auth]
+accounts = ""
+token_secret = ""
+token_expire_hours = 48
+guest_token_expire_hours = 24
+jwt_algorithm = "HS256"
+
+[ssl]
+enabled = false
+certfile = ""
+keyfile = ""
+
+[api]
+lightrag_api_key = ""
+whitelist_paths = ["/health", "/api/*"]
+
+[logging]
+level = "INFO"
+verbose = false
+max_bytes = 10485760
+backup_count = 5
+dir = ""
+rotation = "00:00"
+retention = "7 days"
+
+[query]
+history_turns = 3
+cosine_threshold = 0.2
+top_k = 60
+max_token_text_chunk = 4000
+max_token_relation_desc = 4000
+max_token_entity_desc = 4000
+
+[summary]
+language = "English"
+force_llm_summary_on_merge = 6
+max_token_summary = 500
+
+[insert]
+max_parallel_insert = 2
+chunk_size = 1200
+chunk_overlap_size = 100
+
+[runtime.llm]
+enable_llm_cache = true
+enable_llm_cache_for_extract = true
+timeout = 240
+temperature = 0
+max_async = 4
+max_tokens = 32768
+binding = "openai"
+binding_host = "https://api.openai.com/v1"
+binding_api_key = ""
+azure_openai_api_version = "2024-08-01-preview"
+azure_openai_deployment = "gpt-4o"
+
+[storage]
+lightrag_kv_storage = ""
+lightrag_vector_storage = ""
+lightrag_doc_status_storage = ""
+lightrag_graph_storage = ""
+
+[postgres]
+host = ""
+port = 5432
+user = ""
+password = ""
+database = ""
+max_connections = 12
+
+[neo4j]
+uri = ""
+username = ""
+password = ""
+
+[mongo]
+uri = ""
+database = ""
+
+[milvus]
+uri = ""
+db_name = ""
+user = ""
+password = ""
+token = ""
+
+[qdrant]
+url = ""
+api_key = ""
+
+[redis]
+uri = ""
