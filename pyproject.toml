@@ -37,12 +37,26 @@ markdown = [
     "weasyprint>=60.0",
     "pygments>=2.10.0",
 ]
+audio = [
+    "modelscope",
+    "funasr",
+    "pydub",
+    "soundfile",
+    "torch",
+    "torchaudio",
+]
 all = [
     "Pillow>=10.0.0",
     "reportlab>=4.0.0",
     "markdown>=3.4.0",
     "weasyprint>=60.0",
-    "pygments>=2.10.0"
+    "pygments>=2.10.0",
+    "modelscope",
+    "funasr",
+    "pydub",
+    "soundfile",
+    "torch",
+    "torchaudio",
 ]
 
 [project.urls]
