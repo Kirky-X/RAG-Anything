@@ -50,12 +50,11 @@ func_max_async = 32
 batch_num = 16
 
 [raganything.vision]
-provider = "openai"
-model = "gpt-4o-mini"
-api_base = ""
-api_key = ""
-timeout = 60
-max_retries = 2
+provider = "ollama"
+model = "qwen3-vl:2b"
+api_base = "http://172.24.160.1:11434"
+timeout = 10
+max_retries = 3
 
 [server]
 host = "0.0.0.0"

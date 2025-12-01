@@ -224,17 +224,34 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
 
     if provider == "ollama":
         try:
-            from langchain_ollama import ChatOllama
-        except Exception as e:
-            raise ValueError(f"Ollama integration unavailable: {e}")
+            # Use our robust wrapper instead of direct ChatOllama
+            from raganything.llm.ollama_client import RobustOllamaClient
+        except ImportError:
+            # Fallback or raise error if module missing (should be there)
+            try:
+                from langchain_ollama import ChatOllama
+            except ImportError as e:
+                raise ValueError(f"Ollama integration unavailable: {e}")
 
         init_kwargs: Dict[str, Any] = {"model": cfg.model}
         if cfg.api_base:
             init_kwargs["base_url"] = cfg.api_base
         if cfg.timeout is not None:
             init_kwargs["timeout"] = cfg.timeout
+        if cfg.max_retries is not None:
+            init_kwargs["max_retries"] = cfg.max_retries
+            
         init_kwargs.update(cfg.extra or {})
-        chat = ChatOllama(**init_kwargs)
+        
+        # Check if we successfully imported RobustOllamaClient
+        if 'RobustOllamaClient' in locals():
+            chat = RobustOllamaClient(**init_kwargs)
+        else:
+            # Fallback to standard ChatOllama if wrapper fails (shouldn't happen)
+            # Remove max_retries as standard ChatOllama might not support it in init
+            init_kwargs.pop("max_retries", None)
+            chat = ChatOllama(**init_kwargs)
+            
         return LLM(chat)
 
     raise ValueError(f"Unsupported provider: {cfg.provider}")

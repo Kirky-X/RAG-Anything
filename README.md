@@ -86,12 +86,23 @@ Users can query documents containing **interleaved text**, **visual diagrams**, 
 - **⚡ Adaptive Processing Modes** - Flexible MinerU-based parsing or direct multimodal content injection workflows
 - **📋 Direct Content List Insertion** - Bypass document parsing by directly inserting pre-parsed content lists from external sources
 - **🎯 Hybrid Intelligent Retrieval** - Advanced search capabilities spanning textual and multimodal content with contextual understanding
+- **🎤 Audio Processing** - Intelligent speech-to-text with support for 17+ formats using `SenseVoiceSmall`
+- **⚙️ Resource Aware** - Automatic GPU/MPS/CPU detection and optimized model management
 
 </div>
 
 ---
 
 ## 🏗️ Algorithm & Architecture
+
+### 🧩 Modular Parsers & Models
+
+RAG-Anything features a highly modular architecture for parsers and model management.
+- **Audio Parser**: High-performance ASR using `SenseVoiceSmall`, supporting `mp3`, `wav`, `flac`, etc.
+- **Model Manager**: Centralized model handling with `modelscope`, supporting auto-download and caching.
+- **Device Manager**: Intelligent resource allocation (CUDA > MPS > CPU).
+
+> For detailed documentation on parsers and model configuration, see [Parsers and Models Documentation](docs/parsers_and_models.md).
 
 <div style="background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%); border-radius: 15px; padding: 25px; margin: 20px 0; border-left: 5px solid #00d9ff;">
 

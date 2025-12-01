@@ -26,6 +26,8 @@ dependencies = [
     "mineru[core]",
     "tqdm",
     "tomli>=2.0.1",
+    "langchain-ollama",
+    "Pillow>=10.0.0",
 ]
 
 [project.optional-dependencies]
