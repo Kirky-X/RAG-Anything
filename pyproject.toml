@@ -47,6 +47,11 @@ audio = [
     "torch",
     "torchaudio",
 ]
+video = [
+    "opencv-python",
+    "imagehash",
+    "scikit-image",
+]
 all = [
     "Pillow>=10.0.0",
     "reportlab>=4.0.0",
@@ -59,6 +64,9 @@ all = [
     "soundfile",
     "torch",
     "torchaudio",
+    "opencv-python",
+    "imagehash",
+    "scikit-image",
 ]
 
 [project.urls]
