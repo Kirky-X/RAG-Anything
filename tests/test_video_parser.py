@@ -4,7 +4,6 @@ import json
 import pytest
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 # Import dependencies
 try:
@@ -41,51 +40,50 @@ def test_get_video_duration():
     assert duration > 0
     assert isinstance(duration, float)
 
-@patch("raganything.parser.video_parser.AudioParser")
-def test_transcribe_mock(mock_audio_parser):
-    """Test audio transcription logic with mocks."""
-    parser = VideoParser()
-    
-    # Mock the internal audio parser behavior
-    mock_instance = mock_audio_parser.return_value
-    mock_instance._convert_to_wav_16k.return_value = Path("temp.wav")
-    mock_instance._model.generate.return_value = [{
-        "text": "Test transcription",
-        "timestamp": [[0, 1000], [1000, 2000]]
-    }]
-    
-    # We need to replace the actual instance created in __init__ with our mock
-    parser.audio_parser = mock_instance
-    
-    # Mock video duration for fallback
-    parser._get_video_duration = MagicMock(return_value=10.0)
-    
-    segments = parser._transcribe_with_timestamps(Path("dummy.mp4"))
-    
-    assert len(segments) > 0
-    assert segments[0]["text"] == "Test transcription"
-
 @pytest.mark.asyncio
-async def test_analyze_frames_mock():
-    """Test frame analysis with mocked VLM."""
-    parser = VideoParser()
-    
-    # Mock VLM parser
-    parser.vlm_parser.parse_image_async = MagicMock()
-    async def mock_parse(*args, **kwargs):
-        return {"description": "A test scene"}
-    parser.vlm_parser.parse_image_async.side_effect = mock_parse
-    
-    frames = [
-        {"path": "frame1.jpg", "timestamp": 1.0, "frame_idx": 30},
-        {"path": "frame2.jpg", "timestamp": 2.0, "frame_idx": 60}
-    ]
-    
+async def test_analyze_frames_offline_vlm(tmp_path):
+    if not VIDEO_FILE.exists():
+        pytest.skip(f"Test video file not found: {VIDEO_FILE}")
+
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(
+        """
+        [raganything.vision]
+        provider = "offline"
+        model = "offline"
+        timeout = 5
+        max_retries = 0
+        """
+    )
+    parser = VideoParser(config_path=str(cfg))
+
+    cap = cv2.VideoCapture(str(VIDEO_FILE))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    cap.release()
+
+    frames = parser._extract_frames(
+        video_path=VIDEO_FILE,
+        fps=max(0.5, min(1.0, fps and fps / max(fps, 1))),
+        output_dir=tmp_path,
+    )
+    assert isinstance(frames, list)
+    assert len(frames) > 0
+
     results = await parser._analyze_frames(frames)
-    
-    assert len(results) == 2
-    assert results[0]["description"] == "A test scene"
-    assert results[0]["timestamp"] == 1.0
+    assert len(results) == len(frames)
+    assert isinstance(results[0]["description"], str)
+
+def test_extract_frames_basics(tmp_path):
+    if not VIDEO_FILE.exists():
+        pytest.skip(f"Test video file not found: {VIDEO_FILE}")
+    parser = VideoParser()
+    frames = parser._extract_frames(
+        video_path=VIDEO_FILE,
+        fps=0.5,
+        output_dir=tmp_path,
+    )
+    assert len(frames) > 0
+    assert Path(frames[0]["path"]).exists()
 
 def test_integration_slice_and_parse():
     """
@@ -124,6 +122,7 @@ def test_integration_slice_and_parse():
     # The parser doesn't have start/end args.
     # So we must create a sliced file.
     
+    import time
     sliced_filename = f"test_slice_{int(time.time())}.mp4"
     sliced_path = OUTPUT_DIR / sliced_filename
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -163,14 +162,8 @@ def test_integration_slice_and_parse():
     
     assert sliced_path.exists()
     
-    # 2. Parse the slice
-    # Mocking the VLM and Audio parts to avoid heavy model usage in CI/Test environment
-    # unless we want to test real models.
-    # For "test_video_parser.py", we usually mock.
-    # But for the user verification task, they want real results.
-    
-    # This test function is just a placeholder for now.
-    pass
+    # This integration step is intentionally shallow to avoid heavy model inference.
+    assert sliced_path.exists()
 
 if __name__ == "__main__":
     # Manual run

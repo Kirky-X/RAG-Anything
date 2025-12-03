@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Optional, Union
 import os
+import base64
+from io import BytesIO
 
 
 class LLMProviderConfig:
@@ -254,6 +256,60 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
             
         return LLM(chat)
 
+    if provider == "offline":
+        class OfflineChatModel:
+            async def ainvoke(self, lc_messages: List[Any]) -> Any:
+                try:
+                    # Extract prompt and optional image from messages
+                    prompt_text = ""
+                    image_b64: Optional[str] = None
+                    for m in lc_messages:
+                        content = getattr(m, "content", None)
+                        if isinstance(content, list):
+                            for it in content:
+                                if isinstance(it, dict) and it.get("type") == "text":
+                                    prompt_text = str(it.get("text", ""))
+                                elif isinstance(it, dict) and it.get("type") == "image_url":
+                                    url = it.get("image_url", {}).get("url")
+                                    if isinstance(url, str) and url.startswith("data:image"):
+                                        try:
+                                            image_b64 = url.split(",", 1)[1]
+                                        except Exception:
+                                            image_b64 = None
+                        elif isinstance(content, str):
+                            prompt_text = content
+
+                    desc_parts: List[str] = []
+                    if prompt_text:
+                        desc_parts.append(f"Prompt: {prompt_text[:60]}")
+
+                    if image_b64:
+                        try:
+                            from PIL import Image
+                            img = Image.open(BytesIO(base64.b64decode(image_b64)))
+                            w, h = img.size
+                            mode = img.mode
+                            # Compute simple statistics
+                            try:
+                                import numpy as np
+                                arr = np.array(img.convert('L'))
+                                brightness = float(arr.mean())
+                                desc_parts.append(f"Image size: {w}x{h}, mode: {mode}, avg_brightness: {brightness:.1f}")
+                            except Exception:
+                                desc_parts.append(f"Image size: {w}x{h}, mode: {mode}")
+                        except Exception as e:
+                            desc_parts.append(f"Image decode error: {e}")
+
+                    if not desc_parts:
+                        desc_parts.append("Offline description: no content")
+
+                    return " | ".join(desc_parts)
+                except Exception as e:
+                    return f"Offline LLM error: {e}"
+
+        chat = OfflineChatModel()
+        return LLM(chat)
+
     raise ValueError(f"Unsupported provider: {cfg.provider}")
 
 
@@ -282,4 +338,3 @@ def build_messages(
             ],
         },
     ]
-

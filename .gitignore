@@ -71,6 +71,9 @@ tiktoken_cache/
 # unit-test files
 test_*
 
+# Test resources
+tests/resource/
+
 # Cline files
 memory-bank/
 

@@ -1271,3 +1271,18 @@ If you find RAG-Anything useful in your research, please cite our paper:
     <div style="margin-top: 10px; color: #00d9ff; font-size: 16px;">Building the Future of Multimodal AI</div>
   </div>
 </div>
+## 测试与覆盖率
+
+- 运行全部测试：`pytest -q`
+- 生成覆盖率报告：
+  - `coverage run -m pytest -q`
+  - `coverage xml && coverage html`
+- 报告路径：
+  - XML：`coverage.xml`
+  - HTML：`htmlcov/index.html`
+- 配置文件：`.coveragerc`
+- 依赖安装：
+  - 使用 uv：`uv sync --all-extras`
+  - 或使用 pip：`pip install -e '.[all]' && pip install coverage pytest pytest-asyncio`
+
+说明：当前测试套件不依赖外部数据库或向量库；若测试资源视频 `tests/resource/project_1.mp4` 不存在，相关集成测试将自动跳过。
