@@ -70,7 +70,7 @@ gui/
 tiktoken_cache/
 
 # unit-test files
-test_*
+# test_*
 
 # Test resources
 tests/resource/

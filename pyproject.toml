@@ -105,7 +105,6 @@ include = ["raganything*"]
 
 [tool.setuptools]
 include-package-data = true
-egg-base = "tmp"
 
 [tool.setuptools.dynamic]
 version = {attr = "raganything.__version__"}
