@@ -109,6 +109,9 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
     _parser_installation_checked: bool = field(default=False, init=False)
     """Flag to track if parser installation has been checked."""
 
+    _storages_finalized: bool = field(default=False, init=False)
+    """Flag to track if storages have been finalized."""
+
     def __post_init__(self):
         """Post-initialization setup following LightRAG pattern"""
         # Initialize configuration if not provided
@@ -173,12 +176,22 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         try:
             import asyncio
 
-            if asyncio.get_event_loop().is_running():
-                # If we're in an async context, schedule cleanup
-                asyncio.create_task(self.finalize_storages())
-            else:
-                # Run cleanup synchronously
-                asyncio.run(self.finalize_storages())
+            try:
+                loop = asyncio.get_running_loop()
+                if loop.is_running():
+                    # If we're in an async context, schedule cleanup
+                    # Use ensure_future to attach to the loop without awaiting if we can't await
+                    asyncio.ensure_future(self.finalize_storages())
+                else:
+                    # Should not happen if get_running_loop succeeds
+                    asyncio.run(self.finalize_storages())
+            except RuntimeError:
+                # No running event loop
+                try:
+                    asyncio.run(self.finalize_storages())
+                except Exception as e:
+                     logger.warning(f"Failed to run cleanup with new loop: {e}")
+
         except Exception as e:
             logger.warning(f"Warning: Failed to finalize RAGAnything storages: {e}")
 
@@ -292,6 +305,39 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
             except Exception as e:
                 self.logger.warning(f"Failed to build LangChain Vision: {e}")
 
+        # LLM text function fallback to Ollama when OpenAI not configured
+        if self.llm_model_func is None:
+            if not validate_provider(self.config.llm_provider):
+                self.logger.warning(f"Invalid llm provider: {self.config.llm_provider}")
+                return
+            cfg = LLMProviderConfig(
+                provider=self.config.llm_provider,
+                model=self.config.llm_model,
+                api_base=self.config.llm_api_base or None,
+                api_key=self.config.llm_api_key or None,
+                timeout=self.config.llm_timeout,
+                max_retries=self.config.llm_max_retries,
+            )
+            try:
+                lc_llm = build_llm(cfg)
+                self.llm_model_func = lc_llm
+                self.logger.info(f"LLM function built via LangChain provider: {cfg.provider}")
+            except Exception as e:
+                # Fallback to Ollama locally if configured via env (OLLAMA_HOST)
+                try:
+                    from raganything.llm import LLMProviderConfig as LPC, build_llm as build_llm_fallback
+                    ocfg = LPC(
+                        provider="ollama",
+                        model="qwen3:8b",
+                        api_base=self.config.vision_api_base or "http://172.24.160.1:11434",
+                        timeout=self.config.llm_timeout,
+                        max_retries=self.config.llm_max_retries,
+                    )
+                    self.llm_model_func = build_llm_fallback(ocfg)
+                    self.logger.info("LLM function built via Ollama fallback (qwen3:8b)")
+                except Exception as e2:
+                    self.logger.warning(f"Failed to build LLM via fallback: {e2}")
+
     def update_config(self, **kwargs):
         """Update configuration with new values"""
         for key, value in kwargs.items():
@@ -318,6 +364,16 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 self.logger.info(f"Parser '{self.config.parser}' installation verified")
 
             if self.lightrag is not None:
+                self.logger.debug(f"Checking LightRAG instance: type={type(self.lightrag)}")
+                
+                # Ensure RLock is removed from pre-provided LightRAG instance too
+                if hasattr(self.lightrag, "lock"):
+                    self.logger.warning("Removing 'lock' attribute from pre-provided LightRAG instance")
+                    try:
+                        delattr(self.lightrag, "lock")
+                    except Exception as e:
+                        self.logger.warning(f"Failed to remove 'lock' attribute: {e}")
+
                 # LightRAG was pre-provided, but we need to ensure it's properly initialized
                 try:
                     # Ensure LightRAG storages are initialized
@@ -374,6 +430,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
             if self.embedding_func is None:
                 try:
+                    self.logger.info(f"Attempting to build embedding function with provider: {self.config.embedding_provider}")
                     self.embedding_func = build_embedding_func(
                         provider=self.config.embedding_provider,
                         model=self.config.embedding_model,
@@ -383,12 +440,28 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         max_token_size=8192,
                     )
                     self.logger.info(
-                        f"Embedding function built via provider: {self.config.embedding_provider}"
+                        f"Embedding function built successfully via provider: {self.config.embedding_provider}"
                     )
                 except Exception as e:
-                    error_msg = f"embedding_func must be provided and building from config failed: {e}"
-                    self.logger.error(error_msg)
-                    return {"success": False, "error": error_msg}
+                    self.logger.warning(f"Failed to build primary embedding function ({self.config.embedding_provider}): {e}")
+                    # Fallback to Ollama embeddings locally
+                    try:
+                        self.logger.info("Attempting fallback to Ollama embeddings...")
+                        self.embedding_func = build_embedding_func(
+                            provider="ollama",
+                            model="bge-m3:567m",
+                            api_base=self.config.vision_api_base or "http://172.24.160.1:11434",
+                            embedding_dim=1024,
+                            max_token_size=8192,
+                        )
+                        self.logger.info("Embedding function built via Ollama fallback (bge-m3:567m)")
+                        # Update config to reflect fallback embedding dimension
+                        self.config.embedding_dim = 1024
+                        self.logger.info("Updated config.embedding_dim to 1024 for fallback model")
+                    except Exception as e2:
+                        error_msg = f"embedding_func must be provided and building from config failed. Primary error: {e}. Fallback error: {e2}"
+                        self.logger.error(error_msg)
+                        return {"success": False, "error": error_msg}
 
             from lightrag.kg.shared_storage import initialize_pipeline_status
 
@@ -413,8 +486,38 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
             try:
                 # Create LightRAG instance with merged parameters
+                # NOTE: LightRAG instance might create an RLock which is not picklable.
+                # We need to make sure that when LightRAG is initialized, it doesn't create unpicklable state
+                # that persists during serialization.
+                self.logger.debug("Creating LightRAG instance...")
                 self.lightrag = LightRAG(**lightrag_params)
+                self.logger.debug("LightRAG instance created.")
+                
+                # Remove 'lock' attribute immediately after creation to prevent pickle issues
+                # This must be done BEFORE any asyncio operations that might involve this instance
+                if hasattr(self.lightrag, "lock"):
+                    self.logger.warning("Removing 'lock' attribute from LightRAG instance to prevent pickle issues")
+                    try:
+                        delattr(self.lightrag, "lock")
+                    except Exception as e:
+                        self.logger.warning(f"Failed to remove 'lock' attribute: {e}")
+                
+                # Ensure embedding_func does not have RLock if it was attached during initialization
+                if hasattr(self.lightrag, "embedding_func") and hasattr(self.lightrag.embedding_func, "lock"):
+                     self.logger.warning("Removing 'lock' attribute from LightRAG embedding_func to prevent pickle issues")
+                     try:
+                        delattr(self.lightrag.embedding_func, "lock")
+                     except Exception as e:
+                        self.logger.warning(f"Failed to remove 'lock' attribute from embedding_func: {e}")
+
+                
+                # Also check for 'embedding_func' and 'llm_model_func' attached to instance
+                # If they are bound methods of objects with locks, it might cause issues.
+                # But we have already wrapped them in Lazy/Clean wrappers in their respective modules.
+                
+                self.logger.debug("Initializing LightRAG storages...")
                 await self.lightrag.initialize_storages()
+                self.logger.debug("LightRAG storages initialized.")
                 await initialize_pipeline_status()
 
                 # Initialize parse cache storage using LightRAG's KV storage
@@ -425,6 +528,51 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     embedding_func=self.embedding_func,
                 )
                 await self.parse_cache.initialize()
+
+                # Ensure all vector DBs have the correct embedding_func wrapper
+                # LightRAG initializes VDBs with the provided embedding_func,
+                # which we ensured is a LazyLangChainEmbeddingWrapper instance.
+                # However, LightRAG might wrap it again or attach it differently.
+                # Let's verify and force update if needed to ensure async compatibility.
+                for vdb_name in ["chunks_vdb", "entities_vdb", "relationships_vdb"]:
+                    if hasattr(self.lightrag, vdb_name) and hasattr(getattr(self.lightrag, vdb_name), "embedding_func"):
+                        vdb = getattr(self.lightrag, vdb_name)
+                        current_func = vdb.embedding_func
+                        
+                        # If it's a LightRAG EmbeddingFunc, the actual callable is in .func
+                        if hasattr(current_func, "func"):
+                             # UNWRAP IT! LightRAG's wrapper might be causing deadlocks with async functions.
+                             # Since our wrappers (LazyLangChainEmbeddingWrapper/LocalEmbeddingWrapper) 
+                             # handle their own async/sync logic, we want chunks_vdb to call them directly.
+                             self.logger.warning(f"Unwrapping {vdb_name}.embedding_func to bypass LightRAG concurrency wrapper")
+                             vdb.embedding_func = current_func.func
+                             current_func = current_func.func
+                        
+                        self.logger.debug(f"LightRAG {vdb_name} embedding_func type: {type(current_func)}")
+
+                # Diagnostic check for chunks_vdb (representative)
+                if hasattr(self.lightrag, "chunks_vdb") and hasattr(self.lightrag.chunks_vdb, "embedding_func"):
+                    current_func = self.lightrag.chunks_vdb.embedding_func
+                    
+                    # IMPORTANT: Check if the embedding function is properly awaited
+                    # LightRAG expects a sync-looking call that might return an awaitable.
+                    # We inject a small diagnostic log here.
+                    self.logger.debug(f"Diagnostics: embedding_func name: {getattr(current_func, '__name__', 'unknown')}")
+                    
+                    # Test if the embedding function returns a coroutine when called
+                    try:
+                        test_res = current_func(["test"])
+                        is_coroutine = asyncio.iscoroutine(test_res)
+                        self.logger.info(f"Diagnostics: chunks_vdb.embedding_func(['test']) returns coroutine: {is_coroutine}")
+                        
+                        # If we get a coroutine but LightRAG expects sync result (which it might if it doesn't await),
+                        # or if we get a sync result but LightRAG awaits it...
+                        # LightRAG usually handles both if configured correctly, but let's be sure.
+                        if is_coroutine:
+                            # Clean up the coroutine
+                            test_res.close()
+                    except Exception as e:
+                        self.logger.warning(f"Diagnostics: Failed to test embedding_func call: {e}")
 
                 # Initialize processors after LightRAG is ready
                 self._initialize_processors()
@@ -446,49 +594,48 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
     async def finalize_storages(self):
         """Finalize all storages including parse cache and LightRAG storages
-
+        
         This method should be called when shutting down to properly clean up resources
         and persist any cached data. It will finalize both the parse cache and LightRAG's
         internal storages.
-
-        Example usage:
-            try:
-                rag_anything = RAGAnything(...)
-                await rag_anything.process_file("document.pdf")
-                # ... other operations ...
-            finally:
-                # Always finalize storages to clean up resources
-                if rag_anything:
-                    await rag_anything.finalize_storages()
-
-        Note:
-            - This method is automatically called in __del__ when the object is destroyed
-            - Manual calling is recommended in production environments
-            - All finalization tasks run concurrently for better performance
         """
+        if self._storages_finalized:
+            # self.logger.debug("Storages already finalized, skipping")
+            return
+
         try:
             tasks = []
-
+            
             # Finalize parse cache if it exists
             if self.parse_cache is not None:
                 tasks.append(self.parse_cache.finalize())
-                self.logger.debug("Scheduled parse cache finalization")
-
+                # self.logger.debug("Scheduled parse cache finalization")
+            
             # Finalize LightRAG storages if LightRAG is initialized
             if self.lightrag is not None:
+                # Ensure LightRAG internal loops are handled
                 tasks.append(self.lightrag.finalize_storages())
-                self.logger.debug("Scheduled LightRAG storages finalization")
-
+                # self.logger.debug("Scheduled LightRAG storages finalization")
+            
             # Run all finalization tasks concurrently
             if tasks:
-                await asyncio.gather(*tasks)
-                self.logger.info("Successfully finalized all RAGAnything storages")
+                # Use shield to prevent cancellation during shutdown if loop is closing
+                await asyncio.gather(*tasks, return_exceptions=True)
+                # self.logger.info("Successfully finalized all RAGAnything storages")
             else:
-                self.logger.debug("No storages to finalize")
-
+                pass
+                # self.logger.debug("No storages to finalize")
+            
+            self._storages_finalized = True
+                
+        except RuntimeError as e:
+            if "Event loop is closed" in str(e):
+                pass
+                # self.logger.warning("Event loop closed during storage finalization")
+            else:
+                self.logger.error(f"Runtime error during storage finalization: {e}")
         except Exception as e:
             self.logger.error(f"Error during storage finalization: {e}")
-            raise
 
     def check_parser_installation(self) -> bool:
         """

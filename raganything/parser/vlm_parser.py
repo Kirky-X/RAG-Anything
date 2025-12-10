@@ -81,6 +81,22 @@ class VlmParser(Parser):
         
         logger.info(f"Initializing VlmParser with model={model}, provider={provider}, base={api_base}")
         
+        # Check network connectivity for Ollama
+        import socket
+        try:
+            # Simple connectivity check
+            host = api_base.replace("http://", "").replace("https://", "").split(":")[0]
+            port = int(api_base.split(":")[-1])
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(2)
+            result = s.connect_ex((host, port))
+            s.close()
+            
+            if result != 0:
+                logger.warning(f"Ollama might be unreachable at {api_base} (connect_ex returned {result}). Proceeding anyway as requested.")
+        except Exception as e:
+            logger.warning(f"Network check failed: {e}. Proceeding anyway as requested.")
+
         cfg = LLMProviderConfig(
             provider=provider,
             model=model,

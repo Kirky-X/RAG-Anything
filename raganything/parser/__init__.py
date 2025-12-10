@@ -9,6 +9,7 @@ from .base_parser import Parser
 from .mineru_parser import MineruParser, MineruExecutionError
 from .docling_parser import DoclingParser
 from .audio_parser import AudioParser
+from .video_parser import VideoParser
 
 __all__ = [
     "Parser",
@@ -16,4 +17,5 @@ __all__ = [
     "MineruExecutionError",
     "DoclingParser",
     "AudioParser",
+    "VideoParser",
 ]

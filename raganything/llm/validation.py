@@ -4,6 +4,7 @@ def validate_provider(provider: str) -> bool:
         "openrouter",
         "azure-openai",
         "ollama",
+        "mock",
     }
 
 

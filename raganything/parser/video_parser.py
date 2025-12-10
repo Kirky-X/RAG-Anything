@@ -15,6 +15,7 @@ import logging
 import tempfile
 import asyncio
 import numpy as np
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Any, Callable
 from PIL import Image
@@ -154,14 +155,46 @@ class VideoParser(Parser):
                     if isinstance(res, list) and len(res) > 0:
                         item = res[0]
                         text = item.get("text", "").strip()
-                        # timestamps = item.get("timestamp", []) # Ignore internal timestamps for now as we are chunking manually
-                        
-                        if text:
-                            segments.append({
-                                "start": start_ms / 1000.0,
-                                "end": end_ms / 1000.0,
-                                "text": text
-                            })
+                        ts_list = item.get("timestamp", [])
+                        speaker = item.get("spk") or item.get("speaker")
+
+                        if isinstance(ts_list, list) and len(ts_list) > 0:
+                            for ts in ts_list:
+                                seg_text = (ts.get("text") or ts.get("sentence") or "").strip()
+                                seg_start = ts.get("start")
+                                seg_end = ts.get("end")
+                                if seg_text and seg_start is not None and seg_end is not None:
+                                    segments.append({
+                                        "start": (start_ms / 1000.0) + float(seg_start),
+                                        "end": (start_ms / 1000.0) + float(seg_end),
+                                        "text": seg_text,
+                                        "speaker": speaker,
+                                    })
+                        else:
+                            if text:
+                                # Fallback: split by sentence punctuation, evenly distribute time
+                                sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+                                if sentences:
+                                    total_sec = (end_ms - start_ms) / 1000.0
+                                    per = max(total_sec / len(sentences), 0.0)
+                                    cur = start_ms / 1000.0
+                                    for s in sentences:
+                                        seg_start = cur
+                                        seg_end = min(cur + per, end_ms / 1000.0)
+                                        segments.append({
+                                            "start": seg_start,
+                                            "end": seg_end,
+                                            "text": s,
+                                            "speaker": speaker,
+                                        })
+                                        cur = seg_end
+                                else:
+                                    segments.append({
+                                        "start": start_ms / 1000.0,
+                                        "end": end_ms / 1000.0,
+                                        "text": text,
+                                        "speaker": speaker,
+                                    })
                             
                 except Exception as e:
                     logger.error(f"Error processing chunk {i}: {e}")
@@ -402,15 +435,47 @@ class VideoParser(Parser):
         # 3. Analyze Frames
         logger.info("Stage 3: Visual Analysis")
         # Run async analysis loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        visual_segments = loop.run_until_complete(
-            self._analyze_frames(
-                frames,
-                progress_callback=lambda p: logger.info(f"Analysis progress: {p*100:.1f}%")
-            )
-        )
-        loop.close()
+        # Check if there is a running loop
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+        if loop.is_running():
+            # If we are already in an async environment (which we likely are given this is called from async context usually)
+            # We can't use run_until_complete on the running loop.
+            # But parse_video is sync... 
+            # If parse_video is called from a sync context, get_running_loop raises RuntimeError, so we make a new one.
+            # If parse_video is called from an async context (e.g. wrapper), it might be problematic if we block here.
+            # The current implementation assumes it can control the loop.
+            
+            # Since parse_video is a sync function, if it's called from async code, it blocks the loop!
+            # The proper way is to use a separate thread or nest_asyncio.
+            # For now, let's detect if we are in a loop and if so, use a new loop in a thread or fail?
+            # Actually, if we are in a running loop, we can't block it with run_until_complete.
+            # We must use nest_asyncio or assume the caller handles async.
+            # But wait, this is `parse_video` which is synchronous. 
+            
+            # Let's try to handle the common case:
+            # If there is a running loop, we probably shouldn't be here in sync code.
+            # But if we are, we can use `asyncio.run_coroutine_threadsafe` if we have another thread,
+            # or we just assume we are top level.
+            
+            # The simplest fix for "RuntimeError: This event loop is already running" is:
+            import nest_asyncio
+            nest_asyncio.apply(loop)
+            visual_segments = loop.run_until_complete(self._analyze_frames(
+                 frames=frames,
+                 progress_callback=lambda p: logger.info(f"Analysis progress: {p*100:.1f}%")
+             ))
+             # loop.close() # Do not close the loop if it was already running or if we plan to reuse it
+        else:
+             visual_segments = loop.run_until_complete(self._analyze_frames(
+                 frames=frames,
+                 progress_callback=lambda p: logger.info(f"Analysis progress: {p*100:.1f}%")
+             ))
+             loop.close()
         
         # 4. Alignment & Merging
         logger.info("Stage 4: Alignment & Merging")
@@ -451,12 +516,13 @@ class VideoParser(Parser):
                 "content": seg.get("text", "")
             })
             
-        # Add visual
+        # Add visual (preserve frame path for downstream image chunk conversion)
         for seg in visual_segments:
             timeline.append({
                 "type": "visual",
                 "timestamp": seg["timestamp"],
-                "content": seg["description"]
+                "content": seg["description"],
+                "frame_path": seg.get("frame_path")
             })
             
         # Sort by timestamp

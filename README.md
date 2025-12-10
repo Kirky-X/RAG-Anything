@@ -275,7 +275,7 @@ uv sync
 # UV_HTTP_TIMEOUT=120 uv sync
 
 # Run commands directly with uv (recommended approach)
-uv run python examples/raganything_example.py --help
+uv run raganything --help
 
 # Install with optional dependencies
 uv sync --extra image --extra text  # Specific extras

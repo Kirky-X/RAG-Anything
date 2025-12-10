@@ -171,10 +171,92 @@ class LLM:
         return json.dumps(d, ensure_ascii=False)
 
 
+class LazyChatModelWrapper:
+    def __init__(self, provider_cls, init_kwargs: Dict[str, Any]):
+        self.provider_cls = provider_cls
+        self.init_kwargs = init_kwargs
+        self._client = None
+
+    def __getstate__(self):
+        """Support pickling by excluding the initialized client (which may have locks)"""
+        state = self.__dict__.copy()
+        state["_client"] = None
+        return state
+
+    def __setstate__(self, state):
+        """Restore state and reset client to None"""
+        self.__dict__.update(state)
+        self._client = None
+
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = self.provider_cls(**self.init_kwargs)
+        return self._client
+
+    async def ainvoke(self, messages, **kwargs):
+        return await self.client.ainvoke(messages, **kwargs)
+
+
+class OfflineChatModel:
+    async def ainvoke(self, lc_messages: List[Any]) -> Any:
+        try:
+            # Extract prompt and optional image from messages
+            prompt_text = ""
+            image_b64: Optional[str] = None
+            for m in lc_messages:
+                content = getattr(m, "content", None)
+                if isinstance(content, list):
+                    for it in content:
+                        if isinstance(it, dict) and it.get("type") == "text":
+                            prompt_text = str(it.get("text", ""))
+                        elif isinstance(it, dict) and it.get("type") == "image_url":
+                            url = it.get("image_url", {}).get("url")
+                            if isinstance(url, str) and url.startswith("data:image"):
+                                try:
+                                    image_b64 = url.split(",", 1)[1]
+                                except Exception:
+                                    image_b64 = None
+                elif isinstance(content, str):
+                    prompt_text = content
+
+            desc_parts: List[str] = []
+            if prompt_text:
+                desc_parts.append(f"Prompt: {prompt_text[:60]}")
+
+            if image_b64:
+                try:
+                    from PIL import Image
+                    img = Image.open(BytesIO(base64.b64decode(image_b64)))
+                    w, h = img.size
+                    mode = img.mode
+                    # Compute simple statistics
+                    try:
+                        import numpy as np
+                        arr = np.array(img.convert('L'))
+                        brightness = float(arr.mean())
+                        desc_parts.append(f"Image size: {w}x{h}, mode: {mode}, avg_brightness: {brightness:.1f}")
+                    except Exception:
+                        desc_parts.append(f"Image size: {w}x{h}, mode: {mode}")
+                except Exception as e:
+                    desc_parts.append(f"Image decode error: {e}")
+
+            if not desc_parts:
+                desc_parts.append("Offline description: no content")
+
+            return " | ".join(desc_parts)
+        except Exception as e:
+            return f"Offline LLM error: {e}"
+
+
 def build_llm(cfg: LLMProviderConfig) -> LLM:
     provider = cfg.provider.lower()
 
     if provider == "openai" or provider == "azure-openai" or provider == "openrouter":
+        # Fail fast if API key is missing to allow fallback logic to work
+        if not cfg.api_key and not os.environ.get("OPENAI_API_KEY"):
+             raise ValueError("OpenAI API key is required but not provided in arguments or environment variables.")
+
         try:
             from langchain_openai import ChatOpenAI
         except Exception as e:
@@ -183,6 +265,7 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
         init_kwargs: Dict[str, Any] = {"model": cfg.model}
         if cfg.api_key:
             os.environ.setdefault("OPENAI_API_KEY", cfg.api_key)
+            init_kwargs["api_key"] = cfg.api_key
 
         if provider == "azure-openai":
             if cfg.api_base:
@@ -190,12 +273,14 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
             api_key = cfg.api_key or os.getenv("AZURE_OPENAI_API_KEY")
             if api_key:
                 os.environ.setdefault("AZURE_OPENAI_API_KEY", api_key)
+                init_kwargs["api_key"] = api_key
         elif provider == "openrouter":
             if cfg.api_base:
                 init_kwargs["base_url"] = cfg.api_base
             api_key = cfg.api_key or os.getenv("OPENROUTER_API_KEY")
             if api_key:
                 os.environ.setdefault("OPENAI_API_KEY", api_key)
+                init_kwargs["api_key"] = api_key
             os.environ.setdefault("OPENAI_BASE_URL", init_kwargs.get("base_url", "https://openrouter.ai/api/v1"))
         else:
             if cfg.api_base:
@@ -210,7 +295,7 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
             init_kwargs["api_key"] = os.environ.get("OPENAI_API_KEY", "sk-local")
             os.environ.setdefault("OPENAI_API_KEY", init_kwargs["api_key"])
 
-        chat = ChatOpenAI(**init_kwargs)
+        chat = LazyChatModelWrapper(ChatOpenAI, init_kwargs)
         force = False
         direct_base_url = None
         direct_model = cfg.model
@@ -228,10 +313,12 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
         try:
             # Use our robust wrapper instead of direct ChatOllama
             from raganything.llm.ollama_client import RobustOllamaClient
+            provider_cls = RobustOllamaClient
         except ImportError:
             # Fallback or raise error if module missing (should be there)
             try:
                 from langchain_ollama import ChatOllama
+                provider_cls = ChatOllama
             except ImportError as e:
                 raise ValueError(f"Ollama integration unavailable: {e}")
 
@@ -245,68 +332,16 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
             
         init_kwargs.update(cfg.extra or {})
         
-        # Check if we successfully imported RobustOllamaClient
-        if 'RobustOllamaClient' in locals():
-            chat = RobustOllamaClient(**init_kwargs)
-        else:
-            # Fallback to standard ChatOllama if wrapper fails (shouldn't happen)
-            # Remove max_retries as standard ChatOllama might not support it in init
-            init_kwargs.pop("max_retries", None)
-            chat = ChatOllama(**init_kwargs)
+        # Use LazyChatModelWrapper for picklability
+        chat = LazyChatModelWrapper(provider_cls, init_kwargs)
             
         return LLM(chat)
 
+    if provider == "mock":
+        chat = OfflineChatModel()
+        return LLM(chat)
+
     if provider == "offline":
-        class OfflineChatModel:
-            async def ainvoke(self, lc_messages: List[Any]) -> Any:
-                try:
-                    # Extract prompt and optional image from messages
-                    prompt_text = ""
-                    image_b64: Optional[str] = None
-                    for m in lc_messages:
-                        content = getattr(m, "content", None)
-                        if isinstance(content, list):
-                            for it in content:
-                                if isinstance(it, dict) and it.get("type") == "text":
-                                    prompt_text = str(it.get("text", ""))
-                                elif isinstance(it, dict) and it.get("type") == "image_url":
-                                    url = it.get("image_url", {}).get("url")
-                                    if isinstance(url, str) and url.startswith("data:image"):
-                                        try:
-                                            image_b64 = url.split(",", 1)[1]
-                                        except Exception:
-                                            image_b64 = None
-                        elif isinstance(content, str):
-                            prompt_text = content
-
-                    desc_parts: List[str] = []
-                    if prompt_text:
-                        desc_parts.append(f"Prompt: {prompt_text[:60]}")
-
-                    if image_b64:
-                        try:
-                            from PIL import Image
-                            img = Image.open(BytesIO(base64.b64decode(image_b64)))
-                            w, h = img.size
-                            mode = img.mode
-                            # Compute simple statistics
-                            try:
-                                import numpy as np
-                                arr = np.array(img.convert('L'))
-                                brightness = float(arr.mean())
-                                desc_parts.append(f"Image size: {w}x{h}, mode: {mode}, avg_brightness: {brightness:.1f}")
-                            except Exception:
-                                desc_parts.append(f"Image size: {w}x{h}, mode: {mode}")
-                        except Exception as e:
-                            desc_parts.append(f"Image decode error: {e}")
-
-                    if not desc_parts:
-                        desc_parts.append("Offline description: no content")
-
-                    return " | ".join(desc_parts)
-                except Exception as e:
-                    return f"Offline LLM error: {e}"
-
         chat = OfflineChatModel()
         return LLM(chat)
 

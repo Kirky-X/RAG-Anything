@@ -13,6 +13,7 @@ from pathlib import Path
 
 from raganything.base import DocStatus
 from raganything.parser import MineruParser, DoclingParser, MineruExecutionError
+from raganything.parser import VideoParser
 from raganything.utils import (
     separate_content,
     insert_text_content,
@@ -301,17 +302,18 @@ class ProcessorMixin:
         cache_key = self._generate_cache_key(file_path, parse_method, **kwargs)
 
         # Check cache first
-        cached_result = await self._get_cached_result(
-            cache_key, file_path, parse_method, **kwargs
-        )
-        if cached_result is not None:
-            content_list, doc_id = cached_result
-            self.logger.info(f"Using cached parsing result for: {file_path}")
-            if display_stats:
-                self.logger.info(
-                    f"* Total blocks in cached content_list: {len(content_list)}"
-                )
-            return content_list, doc_id
+        if not kwargs.get("force_parse", False):
+            cached_result = await self._get_cached_result(
+                cache_key, file_path, parse_method, **kwargs
+            )
+            if cached_result is not None:
+                content_list, doc_id = cached_result
+                self.logger.info(f"Using cached parsing result for: {file_path}")
+                if display_stats:
+                    self.logger.info(
+                        f"* Total blocks in cached content_list: {len(content_list)}"
+                    )
+                return content_list, doc_id
 
         # Choose appropriate parsing method based on file extension
         ext = file_path.suffix.lower()
@@ -382,6 +384,73 @@ class ProcessorMixin:
                     output_dir=output_dir,
                     **kwargs,
                 )
+            elif ext in [
+                ".mp4", ".mov", ".mkv", ".avi", ".wmv", ".flv", ".webm", ".mpeg"
+            ]:
+                self.logger.info("Detected video file, using VideoParser for AV + visual timeline...")
+                video_parser = VideoParser()
+                video_result = await asyncio.to_thread(
+                    video_parser.parse_video,
+                    file_path=str(file_path),
+                    output_dir=output_dir,
+                    fps=kwargs.get("video_fps", 0.5),
+                    cleanup_frames=kwargs.get("cleanup_frames", False),
+                )
+                # Convert video timeline to content_list for multimodal processing
+                timeline = video_result.get("content", [])
+                content_list = []
+                def _fmt_ts(v: float) -> str:
+                    m = int(v // 60)
+                    s = int(v % 60)
+                    return f"{m:02d}:{s:02d}"
+
+                for item in timeline:
+                    if item.get("type") == "audio":
+                        # audio content now may include fine-grained segments
+                        text = item.get("content", "")
+                        start = float(item.get("timestamp", 0.0))
+                        end = float(item.get("end", start))
+                        speaker = item.get("speaker")
+                        segments = item.get("segments")
+
+                        if isinstance(segments, list) and segments:
+                            for seg in segments:
+                                seg_text = seg.get("text", "")
+                                seg_start = float(seg.get("start", start))
+                                seg_end = float(seg.get("end", seg_start))
+                                seg_speaker = seg.get("speaker", speaker)
+                                if seg_text:
+                                    content_list.append({
+                                        "type": "text",
+                                        "text": f"[{_fmt_ts(seg_start)}-{_fmt_ts(seg_end)}] " + (f"[{seg_speaker}] " if seg_speaker else "") + seg_text,
+                                        "page_idx": 0,
+                                        "source_type": "video_audio",
+                                        "start": seg_start,
+                                        "end": seg_end,
+                                        "speaker": seg_speaker,
+                                    })
+                        else:
+                            if text:
+                                content_list.append({
+                                    "type": "text",
+                                    "text": f"[{_fmt_ts(start)}-{_fmt_ts(end)}] " + (f"[{speaker}] " if speaker else "") + text,
+                                    "page_idx": 0,
+                                    "source_type": "video_audio",
+                                    "start": start,
+                                    "end": end,
+                                    "speaker": speaker,
+                                })
+                    elif item.get("type") == "visual":
+                        desc = item.get("content", "")
+                        frame_path = item.get("frame_path", "")
+                        # Map to image multimodal item to reuse image processors
+                        content_list.append({
+                            "type": "image",
+                            "img_path": frame_path,
+                            "image_caption": [desc] if desc else [],
+                            "image_footnote": [],
+                            "page_idx": 0
+                        })
             else:
                 # For other or unknown formats, use generic parser
                 self.logger.info(
@@ -500,6 +569,9 @@ class ProcessorMixin:
             async with pipeline_status_lock:
                 pipeline_status["latest_message"] = log_message
                 pipeline_status["history_messages"].append(log_message)
+
+        if hasattr(self.lightrag, "chunks_vdb") and hasattr(self.lightrag.chunks_vdb, "embedding_func"):
+            self.logger.debug(f"Processor LightRAG chunks_vdb embedding_func type: {type(self.lightrag.chunks_vdb.embedding_func)}")
 
         try:
             # Ensure LightRAG is initialized
@@ -828,35 +900,47 @@ class ProcessorMixin:
         )
 
         # Stage 2: Convert to LightRAG chunks format
+        self.logger.info("Stage 2: Converting to LightRAG chunks format...")
         lightrag_chunks = self._convert_to_lightrag_chunks_type_aware(
             multimodal_data_list, file_path, doc_id
         )
+        self.logger.info(f"Stage 2 complete. Generated {len(lightrag_chunks)} chunks.")
 
         # Stage 3: Store chunks to LightRAG storage
+        self.logger.info("Stage 3: Storing chunks to LightRAG storage...")
         await self._store_chunks_to_lightrag_storage_type_aware(lightrag_chunks)
+        self.logger.info("Stage 3 complete.")
 
         # Stage 3.5: Store multimodal main entities to entities_vdb and full_entities
+        self.logger.info("Stage 3.5: Storing multimodal main entities...")
         await self._store_multimodal_main_entities(
             multimodal_data_list, lightrag_chunks, file_path, doc_id
         )
+        self.logger.info("Stage 3.5 complete.")
 
         # Track chunk IDs for doc_status update
         chunk_ids = list(lightrag_chunks.keys())
 
         # Stage 4: Use LightRAG's batch entity relation extraction
+        self.logger.info("Stage 4: Batch entity relation extraction (LightRAG style)...")
         chunk_results = await self._batch_extract_entities_lightrag_style_type_aware(
             lightrag_chunks
         )
+        self.logger.info(f"Stage 4 complete. Extracted results for {len(chunk_results)} chunks.")
 
         # Stage 5: Add belongs_to relations (multimodal-specific)
+        self.logger.info("Stage 5: Adding belongs_to relations...")
         enhanced_chunk_results = await self._batch_add_belongs_to_relations_type_aware(
             chunk_results, multimodal_data_list
         )
+        self.logger.info("Stage 5 complete.")
 
         # Stage 6: Use LightRAG's batch merge
+        self.logger.info("Stage 6: Batch merging LightRAG style...")
         await self._batch_merge_lightrag_style_type_aware(
             enhanced_chunk_results, file_path, doc_id
         )
+        self.logger.info("Stage 6 complete.")
 
         # Stage 7: Update doc_status with integrated chunks_list
         await self._update_doc_status_with_chunks_type_aware(doc_id, chunk_ids)
@@ -987,10 +1071,80 @@ class ProcessorMixin:
         """Store chunks to storage"""
         try:
             # Store in text_chunks storage (required for extract_entities)
+            self.logger.info("DEBUG: Upserting to text_chunks...")
             await self.lightrag.text_chunks.upsert(chunks)
+            self.logger.info("DEBUG: text_chunks upsert complete.")
 
             # Store in chunks vector database for retrieval
-            await self.lightrag.chunks_vdb.upsert(chunks)
+            self.logger.info("DEBUG: Upserting to chunks_vdb (this involves embedding generation)...")
+            self.logger.info(f"DEBUG: Chunks to upsert: {len(chunks)}")
+            if len(chunks) > 0:
+                first_chunk_key = next(iter(chunks))
+                self.logger.info(f"DEBUG: First chunk content length: {len(chunks[first_chunk_key]['content'])}")
+                
+                # Check for unhashable types in values
+                first_val = chunks[first_chunk_key]
+                self.logger.info(f"DEBUG: First chunk keys: {list(first_val.keys())}")
+                for k, v in first_val.items():
+                    self.logger.info(f"DEBUG: Key '{k}' has type {type(v)}")
+                    if isinstance(v, list):
+                        self.logger.warning(f"DEBUG: Key '{k}' is a list! Content: {v[:50] if len(v) > 50 else v}")
+
+            # Inspect embedding_func before call
+            if hasattr(self.lightrag.chunks_vdb, "embedding_func"):
+                ef = self.lightrag.chunks_vdb.embedding_func
+                self.logger.info(f"DEBUG: chunks_vdb.embedding_func type: {type(ef)}")
+                self.logger.info(f"DEBUG: chunks_vdb.embedding_func repr: {repr(ef)}")
+                if hasattr(ef, "func"):
+                    self.logger.info(f"DEBUG: chunks_vdb.embedding_func.func type: {type(ef.func)}")
+                    self.logger.info(f"DEBUG: chunks_vdb.embedding_func.func repr: {repr(ef.func)}")
+
+            # Add timeout to upsert to detect hang
+            # Increase timeout to 300s (5 minutes) for embedding generation
+            self.logger.debug(f"Calling upsert for chunks: {list(chunks.keys())}")
+            # Ensure embedding_func is called and logged inside LightRAG if possible
+            # But we can't easily modify LightRAG internals here.
+            # We rely on our wrapper logging.
+            
+            try:
+                await asyncio.wait_for(self.lightrag.chunks_vdb.upsert(chunks), timeout=300)
+                self.logger.info("DEBUG: chunks_vdb upsert complete.")
+            except asyncio.TimeoutError:
+                self.logger.error("CRITICAL: chunks_vdb.upsert timed out after 300s!")
+                # Try to diagnose by checking embedding function directly
+                if hasattr(self.lightrag.chunks_vdb, "embedding_func"):
+                    self.logger.info("Diagnostics: Testing embedding function directly...")
+                    test_text = ["test embedding"]
+                    try:
+                        # LightRAG stores EmbeddingFunc in .embedding_func
+                        # EmbeddingFunc calls .func(texts)
+                        # Our wrapper is in .func
+                        # Check if we need to access .func directly or if EmbeddingFunc is callable
+                        ef = self.lightrag.chunks_vdb.embedding_func
+                        self.logger.info(f"Diagnostics: embedding_func type: {type(ef)}")
+                        if hasattr(ef, "__call__"):
+                            # If ef is our wrapper or EmbeddingFunc (which is callable)
+                            # EmbeddingFunc.__call__ is typically async in LightRAG 
+                            # But let's check if it returns a coroutine
+                            try:
+                                res = ef(test_text)
+                                if asyncio.iscoroutine(res):
+                                    # Add timeout for diagnostics to prevent infinite hang
+                                    emb = await asyncio.wait_for(res, timeout=30)
+                                else:
+                                    emb = res
+                                self.logger.info(f"Diagnostics: Embedding function works. Result len: {len(emb)}")
+                            except asyncio.TimeoutError:
+                                self.logger.error("Diagnostics: Embedding function timed out during test (30s)")
+                            except Exception as e:
+                                self.logger.error(f"Diagnostics: Embedding function failed during execution: {e}")
+                        else:
+                            self.logger.error(f"Diagnostics: embedding_func {type(ef)} is not callable")
+
+                    except Exception as e:
+                        self.logger.error(f"Diagnostics: Embedding function failed: {e}")
+                raise
+
 
             self.logger.debug(f"Stored {len(chunks)} multimodal chunks to storage")
 
@@ -1439,7 +1593,10 @@ class ProcessorMixin:
             **kwargs: Additional parameters for parser (e.g., lang, device, start_page, end_page, formula, table, backend, source)
         """
         # Ensure LightRAG is initialized
-        await self._ensure_lightrag_initialized()
+        result = await self._ensure_lightrag_initialized()
+        if not result["success"]:
+            self.logger.error(f"LightRAG initialization failed: {result.get('error')}")
+            return
 
         # Use config defaults if not provided
         if output_dir is None:
@@ -1472,18 +1629,42 @@ class ProcessorMixin:
                 content_list, self.config.content_format
             )
 
+        # Auto split by segment when video audio segments exist and user did not specify splitting
+        auto_split_char = split_by_character
+        auto_split_only = split_by_character_only
+        if auto_split_char is None:
+            for it in content_list:
+                if isinstance(it, dict) and it.get("source_type") == "video_audio":
+                    auto_split_char = "\n\n"
+                    auto_split_only = True
+                    break
+
         # Step 3: Insert pure text content with all parameters
         if text_content.strip():
             if file_name is None:
                 file_name = os.path.basename(file_path)
-            await insert_text_content(
-                self.lightrag,
-                input=text_content,
-                file_paths=file_name,
-                split_by_character=split_by_character,
-                split_by_character_only=split_by_character_only,
-                ids=doc_id,
-            )
+            
+            # Use direct LightRAG insert
+            insert_func = getattr(self.lightrag, "insert", None)
+            if not insert_func:
+                self.logger.error("LightRAG instance has no 'insert' method")
+                return
+
+            # Prepare arguments for insert
+            insert_kwargs = {
+                "input": text_content,
+                "split_by_character": auto_split_char,
+                "split_by_character_only": auto_split_only,
+                "ids": doc_id,
+                "file_paths": file_name,
+            }
+            
+            if asyncio.iscoroutinefunction(insert_func):
+                await insert_func(**insert_kwargs)
+            else:
+                # If it's sync, run it in executor to avoid blocking loop
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, lambda: insert_func(**insert_kwargs))
 
         # Step 4: Process multimodal content (using specialized processors)
         if multimodal_items:
@@ -1659,18 +1840,44 @@ class ProcessorMixin:
                     content_list, self.config.content_format
                 )
 
-            # Step 3: Insert pure text content and multimodal content with all parameters
+            # Auto split when video audio segments are present
+            auto_split_char = split_by_character
+            auto_split_only = split_by_character_only
+            if auto_split_char is None:
+                for it in content_list:
+                    if isinstance(it, dict) and it.get("source_type") == "video_audio":
+                        auto_split_char = "\n\n"
+                        auto_split_only = True
+                        break
+
             if text_content.strip():
-                await insert_text_content_with_multimodal_content(
-                    self.lightrag,
-                    input=text_content,
-                    multimodal_content=multimodal_items,
-                    file_paths=file_name,
-                    split_by_character=split_by_character,
-                    split_by_character_only=split_by_character_only,
-                    ids=doc_id,
-                    scheme_name=scheme_name,
-                )
+                # Add debug logging before insert call
+                self.logger.debug(f"Before insert call - LightRAG instance: {self.lightrag}, Type: {type(self.lightrag)}")
+                if self.lightrag is None:
+                    self.logger.error("CRITICAL: LightRAG instance is None before insert call!")
+                    return False
+
+                # Use direct LightRAG insert
+                insert_func = getattr(self.lightrag, "insert", None)
+                if not insert_func:
+                    self.logger.error("LightRAG instance has no 'insert' method")
+                    return False
+    
+                # Prepare arguments for insert
+                insert_kwargs = {
+                    "input": text_content,
+                    "split_by_character": auto_split_char,
+                    "split_by_character_only": auto_split_only,
+                    "ids": doc_id,
+                    "file_paths": file_name,
+                }
+                
+                if asyncio.iscoroutinefunction(insert_func):
+                    await insert_func(**insert_kwargs)
+                else:
+                    # If it's sync, run it in executor to avoid blocking loop
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, lambda: insert_func(**insert_kwargs))
 
             self.logger.info(f"Document {file_path} processing completed successfully")
             return True

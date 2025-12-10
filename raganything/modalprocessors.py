@@ -12,6 +12,7 @@ Includes:
 import re
 import json
 import time
+import asyncio
 import base64
 from typing import Dict, Any, Tuple, List
 from pathlib import Path
@@ -890,11 +891,28 @@ class ImageModalProcessor(BaseModalProcessor):
                 raise RuntimeError(f"Failed to encode image to base64: {image_path}")
 
             # Call vision model with encoded image
-            response = await self.modal_caption_func(
-                vision_prompt,
-                image_data=image_base64,
-                system_prompt=PROMPTS["IMAGE_ANALYSIS_SYSTEM"],
-            )
+            logger.info(f"Calling VLM for image analysis: {image_path}")
+            try:
+                response = await asyncio.wait_for(
+                    self.modal_caption_func(
+                        vision_prompt,
+                        image_data=image_base64,
+                        system_prompt=PROMPTS["IMAGE_ANALYSIS_SYSTEM"],
+                    ),
+                    timeout=300,  # 5 minutes timeout
+                )
+                logger.info(f"VLM response received for image: {image_path}")
+            except asyncio.TimeoutError:
+                logger.error(f"VLM call timed out for image: {image_path}")
+                # Return a fallback response instead of raising to allow pipeline to continue
+                response = json.dumps({
+                    "detailed_description": f"Image analysis timed out for {image_path}",
+                    "entity_info": {
+                        "entity_name": entity_name if entity_name else f"image_{compute_mdhash_id(str(modal_content))}",
+                        "entity_type": "image",
+                        "summary": "Analysis timed out"
+                    }
+                })
 
             # Parse response (reuse existing logic)
             enhanced_caption, entity_info = self._parse_response(response, entity_name)
@@ -981,18 +999,53 @@ class ImageModalProcessor(BaseModalProcessor):
     ) -> Tuple[str, Dict[str, Any]]:
         """Parse model response"""
         try:
+            # Check if response is empty
+            if not response or not response.strip():
+                raise ValueError("Empty response received from model")
+
             response_data = self._robust_json_parse(response)
 
             description = response_data.get("detailed_description", "")
             entity_data = response_data.get("entity_info", {})
 
-            if not description or not entity_data:
-                raise ValueError("Missing required fields in response")
+            # Try to recover if entity_info is missing but description is present
+            if description and not entity_data:
+                # If we have a description but no entity info, try to construct a basic entity info
+                # This often happens when models forget the JSON structure but provide good text
+                
+                # Try to extract a name from the description (first few words)
+                name_candidate = description.split('.')[0][:50]
+                
+                entity_data = {
+                    "entity_name": entity_name if entity_name else f"entity_{compute_mdhash_id(description)}",
+                    "entity_type": "image" if isinstance(self, ImageModalProcessor) else "content",
+                    "summary": description[:200]
+                }
+                logger.warning("Recovered from missing entity_info using description")
 
-            if not all(
-                key in entity_data for key in ["entity_name", "entity_type", "summary"]
-            ):
-                raise ValueError("Missing required fields in entity_info")
+            if not description or not entity_data:
+                # If robust parsing returned empty or malformed data
+                # Check if the raw response itself is the description (common with some models)
+                if isinstance(response, str) and len(response) > 0 and not response.strip().startswith('{'):
+                    description = response
+                    entity_data = {
+                        "entity_name": entity_name if entity_name else f"entity_{compute_mdhash_id(description)}",
+                        "entity_type": "image" if isinstance(self, ImageModalProcessor) else "content",
+                        "summary": description[:200]
+                    }
+                    logger.warning("Used raw response as description (model failed to output JSON)")
+                else:
+                    raise ValueError("Missing required fields in response and could not recover")
+
+            # Validate entity data fields and fill defaults if missing
+            if "entity_name" not in entity_data:
+                entity_data["entity_name"] = entity_name if entity_name else f"entity_{compute_mdhash_id(description)}"
+            
+            if "entity_type" not in entity_data:
+                entity_data["entity_type"] = "image" if isinstance(self, ImageModalProcessor) else "content"
+                
+            if "summary" not in entity_data:
+                entity_data["summary"] = description[:200]
 
             entity_data["entity_name"] = (
                 entity_data["entity_name"] + f" ({entity_data['entity_type']})"

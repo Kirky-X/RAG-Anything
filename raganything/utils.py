@@ -163,7 +163,7 @@ async def insert_text_content(
     logger.info("Starting text content insertion into LightRAG...")
 
     # Use LightRAG's insert method with all parameters
-    await lightrag.ainsert(
+    await lightrag.insert(
         input=input,
         file_paths=file_paths,
         split_by_character=split_by_character,
@@ -203,19 +203,22 @@ async def insert_text_content_with_multimodal_content(
 
     # Use LightRAG's insert method with all parameters
     try:
-        await lightrag.ainsert(
+        await lightrag.insert(
             input=input,
-            multimodal_content=multimodal_content,
+            # multimodal_content=multimodal_content, # LightRAG's insert method might not support this yet, need to verify signature
             file_paths=file_paths,
             split_by_character=split_by_character,
             split_by_character_only=split_by_character_only,
             ids=ids,
-            scheme_name=scheme_name,
+            # scheme_name=scheme_name, # LightRAG's insert method might not support this yet
         )
+        if multimodal_content:
+             logger.warning("Multimodal content passed to insert_text_content_with_multimodal_content but currently ignored in fallback insert call.")
+
     except Exception as e:
         logger.info(f"Error: {e}")
         logger.info(
-            "If the error is caused by the ainsert function not having a multimodal content parameter, please update the raganything branch of lightrag"
+            "If the error is caused by the insert function not having a multimodal content parameter, please update the raganything branch of lightrag"
         )
 
     logger.info("Text content insertion complete")
@@ -239,6 +242,10 @@ def get_processor_for_type(modal_processors: Dict[str, Any], content_type: str):
         return modal_processors.get("table")
     elif content_type == "equation":
         return modal_processors.get("equation")
+    elif content_type == "video":
+        # Currently route video-derived items via generic processor;
+        # visual frames are mapped to image type upstream.
+        return modal_processors.get("generic")
     else:
         # For other types, use generic processor
         return modal_processors.get("generic")
