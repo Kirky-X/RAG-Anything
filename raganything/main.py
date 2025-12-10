@@ -26,8 +26,8 @@ load_dotenv(dotenv_path=".env", override=False)
 
 def configure_logging():
     """Configure logging for the application"""
-    # Get log directory path from environment variable or use current directory
-    log_dir = os.getenv("LOG_DIR", os.getcwd())
+    # Get log directory path from environment variable or use tmp directory
+    log_dir = os.getenv("LOG_DIR", "/tmp/raganything/logs")
     log_file_path = os.path.abspath(os.path.join(log_dir, "raganything.log"))
 
     print(f"\nRAGAnything log file: {log_file_path}\n")

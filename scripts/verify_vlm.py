@@ -19,7 +19,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("vlm_verification.log"),
+        logging.FileHandler("/tmp/vlm_verification.log"),
         logging.StreamHandler(sys.stdout)
     ],
     force=True

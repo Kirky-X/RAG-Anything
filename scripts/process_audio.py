@@ -12,7 +12,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("audio_extraction_process.log"),
+        logging.FileHandler("/tmp/audio_extraction_process.log"),
         logging.StreamHandler(sys.stdout)
     ],
     force=True  # Ensure we overwrite any existing config

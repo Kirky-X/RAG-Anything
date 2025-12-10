@@ -68,7 +68,7 @@ def init_logger(
     env_retention = os.getenv("RAG_LOG_RETENTION")
 
     level = (env_level or level).upper()
-    base_log_dir = Path(env_dir) if env_dir else (log_dir or (_project_root() / "logs"))
+    base_log_dir = Path(env_dir) if env_dir else (log_dir or Path("/tmp/raganything/logs"))
     retention = env_retention or retention
 
     base_log_dir.mkdir(parents=True, exist_ok=True)
