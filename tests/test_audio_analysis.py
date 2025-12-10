@@ -19,7 +19,8 @@ class TestAudioParserAnalysis(unittest.TestCase):
             from pydub import AudioSegment
             # 1 second of silence
             audio = AudioSegment.silent(duration=1000, frame_rate=16000)
-            audio.export(self.test_audio_path, format="wav")
+            with open(self.test_audio_path, 'wb') as f:
+                audio.export(f, format="wav")
         except ImportError:
             self.skipTest("pydub not installed")
 

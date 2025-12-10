@@ -106,13 +106,15 @@ class AudioParser(Parser):
             logger.info(f"Converting {input_path.name} to 16kHz WAV...")
             
             # Load audio (pydub handles format detection and video containers)
-            audio = AudioSegment.from_file(str(input_path))
+            with open(str(input_path), 'rb') as f:
+                audio = AudioSegment.from_file(f)
             
             # Convert: 16kHz, mono, 16-bit
             audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
             
             # Export
-            audio.export(temp_path, format="wav")
+            with open(temp_path, 'wb') as f:
+                audio.export(f, format="wav")
             
             return Path(temp_path)
             
@@ -167,7 +169,8 @@ class AudioParser(Parser):
             # Guard against missing temp file to keep behavior robust and allow mocked model to run.
             try:
                 if os.path.exists(str(temp_wav_path)) and AudioSegment is not None:
-                    audio_info = AudioSegment.from_file(str(temp_wav_path))
+                    with open(str(temp_wav_path), 'rb') as f:
+                        audio_info = AudioSegment.from_file(f)
                     duration_sec = len(audio_info) / 1000.0
                 else:
                     logger.warning(
@@ -285,7 +288,8 @@ class AudioParser(Parser):
             
         try:
             logger.info(f"Analyzing audio file: {file_path.name}")
-            audio = AudioSegment.from_file(str(file_path))
+            with open(str(file_path), 'rb') as f:
+                audio = AudioSegment.from_file(f)
             
             # Basic Metadata
             metadata = {
