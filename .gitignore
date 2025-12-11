@@ -40,6 +40,7 @@ temp/
 # IDE / Editor Files
 .idea/
 .vscode/
+.trae/
 .vscode/settings.json
 
 # Framework-specific files
