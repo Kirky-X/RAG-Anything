@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 import os
 from pathlib import Path
 from typing import Optional, Union
@@ -20,6 +23,11 @@ class ModelManager:
     """
     
     def __init__(self, cache_dir: Optional[str] = None):
+        """Initialize the ModelManager.
+
+        Args:
+            cache_dir (Optional[str]): Directory to cache models. Defaults to environment variable MODELSCOPE_CACHE or './models_cache'.
+        """
         self.cache_dir = cache_dir or os.environ.get("MODELSCOPE_CACHE", "./models_cache")
         self._ensure_cache_dir()
         
@@ -28,7 +36,6 @@ class ModelManager:
 
     def _ensure_cache_dir(self):
         """Ensure the model cache directory exists."""
-        Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
 
     def download_model(self, model_info: Union[str, ModelInfo]) -> str:
         """
@@ -67,7 +74,11 @@ class ModelManager:
             raise
 
     def get_sense_voice_model_path(self) -> str:
-        """Helper to get the SenseVoiceSmall model path."""
+        """Helper to get the SenseVoiceSmall model path.
+
+        Returns:
+            str: Local path to the SenseVoiceSmall model.
+        """
         return self.download_model(default_models_config.sense_voice_small)
 
 # Global instance

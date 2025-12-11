@@ -1,8 +1,12 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 @dataclass
 class ModelInfo:
+    """Data class representing model information."""
     model_id: str
     revision: Optional[str] = None
     task_type: str = "auto"  # asr, tts, llm, etc.
@@ -10,6 +14,7 @@ class ModelInfo:
 
 @dataclass
 class ModelsConfig:
+    """Configuration class for managing model information."""
     # Audio Models
     sense_voice_small: ModelInfo = field(
         default_factory=lambda: ModelInfo(
@@ -21,7 +26,14 @@ class ModelsConfig:
     # Add more models here as needed
     
     def get_model(self, name: str) -> Optional[ModelInfo]:
-        """Get model info by attribute name."""
+        """Get model info by attribute name.
+
+        Args:
+            name (str): The name of the model attribute to retrieve.
+
+        Returns:
+            Optional[ModelInfo]: The ModelInfo object if found, None otherwise.
+        """
         if hasattr(self, name):
             return getattr(self, name)
         return None

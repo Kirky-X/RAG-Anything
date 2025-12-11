@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 import logging
 import platform
 from typing import Optional
@@ -27,6 +30,7 @@ class DeviceManager:
         return cls._instance
 
     def __init__(self):
+        """Initialize the DeviceManager singleton instance."""
         if self._initialized:
             return
         self._device = self._detect_device()
@@ -37,6 +41,9 @@ class DeviceManager:
         """
         Detect the best available device.
         Priority: CUDA > MPS (Apple Silicon) > CPU
+
+        Returns:
+            str: The detected device name (cuda, mps, or cpu).
         """
         if not TORCH_AVAILABLE:
             logger.warning("PyTorch not found. Defaulting to CPU.")
@@ -61,13 +68,20 @@ class DeviceManager:
         return "cpu"
 
     def is_gpu_available(self) -> bool:
-        """Check if a GPU (CUDA or MPS) is currently available and selected."""
+        """Check if a GPU (CUDA or MPS) is currently available and selected.
+
+        Returns:
+            bool: True if a GPU is available and selected, False otherwise.
+        """
         return self._device in ("cuda", "mps")
 
     def get_available_memory(self) -> float:
         """
         Get available system memory in GB.
         Useful for making decisions about loading large models.
+
+        Returns:
+            float: Available system memory in GB.
         """
         memory = psutil.virtual_memory()
         return memory.available / (1024**3)
@@ -101,12 +115,20 @@ class DeviceManager:
 
     @property
     def device(self) -> str:
-        """Get the selected device string."""
+        """Get the selected device string.
+
+        Returns:
+            str: The selected device string.
+        """
         return self._device
 
     @property
     def torch_device(self):
-        """Get the torch.device object."""
+        """Get the torch.device object.
+
+        Returns:
+            torch.device or None: The torch.device object if PyTorch is available, None otherwise.
+        """
         if not TORCH_AVAILABLE:
             return None
         return torch.device(self._device)
