@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 # type: ignore
 """
 Video Parser Module
@@ -49,6 +52,11 @@ class VideoParser(Parser):
     """
 
     def __init__(self, config_path: str = "config.toml") -> None:
+        """Initialize the VideoParser.
+
+        Args:
+            config_path (str): Path to the configuration file. Defaults to "config.toml".
+        """
         super().__init__()
         self.audio_parser = AudioParser()
         self.vlm_parser = VlmParser(config_path=config_path)
@@ -59,7 +67,14 @@ class VideoParser(Parser):
             logger.warning("scikit-image not found. SSIM check will be disabled. Install with `pip install scikit-image`")
 
     def _get_video_duration(self, video_path: str) -> float:
-        """Get video duration in seconds."""
+        """Get video duration in seconds.
+
+        Args:
+            video_path (str): Path to the video file.
+
+        Returns:
+            float: Video duration in seconds.
+        """
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             return 0.0
@@ -74,6 +89,13 @@ class VideoParser(Parser):
         Transcribe audio with timestamps using AudioParser's model.
         Uses a chunking strategy to prevent CUDA OOM on long files.
         Splits audio into 30s chunks, processes them sequentially, and merges results.
+
+        Args:
+            file_path (Path): Path to the audio file.
+            lang (str): Language code. Defaults to "auto".
+
+        Returns:
+            List[Dict[str, Any]]: List of transcribed segments with timestamps.
         """
         # Ensure model is loaded
         self.audio_parser._load_model()
@@ -229,6 +251,15 @@ class VideoParser(Parser):
     ) -> List[Dict[str, Any]]:
         """
         Extract frames from video based on FPS and content changes.
+
+        Args:
+            video_path (Path): Path to the video file.
+            fps (float): Frames per second to extract. Defaults to 1.0.
+            output_dir (Path): Output directory for frames.
+            progress_callback (Callable[[float], None]): Callback function for progress updates.
+
+        Returns:
+            List[Dict[str, Any]]: List of extracted frames with metadata.
         """
         frames = []
         cap = cv2.VideoCapture(str(video_path))
@@ -355,6 +386,13 @@ class VideoParser(Parser):
     ) -> List[Dict[str, Any]]:
         """
         Analyze frames using VLM.
+
+        Args:
+            frames (List[Dict[str, Any]]): List of frames to analyze.
+            progress_callback (Callable[[float], None]): Callback function for progress updates.
+
+        Returns:
+            List[Dict[str, Any]]: List of analyzed frames with descriptions.
         """
         results = []
         total = len(frames)
@@ -504,6 +542,13 @@ class VideoParser(Parser):
         """
         Align audio and visual segments into a unified timeline.
         Simple strategy: Interleave based on timestamp.
+
+        Args:
+            audio_segments (List[Dict[str, Any]]): List of audio segments with timestamps.
+            visual_segments (List[Dict[str, Any]]): List of visual segments with timestamps.
+
+        Returns:
+            List[Dict[str, Any]]: Aligned segments in chronological order.
         """
         timeline = []
         

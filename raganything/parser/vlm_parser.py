@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 import base64
 import time
 import logging
@@ -32,6 +35,11 @@ class VlmParser(Parser):
     """
     
     def __init__(self, config_path: str = "config.toml"):
+        """Initialize the VlmParser.
+
+        Args:
+            config_path (str): Path to the configuration file. Defaults to "config.toml".
+        """
         super().__init__()
         if not Image:
             raise ImportError("Pillow is required for VlmParser. Install with `pip install Pillow`.")
@@ -41,7 +49,14 @@ class VlmParser(Parser):
         self.llm = self._init_llm()
         
     def _load_config(self, path: Path) -> Dict[str, Any]:
-        """Load configuration from TOML file."""
+        """Load configuration from TOML file.
+
+        Args:
+            path (Path): Path to the TOML configuration file.
+
+        Returns:
+            Dict[str, Any]: Configuration dictionary.
+        """
         if not toml:
              logger.warning("tomli or tomllib not found. Cannot load config.toml. Using defaults.")
              return {}
@@ -59,7 +74,7 @@ class VlmParser(Parser):
             with open(path, "rb") as f:
                 return toml.load(f)
         except Exception as e:
-            logger.error(f"Failed to parse config file: {e}")
+            logger.error(f"Failed to parse config file {path}: {e}")
             return {}
 
     def _init_llm(self):

@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 # type: ignore
 """
 Audio Parser Module
@@ -47,6 +50,7 @@ class AudioParser(Parser):
     }
 
     def __init__(self) -> None:
+        """Initialize the AudioParser."""
         super().__init__()
         self._model = None
         self._model_path = None
@@ -95,6 +99,12 @@ class AudioParser(Parser):
         """
         Convert input audio/video to 16kHz 16-bit mono WAV required by SenseVoice.
         Returns path to temporary WAV file.
+
+        Args:
+            input_path (Path): Path to the input audio/video file.
+
+        Returns:
+            Path: Path to the temporary WAV file.
         """
         if AudioSegment is None:
             raise ImportError("pydub is not installed; audio conversion unavailable.")
