@@ -927,6 +927,7 @@ class ProcessorMixin:
             lightrag_chunks
         )
         self.logger.info(f"Stage 4 complete. Extracted results for {len(chunk_results)} chunks.")
+        self.logger.debug(f"Chunk results after Stage 4: {chunk_results}")
 
         # Stage 5: Add belongs_to relations (multimodal-specific)
         self.logger.info("Stage 5: Adding belongs_to relations...")
@@ -1314,6 +1315,21 @@ class ProcessorMixin:
 
         # Get pipeline status (consistent with LightRAG)
         pipeline_status = await get_namespace_data("pipeline_status")
+
+        # In offline mode, skip the expensive entity extraction step
+        if os.environ.get("LLM_PROVIDER") == "offline":
+            # Return a list of tuples with the correct structure, but empty data.
+            # The structure is [(nodes, edges), ...].
+            # We need to provide a minimal `nodes` structure so the next stage can extract the chunk_id.
+            results = []
+            for chunk_id in lightrag_chunks.keys():
+                # Mimic the structure of a single node entry to provide the source_id
+                # The key of the outer dict is the entity name, which we don't have, so we use a placeholder.
+                # The important part is that `nodes_dict[0]['source_id']` can be accessed.
+                nodes = {f"placeholder_entity_{chunk_id}": [{"source_id": chunk_id}]}
+                edges = {}
+                results.append((nodes, edges))
+            return results
         pipeline_status_lock = get_pipeline_status_lock()
 
         # Directly use LightRAG's extract_entities
@@ -1998,36 +2014,94 @@ class ProcessorMixin:
         # Step 1: Separate text and multimodal content
         text_content, multimodal_items = separate_content(content_list)
 
-        # Step 1.5: Set content source for context extraction in multimodal processing
-        if hasattr(self, "set_content_source_for_context") and multimodal_items:
-            self.logger.info(
-                "Setting content source for context-aware multimodal processing..."
-            )
-            self.set_content_source_for_context(
-                content_list, self.config.content_format
-            )
+        # Ensure a doc_status record exists early
+        try:
+            current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
+            if not current_doc_status:
+                await self.lightrag.doc_status.upsert(
+                    {
+                        doc_id: {
+                            "status": DocStatus.HANDLING,
+                            "chunks_count": 0,
+                            "multimodal_processed": False,
+                            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                            "file_path": os.path.basename(file_path),
+                        }
+                    }
+                )
+                await self.lightrag.doc_status.index_done_callback()
+        except Exception as e:
+            self.logger.error(f"Error creating initial doc_status for {doc_id}: {e}")
 
-        # Step 2: Insert pure text content with all parameters
-        if text_content.strip():
-            file_name = os.path.basename(file_path)
-            await insert_text_content(
-                self.lightrag,
-                input=text_content,
-                file_paths=file_name,
-                split_by_character=split_by_character,
-                split_by_character_only=split_by_character_only,
-                ids=doc_id,
-            )
+        try:
+            # Step 1.5: Set content source for context extraction in multimodal processing
+            if hasattr(self, "set_content_source_for_context") and multimodal_items:
+                self.logger.info(
+                    "Setting content source for context-aware multimodal processing..."
+                )
+                self.set_content_source_for_context(
+                    content_list, self.config.content_format
+                )
 
-        # Step 3: Process multimodal content (using specialized processors)
-        if multimodal_items:
-            await self._process_multimodal_content(multimodal_items, file_path, doc_id)
-        else:
-            # If no multimodal content, mark multimodal processing as complete
-            # This ensures the document status properly reflects completion of all processing
-            await self._mark_multimodal_processing_complete(doc_id)
-            self.logger.debug(
-                f"No multimodal content found in document {doc_id}, marked multimodal processing as complete"
-            )
+            # Step 2: Insert pure text content with all parameters
+            if text_content.strip():
+                file_name = os.path.basename(file_path)
+                await insert_text_content(
+                    self.lightrag,
+                    input=text_content,
+                    file_paths=file_name,
+                    split_by_character=split_by_character,
+                    split_by_character_only=split_by_character_only,
+                    ids=doc_id,
+                )
+
+                # Update status to PROCESSED for text part
+                try:
+                    current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
+                    if current_doc_status:
+                        await self.lightrag.doc_status.upsert(
+                            {
+                                doc_id: {
+                                    **current_doc_status,
+                                    "status": DocStatus.PROCESSED,
+                                    "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                }
+                            }
+                        )
+                        await self.lightrag.doc_status.index_done_callback()
+                except Exception as e:
+                    self.logger.error(f"Error updating doc_status after text insert: {e}")
+
+            # Step 3: Process multimodal content (using specialized processors)
+            if multimodal_items:
+                await self._process_multimodal_content(multimodal_items, file_path, doc_id)
+            else:
+                # If no multimodal content, mark multimodal processing as complete
+                # This ensures the document status properly reflects completion of all processing
+                await self._mark_multimodal_processing_complete(doc_id)
+                self.logger.debug(
+                    f"No multimodal content found in document {doc_id}, marked multimodal processing as complete"
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error processing content list for {doc_id}: {e}")
+            # Mark as FAILED
+            try:
+                current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
+                if current_doc_status:
+                    await self.lightrag.doc_status.upsert(
+                        {
+                            doc_id: {
+                                **current_doc_status,
+                                "status": DocStatus.FAILED,
+                                "error_msg": str(e),
+                                "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                            }
+                        }
+                    )
+                    await self.lightrag.doc_status.index_done_callback()
+            except Exception as update_err:
+                self.logger.error(f"Failed to update doc_status to FAILED: {update_err}")
+            raise e
 
         self.logger.info(f"Content list insertion complete for: {file_path}")

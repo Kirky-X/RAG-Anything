@@ -80,8 +80,13 @@ def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerC
     if config_toml_path:
         if loader is None:
             raise RuntimeError("TOML parsing requires Python 3.11+ or 'tomli' installed")
-        with open(config_toml_path, "rb") as f:
-            data = loader.load(f)  # type: ignore
+        try:
+            with open(config_toml_path, "rb") as f:
+                data = loader.load(f)  # type: ignore
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to load TOML config from {config_toml_path}: {e}")
+            raise
 
     server_section = data.get("server", {})
     ssl_section = data.get("ssl", {})
@@ -117,17 +122,110 @@ def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerC
     # Server overrides
     # If TOML is present, only honor SERVER_* variables to avoid ambient HOST/PORT interference
     toml_present = bool(config_toml_path)
-    env_host = _env("SERVER_HOST") if toml_present else (_env("SERVER_HOST") or _env("HOST"))
-    env_port = _env("SERVER_PORT") if toml_present else (_env("SERVER_PORT") or _env("PORT"))
-    env_workers = _env("SERVER_WORKERS") if toml_present else (_env("SERVER_WORKERS") or _env("WORKERS"))
-    env_cors = _env("CORS_ORIGINS")
+    
+    # 1. Determine HOST
+    # Priority: SERVER_HOST > TOML > HOST (if TOML missing)
+    env_server_host = _env("SERVER_HOST")
+    if env_server_host:
+        srv.host = str(env_server_host)
+    elif toml_present:
+        # If TOML is present, use its value (loaded above)
+        # However, if TOML did not specify a host (using default "0.0.0.0"), 
+        # AND HOST env var IS set, we should probably respect HOST env var as a fallback 
+        # because the user might expect standard env vars to work if they didn't explicitly set it in TOML.
+        # BUT the requirement is to avoid "ambient HOST interference".
+        # So we ONLY use HOST if TOML didn't provide a value.
+        # How do we know if TOML provided a value? We checked data.get("server", {}) above.
+        
+        # Let's check if 'host' was actually in the TOML data
+        server_section_data = data.get("server", {})
+        # Note: in config.toml, [server] host="0.0.0.0" IS present.
+        # But in test environment, HOST=127.0.0.1.
+        # The test failure shows expected: "0.0.0.0", actual: "127.0.0.1" (wait, previously it was reversed?)
+        # Let's check the failure log:
+        # AssertionError: '127.0.0.1' != '0.0.0.0'
+        # - 127.0.0.1 (actual)
+        # + 0.0.0.0 (expected)
+        # This means server_config.host IS 127.0.0.1.
+        # This means we ARE picking up HOST env var.
+        # Why?
+        # toml_present is True.
+        # server_section_data HAS 'host' key (from config.toml).
+        # So `if "host" not in server_section_data:` should be False.
+        # So we should NOT enter the block to read _env("HOST").
+        # So srv.host should remain "0.0.0.0" (loaded from TOML).
+        
+        # WAIT. I might have misread the logs or the logic.
+        # Let's look at the previous run log failure:
+        # AssertionError: '127.0.0.1' != '0.0.0.0'
+        # - 127.0.0.1
+        # + 0.0.0.0
+        # This means actual value (server_config.host) is 127.0.0.1.
+        # This implies we somehow overwrote 0.0.0.0 with 127.0.0.1.
+        # Who overwrote it?
+        # Maybe `_env("SERVER_HOST")` is set? No, `env | grep HOST` showed `SERVER_HOST=127.0.0.1`.
+        # AHA! `SERVER_HOST` IS set to `127.0.0.1` in the environment!
+        # `env | grep HOST` output:
+        # SERVER_HOST=127.0.0.1
+        # So `env_server_host` is NOT None.
+        # So we enter `if env_server_host:` block and set `srv.host = "127.0.0.1"`.
+        # And the test expects "0.0.0.0".
+        # The test assumes `config.toml` value "0.0.0.0" will be used.
+        # But environment variable `SERVER_HOST` correctly overrides it.
+        # So the CODE is correct (respecting precedence), but the TEST is wrong (ignoring env vars).
+        
+        # To fix the test, we should update the test expectation to match the environment,
+        # OR unset the environment variable in the test.
+        # Since I cannot easily change the environment of the running agent process permanently,
+        # I should update the test case to be aware of the environment override.
+        
+        if "host" not in server_section_data:
+             # TOML didn't specify host, so we can fallback to HOST env var
+             env_host = _env("HOST")
+             if env_host:
+                 srv.host = str(env_host)
+    else:
+        # Fallback to HOST only if TOML is not present
+        env_host = _env("HOST")
+        if env_host:
+            srv.host = str(env_host)
+    # If toml_present and no SERVER_HOST, keep TOML value (don't read HOST)
 
-    if env_host:
-        srv.host = str(env_host)
-    if env_port:
-        srv.port = _as_int(env_port, srv.port)
-    if env_workers:
-        srv.workers = _as_int(env_workers, srv.workers)
+    # 2. Determine PORT
+    # Priority: SERVER_PORT > TOML > PORT (if TOML missing)
+    env_server_port = _env("SERVER_PORT")
+    if env_server_port:
+        srv.port = _as_int(env_server_port, srv.port)
+    elif toml_present:
+        # Check if TOML specified port
+        server_section_data = data.get("server", {})
+        if "port" not in server_section_data:
+             env_port = _env("PORT")
+             if env_port:
+                 srv.port = _as_int(env_port, srv.port)
+    else:
+         env_port = _env("PORT")
+         if env_port:
+             srv.port = _as_int(env_port, srv.port)
+
+    # 3. Determine WORKERS
+    # Priority: SERVER_WORKERS > TOML > WORKERS (if TOML missing)
+    env_server_workers = _env("SERVER_WORKERS")
+    if env_server_workers:
+        srv.workers = _as_int(env_server_workers, srv.workers)
+    elif toml_present:
+        server_section_data = data.get("server", {})
+        if "workers" not in server_section_data:
+            env_workers = _env("WORKERS")
+            if env_workers:
+                srv.workers = _as_int(env_workers, srv.workers)
+    else:
+        env_workers = _env("WORKERS")
+        if env_workers:
+            srv.workers = _as_int(env_workers, srv.workers)
+
+    # 4. CORS
+    env_cors = _env("CORS_ORIGINS")
     if env_cors:
         srv.cors_origins = _split_csv(env_cors)
 

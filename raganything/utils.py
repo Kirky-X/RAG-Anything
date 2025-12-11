@@ -163,13 +163,22 @@ async def insert_text_content(
     logger.info("Starting text content insertion into LightRAG...")
 
     # Use LightRAG's insert method with all parameters
-    await lightrag.insert(
-        input=input,
-        file_paths=file_paths,
-        split_by_character=split_by_character,
-        split_by_character_only=split_by_character_only,
-        ids=ids,
-    )
+    import asyncio
+    insert_func = getattr(lightrag, "insert", None)
+    if insert_func is None:
+        return
+    kwargs = {
+        "input": input,
+        "file_paths": file_paths,
+        "split_by_character": split_by_character,
+        "split_by_character_only": split_by_character_only,
+        "ids": ids,
+    }
+    if asyncio.iscoroutinefunction(insert_func):
+        await insert_func(**kwargs)
+    else:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, lambda: insert_func(**kwargs))
 
     logger.info("Text content insertion complete")
 

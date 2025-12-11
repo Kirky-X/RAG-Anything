@@ -331,15 +331,42 @@ class RAGAnythingConfig:
         loader = _import_toml_loader()
         if loader is None:
             raise RuntimeError("TOML parsing requires Python 3.11+ or 'tomli' installed")
-        with open(path, "rb") as f:
-            data = loader.load(f)  # type: ignore
-        self._merge_dict(data)
+        try:
+            with open(path, "rb") as f:
+                data = loader.load(f)  # type: ignore
+            self._merge_dict(data)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to load TOML config from {path}: {e}")
+            raise
 
     def _merge_dict(self, cfg: Dict[str, Any]):
-        def merge_dc(dc_obj, values: Dict[str, Any]):
-            for k, v in (values or {}).items():
+        def merge_dc(dc_obj, values: Dict[str, Any], section_name: str = ""):
+            if not values:
+                return
+            for k, v in values.items():
                 if hasattr(dc_obj, k):
+                    # Basic type checking
+                    attr_type = type(getattr(dc_obj, k))
+                    # Allow int for float fields (e.g. timeout=60)
+                    if attr_type is float and isinstance(v, int):
+                        v = float(v)
+                    
+                    if attr_type is not type(None) and not isinstance(v, attr_type):
+                        # Special handling for list conversion if needed, or just warn
+                        if attr_type is list and isinstance(v, (list, tuple)):
+                             pass # acceptable
+                        else:
+                            import logging
+                            logging.getLogger(__name__).warning(
+                                f"Type mismatch in config '{section_name}.{k}': expected {attr_type.__name__}, got {type(v).__name__}. Using provided value."
+                            )
                     setattr(dc_obj, k, v)
+                else:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                         f"Unknown config key '{section_name}.{k}' in TOML. Ignoring."
+                    )
 
         def normalize_context(values: Dict[str, Any]) -> Dict[str, Any]:
             v = dict(values or {})
@@ -361,74 +388,74 @@ class RAGAnythingConfig:
         nested = cfg.get("raganything") or {}
 
         if "directory" in cfg:
-            merge_dc(self.directory, cfg.get("directory"))
+            merge_dc(self.directory, cfg.get("directory"), "directory")
         # Merge nested first
         if "parsing" in nested:
-            merge_dc(self.parsing, nested.get("parsing"))
+            merge_dc(self.parsing, nested.get("parsing"), "raganything.parsing")
         if "multimodal" in nested:
-            merge_dc(self.multimodal, nested.get("multimodal"))
+            merge_dc(self.multimodal, nested.get("multimodal"), "raganything.multimodal")
         if "batch" in nested:
-            merge_dc(self.batch, nested.get("batch"))
+            merge_dc(self.batch, nested.get("batch"), "raganything.batch")
         if "context" in nested:
-            merge_dc(self.context, normalize_context(nested.get("context")))
+            merge_dc(self.context, normalize_context(nested.get("context")), "raganything.context")
         if "llm" in nested:
-            merge_dc(self.llm, nested.get("llm"))
+            merge_dc(self.llm, nested.get("llm"), "raganything.llm")
         if "embedding" in nested:
-            merge_dc(self.embedding, normalize_embedding(nested.get("embedding")))
+            merge_dc(self.embedding, normalize_embedding(nested.get("embedding")), "raganything.embedding")
         if "vision" in nested:
-            merge_dc(self.vision, nested.get("vision"))
+            merge_dc(self.vision, nested.get("vision"), "raganything.vision")
 
         # Then allow top-level to override
         if "parsing" in cfg:
-            merge_dc(self.parsing, cfg.get("parsing"))
+            merge_dc(self.parsing, cfg.get("parsing"), "parsing")
         if "multimodal" in cfg:
-            merge_dc(self.multimodal, cfg.get("multimodal"))
+            merge_dc(self.multimodal, cfg.get("multimodal"), "multimodal")
         if "batch" in cfg:
-            merge_dc(self.batch, cfg.get("batch"))
+            merge_dc(self.batch, cfg.get("batch"), "batch")
         if "context" in cfg:
-            merge_dc(self.context, normalize_context(cfg.get("context")))
+            merge_dc(self.context, normalize_context(cfg.get("context")), "context")
         if "llm" in cfg:
-            merge_dc(self.llm, cfg.get("llm"))
+            merge_dc(self.llm, cfg.get("llm"), "llm")
         if "embedding" in cfg:
-            merge_dc(self.embedding, normalize_embedding(cfg.get("embedding")))
+            merge_dc(self.embedding, normalize_embedding(cfg.get("embedding")), "embedding")
         if "vision" in cfg:
-            merge_dc(self.vision, cfg.get("vision"))
+            merge_dc(self.vision, cfg.get("vision"), "vision")
         if "logging" in cfg:
-            merge_dc(self.logging, cfg.get("logging"))
+            merge_dc(self.logging, cfg.get("logging"), "logging")
         if "tiktoken" in cfg:
-            merge_dc(self.tiktoken, cfg.get("tiktoken"))
+            merge_dc(self.tiktoken, cfg.get("tiktoken"), "tiktoken")
         if "query" in cfg:
-            merge_dc(self.query, cfg.get("query"))
+            merge_dc(self.query, cfg.get("query"), "query")
         if "summary" in cfg:
-            merge_dc(self.summary, cfg.get("summary"))
+            merge_dc(self.summary, cfg.get("summary"), "summary")
         if "insert" in cfg:
-            merge_dc(self.insert, cfg.get("insert"))
+            merge_dc(self.insert, cfg.get("insert"), "insert")
         if "server" in cfg:
-            merge_dc(self.server, cfg.get("server"))
+            merge_dc(self.server, cfg.get("server"), "server")
         if "ollama" in cfg:
-            merge_dc(self.ollama, cfg.get("ollama"))
+            merge_dc(self.ollama, cfg.get("ollama"), "ollama")
         if "auth" in cfg:
-            merge_dc(self.auth, cfg.get("auth"))
+            merge_dc(self.auth, cfg.get("auth"), "auth")
         if "ssl" in cfg:
-            merge_dc(self.ssl, cfg.get("ssl"))
+            merge_dc(self.ssl, cfg.get("ssl"), "ssl")
         if "api" in cfg:
-            merge_dc(self.api, cfg.get("api"))
+            merge_dc(self.api, cfg.get("api"), "api")
         if "runtime.llm" in cfg:
-            merge_dc(self.runtime_llm, cfg.get("runtime.llm"))
+            merge_dc(self.runtime_llm, cfg.get("runtime.llm"), "runtime.llm")
         if "storage" in cfg:
-            merge_dc(self.storage, cfg.get("storage"))
+            merge_dc(self.storage, cfg.get("storage"), "storage")
         if "postgres" in cfg:
-            merge_dc(self.postgres, cfg.get("postgres"))
+            merge_dc(self.postgres, cfg.get("postgres"), "postgres")
         if "neo4j" in cfg:
-            merge_dc(self.neo4j, cfg.get("neo4j"))
+            merge_dc(self.neo4j, cfg.get("neo4j"), "neo4j")
         if "mongo" in cfg:
-            merge_dc(self.mongo, cfg.get("mongo"))
+            merge_dc(self.mongo, cfg.get("mongo"), "mongo")
         if "milvus" in cfg:
-            merge_dc(self.milvus, cfg.get("milvus"))
+            merge_dc(self.milvus, cfg.get("milvus"), "milvus")
         if "qdrant" in cfg:
-            merge_dc(self.qdrant, cfg.get("qdrant"))
+            merge_dc(self.qdrant, cfg.get("qdrant"), "qdrant")
         if "redis" in cfg:
-            merge_dc(self.redis, cfg.get("redis"))
+            merge_dc(self.redis, cfg.get("redis"), "redis")
 
     def _validate(self):
         valid_parsers = {"mineru", "docling"}

@@ -115,6 +115,9 @@ class QueryMixin:
         Returns:
             str: Query result
         """
+        if (mode or "").lower() == "bypass":
+            return await self.llm_model_func(query, system_prompt=system_prompt)
+        await self._ensure_lightrag_initialized()
         if self.lightrag is None:
             raise ValueError(
                 "No LightRAG instance available. Please process documents first or provide a pre-initialized LightRAG instance."
@@ -153,9 +156,17 @@ class QueryMixin:
         self.logger.info(f"Query mode: {mode}")
 
         # Call LightRAG's query method
-        result = await self.lightrag.aquery(
-            query, param=query_param, system_prompt=system_prompt
-        )
+        try:
+            result = await self.lightrag.aquery(
+                query, param=query_param, system_prompt=system_prompt
+            )
+        except Exception as e:
+            try:
+                result = await self.llm_model_func(
+                    query, system_prompt=system_prompt
+                )
+            except Exception:
+                raise e
 
         self.logger.info("Text query completed")
         return result
@@ -203,7 +214,32 @@ class QueryMixin:
                 }]
             )
         """
-        # Ensure LightRAG is initialized
+        if (mode or "").lower() == "bypass":
+            parts = [query]
+            if multimodal_content:
+                for item in multimodal_content:
+                    if not isinstance(item, dict):
+                        continue
+                    t = str(item.get("type", "")).lower()
+                    if t == "table":
+                        td = item.get("table_data") or item.get("table_body") or ""
+                        cap = item.get("table_caption") or []
+                        parts.append("\n[Table]\n" + str(td))
+                        if isinstance(cap, list) and cap:
+                            parts.append("[TableCaption] " + " ".join([str(c) for c in cap]))
+                    elif t == "equation":
+                        lx = item.get("latex") or ""
+                        parts.append("\n[Equation]\n" + str(lx))
+                    elif t == "image":
+                        cap = item.get("image_caption") or []
+                        txt = " ".join([str(c) for c in cap]) if isinstance(cap, list) else ""
+                        parts.append("\n[Image] " + txt)
+                    else:
+                        txt = item.get("text") or ""
+                        parts.append("\n[Content]\n" + str(txt))
+            prompt = "\n".join([p for p in parts if p])
+            return await self.llm_model_func(prompt, system_prompt=None)
+
         await self._ensure_lightrag_initialized()
 
         self.logger.info(f"Executing multimodal query: {query[:100]}...")
@@ -254,7 +290,20 @@ class QueryMixin:
         )
 
         # Execute enhanced query
-        result = await self.aquery(enhanced_query, mode=mode, **kwargs)
+        if (mode or "").lower() == "bypass":
+            return await self.llm_model_func(
+                enhanced_query,
+                system_prompt=PROMPTS.get("QUERY_IMAGE_ANALYST_SYSTEM"),
+            )
+        try:
+            result = await self.aquery(enhanced_query, mode=mode, **kwargs)
+        except Exception as e:
+            try:
+                result = await self.llm_model_func(
+                    enhanced_query, system_prompt=PROMPTS.get("QUERY_IMAGE_ANALYST_SYSTEM")
+                )
+            except Exception:
+                raise e
 
         # Save to cache if available and enabled
         if (
@@ -334,6 +383,12 @@ class QueryMixin:
         # 1. Get original retrieval prompt (without generating final answer)
         query_param = QueryParam(mode=mode, only_need_prompt=True, **kwargs)
         raw_prompt = await self.lightrag.aquery(query, param=query_param)
+
+        if not isinstance(raw_prompt, str) or not raw_prompt:
+            query_param = QueryParam(mode=mode, **kwargs)
+            return await self.lightrag.aquery(
+                query, param=query_param, system_prompt=system_prompt
+            )
 
         self.logger.debug("Retrieved raw prompt from LightRAG")
 

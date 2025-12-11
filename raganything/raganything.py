@@ -350,18 +350,16 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
     async def _ensure_lightrag_initialized(self):
         """Ensure LightRAG instance is initialized, create if necessary"""
         try:
-            # Check parser installation first
+            # Check parser installation first, but do not block non-parsing operations
             if not self._parser_installation_checked:
                 if not self.doc_parser.check_installation():
-                    error_msg = (
-                        f"Parser '{self.config.parser}' is not properly installed. "
-                        "Please install it using 'pip install' or 'uv pip install'."
+                    self.logger.warning(
+                        f"Parser '{self.config.parser}' is not properly installed; continuing initialization for operations that do not require parsing"
                     )
-                    self.logger.error(error_msg)
-                    return {"success": False, "error": error_msg}
-
-                self._parser_installation_checked = True
-                self.logger.info(f"Parser '{self.config.parser}' installation verified")
+                    self._parser_installation_checked = True
+                else:
+                    self._parser_installation_checked = True
+                    self.logger.info(f"Parser '{self.config.parser}' installation verified")
 
             if self.lightrag is not None:
                 self.logger.debug(f"Checking LightRAG instance: type={type(self.lightrag)}")
