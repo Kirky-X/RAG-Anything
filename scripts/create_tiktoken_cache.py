@@ -7,9 +7,9 @@ try:
     from raganything.config import RAGAnythingConfig
 
     cfg = RAGAnythingConfig()
-    cache_dir = cfg.tiktoken.cache_dir or "./tiktoken_cache"
+    cache_dir = cfg.tiktoken.cache_dir or "/tmp/tiktoken_cache"
 except Exception:
-    cache_dir = "./tiktoken_cache"
+    cache_dir = "/tmp/tiktoken_cache"
 
 os.environ.setdefault("TIKTOKEN_CACHE_DIR", cache_dir)
 Path(cache_dir).mkdir(parents=True, exist_ok=True)
