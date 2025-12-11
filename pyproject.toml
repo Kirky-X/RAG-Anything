@@ -113,7 +113,8 @@ version = {attr = "raganything.__version__"}
 target-version = "py310"
 
 [tool.pytest.ini_options]
-addopts = "-p no:cacheprovider"
+addopts = "-p no:cacheprovider --cache-clear"
+cache_dir = "/tmp/.pytest_cache"
 
 [tool.coverage.run]
 data_file = "/tmp/.coverage"
