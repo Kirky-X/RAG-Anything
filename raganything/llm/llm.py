@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 from typing import Any, Dict, List, Optional, Union
 import os
 import base64
@@ -5,6 +8,7 @@ from io import BytesIO
 
 
 class LLMProviderConfig:
+    """Configuration class for LLM providers."""
     def __init__(
         self,
         provider: str,
@@ -15,6 +19,17 @@ class LLMProviderConfig:
         max_retries: int = 2,
         extra: Optional[Dict[str, Any]] = None,
     ):
+        """Initialize LLM provider configuration.
+
+        Args:
+            provider (str): The LLM provider name (openai, ollama, etc.).
+            model (str): The model name to use.
+            api_base (Optional[str]): Optional API base URL.
+            api_key (Optional[str]): Optional API key for authentication.
+            timeout (Optional[float]): Optional timeout for API requests.
+            max_retries (int): Maximum number of retries for failed requests. Defaults to 2.
+            extra (Optional[Dict[str, Any]]): Extra parameters for the provider.
+        """
         self.provider = provider
         self.model = model
         self.api_base = api_base
@@ -25,6 +40,7 @@ class LLMProviderConfig:
 
 
 class LLM:
+    """Lightweight LLM wrapper for various providers."""
     def __init__(
         self,
         chat_model: Any,
@@ -32,6 +48,14 @@ class LLM:
         direct_base_url: Optional[str] = None,
         direct_model: Optional[str] = None,
     ):
+        """Initialize LLM wrapper.
+
+        Args:
+            chat_model (Any): The underlying chat model.
+            force_text_messages (bool): Whether to force text-only messages.
+            direct_base_url (Optional[str]): Direct base URL for API calls.
+            direct_model (Optional[str]): Direct model name for API calls.
+        """
         self.chat_model = chat_model
         self.force_text_messages = force_text_messages
         self.direct_base_url = direct_base_url
@@ -44,6 +68,17 @@ class LLM:
         history_messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> str:
+        """Invoke the LLM with the given prompt and parameters.
+
+        Args:
+            prompt (str): The main prompt to send to the model.
+            system_prompt (Optional[str]): Optional system prompt.
+            history_messages (Optional[List[Dict[str, Any]]]): Optional conversation history.
+            **kwargs: Additional arguments for the model.
+
+        Returns:
+            str: The model's response.
+        """
         messages = kwargs.get("messages")
         image_data = kwargs.get("image_data")
 

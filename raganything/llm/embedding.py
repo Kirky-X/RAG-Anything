@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 import os
 from typing import Any, Dict, List, Optional
 import numpy as np
@@ -11,10 +14,35 @@ def build_embedding_func(
     max_token_size: int = 8192,
     extra: Optional[Dict[str, Any]] = None,
 ):
+    """Build an embedding function for the specified provider and model.
+
+    Args:
+        provider (str): The embedding provider (openai, ollama, huggingface, etc.).
+        model (str): The model name to use for embeddings.
+        api_base (Optional[str]): Optional API base URL for the provider.
+        api_key (Optional[str]): Optional API key for the provider.
+        embedding_dim (int): The dimension of the embedding vectors. Defaults to 1536.
+        max_token_size (int): Maximum token size for the model. Defaults to 8192.
+        extra (Optional[Dict[str, Any]]): Extra parameters for the provider.
+
+    Returns:
+        EmbeddingFunc: An embedding function compatible with LightRAG.
+
+    Raises:
+        ValueError: If the provider is unsupported or dependencies are missing.
+    """
     from lightrag.utils import EmbeddingFunc
 
     p = (provider or "").lower()
     extra = extra or {}
+
+    # Force local embedding if the environment variable is set
+    if os.environ.get("EMBEDDING_PROVIDER") == "local":
+        return EmbeddingFunc(
+            embedding_dim=embedding_dim,
+            max_token_size=max_token_size,
+            func=LocalEmbeddingWrapper(embedding_dim),
+        )
 
     if p in ("openai", "openrouter", "azure-openai"):
         try:

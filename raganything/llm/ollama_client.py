@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 import asyncio
 import logging
 from typing import Any, List, Optional, Dict
