@@ -1126,6 +1126,96 @@ await rag.process_document_complete(
 
 ## 📖 引用
 
+---
+
+## 🔌 HTTP 接口（FastAPI）
+
+### 启动服务
+
+- 通过环境变量或 `config.toml` 配置服务参数（监听地址、端口、CORS、API密钥等）
+- 启动：`uvicorn raganything.api.app:app --host 0.0.0.0 --port 9621`
+
+启动后自动提供 OpenAPI/Swagger 文档：访问 `http://<host>:<port>/docs` 或 `.../openapi.json`。
+
+### 可用接口
+
+- `GET /health`：健康检查
+- `GET /api/info`：服务信息
+- `GET /api/secure`：示例安全接口（当设置 `LIGHTRAG_API_KEY` 时需要校验请求头 `X-API-Key`）
+- `POST /api/query`：纯文本查询
+  - Body: `{ query, mode, system_prompt?, top_k?, max_tokens?, temperature? }`
+  - 响应: `{ result }`
+- `POST /api/query/multimodal`：多模态查询
+  - Body: `{ query, multimodal_content: [ { type, img_path?, table_body?, latex?, text?, page_idx? } ], mode }`
+  - 响应: `{ result }`
+- `POST /api/doc/upload`：上传并处理文档（解析+索引+多模态处理），`multipart/form-data`
+  - Form: `file`, `output_dir?`, `parse_method?`, `display_stats?`, `split_by_character?`, `split_by_character_only?`, `doc_id?`
+  - 响应: `{ doc_id, file_name, status }`
+- `POST /api/doc/insert`：直接插入内容列表（跳过解析）
+  - Body: `{ content_list: [...], file_path?, split_by_character?, split_by_character_only?, doc_id?, display_stats? }`
+  - 响应: `{ doc_id, file_name, status }`
+- `GET /api/doc/status/{doc_id}`：查询文档处理状态
+  - 响应: `{ exists, text_processed, multimodal_processed, fully_processed, chunks_count, ... }`
+
+### 示例
+
+```bash
+# 启动（默认端口参考 config.toml）
+uvicorn raganything.api.app:app --host 0.0.0.0 --port 9621
+
+# 纯文本查询（如需规避外部 LLM，可使用 bypass 模式）
+curl -X POST http://localhost:9621/api/query \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"介绍系统架构","mode":"bypass"}'
+
+# 多模态查询（图片）
+curl -X POST http://localhost:9621/api/query/multimodal \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "query":"结合这张图解释架构",
+        "mode":"hybrid",
+        "multimodal_content": [{"type":"image","img_path":"/abs/path/to/img.jpg"}]
+      }'
+
+# 上传并处理文档
+curl -X POST http://localhost:9621/api/doc/upload \
+  -F file=@/abs/path/to/doc.pdf
+
+# 插入内容列表
+curl -X POST http://localhost:9621/api/doc/insert \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "file_path":"demo.md",
+        "content_list":[{"type":"text","text":"Hello RAG","page_idx":0}]
+      }'
+
+# 查询处理状态
+curl http://localhost:9621/api/doc/status/doc-xxxxxxxx
+```
+
+### 环境变量与配置
+
+- `LIGHTRAG_API_KEY`：启用后，访问受保护接口需提供密钥
+- `SERVER_HOST`/`SERVER_PORT`/`SERVER_WORKERS`：服务监听配置
+- `CORS_ORIGINS`：逗号分隔的跨域来源
+- `CONFIG_TOML`：指向 `config.toml` 文件，参考仓库根目录示例
+
+> 若希望在离线/本地模式下进行端到端测试，可通过环境变量切换提供方：
+
+```bash
+EMBEDDING_PROVIDER=local \
+LLM_PROVIDER=offline \
+VISION_PROVIDER=offline \
+uvicorn raganything.api.app:app --host 0.0.0.0 --port 9621
+```
+
+上述配置避免对外部 API 与本地推理服务的依赖（如 Ollama），适合在 CI 或本地环境进行 HTTP 级别的功能验证。
+
+### 依赖与测试
+
+- 依赖：FastAPI、uvicorn；可选 hypercorn
+- 运行测试：`pytest -q`
+
 *学术参考*
 
 <div align="center">
