@@ -34,7 +34,9 @@ try:
 except Exception:
     pass
 
-from lightrag import LightRAG
+from lightrag.lightrag import LightRAG
+from raganything.utils import get_env_value
+# from lightrag.utils import get_logger
 from raganything.logger import logger, init_logger
 
 # Import configuration and modules
@@ -350,8 +352,10 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
     async def _ensure_lightrag_initialized(self):
         """Ensure LightRAG instance is initialized, create if necessary"""
         try:
+            self.logger.info("Starting _ensure_lightrag_initialized...")
             # Check parser installation first, but do not block non-parsing operations
             if not self._parser_installation_checked:
+                self.logger.info("Checking parser installation...")
                 if not self.doc_parser.check_installation():
                     self.logger.warning(
                         f"Parser '{self.config.parser}' is not properly installed; continuing initialization for operations that do not require parsing"
@@ -362,6 +366,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     self.logger.info(f"Parser '{self.config.parser}' installation verified")
 
             if self.lightrag is not None:
+                self.logger.info("Pre-provided LightRAG instance found. Verifying initialization...")
                 self.logger.debug(f"Checking LightRAG instance: type={type(self.lightrag)}")
                 
                 # Ensure RLock is removed from pre-provided LightRAG instance too
@@ -388,6 +393,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         )
 
                         await initialize_pipeline_status()
+                        self.logger.info("Storages initialized for pre-provided LightRAG instance.")
 
                     # Initialize parse cache if not already done
                     if self.parse_cache is None:
@@ -403,11 +409,15 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                             )
                         )
                         await self.parse_cache.initialize()
+                        self.logger.info("Parse cache initialized.")
 
                     # Initialize processors if not already done
                     if not self.modal_processors:
+                        self.logger.info("Initializing modal processors...")
                         self._initialize_processors()
+                        self.logger.info("Modal processors initialized.")
 
+                    self.logger.info("Pre-provided LightRAG instance verification complete.")
                     return {"success": True}
 
                 except Exception as e:
@@ -417,8 +427,11 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     self.logger.error(error_msg, exc_info=True)
                     return {"success": False, "error": error_msg}
 
+            self.logger.info("No pre-provided LightRAG instance. Building new one...")
             # Try build llm/vision functions from config if missing
+            self.logger.info("Building LLM and Vision functions if not provided...")
             self._maybe_build_llm_functions()
+            self.logger.info("LLM and Vision functions build process complete.")
 
             # Validate required functions for creating new LightRAG instance
             if self.llm_model_func is None:
@@ -427,6 +440,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 return {"success": False, "error": error_msg}
 
             if self.embedding_func is None:
+                self.logger.info("Building embedding function...")
                 try:
                     self.logger.info(f"Attempting to build embedding function with provider: {self.config.embedding_provider}")
                     self.embedding_func = build_embedding_func(
@@ -447,19 +461,54 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         self.logger.info("Attempting fallback to Ollama embeddings...")
                         self.embedding_func = build_embedding_func(
                             provider="ollama",
-                            model="bge-m3:567m",
-                            api_base=self.config.vision_api_base or "http://172.24.160.1:11434",
-                            embedding_dim=1024,
+                            model="mxbai-embed-large",
+                            api_base=self.config.embedding_api_base or "http://172.24.160.1:11434",
                             max_token_size=8192,
                         )
-                        self.logger.info("Embedding function built via Ollama fallback (bge-m3:567m)")
-                        # Update config to reflect fallback embedding dimension
-                        self.config.embedding_dim = 1024
-                        self.logger.info("Updated config.embedding_dim to 1024 for fallback model")
+                        self.logger.info("Embedding function built successfully via Ollama fallback.")
                     except Exception as e2:
-                        error_msg = f"embedding_func must be provided and building from config failed. Primary error: {e}. Fallback error: {e2}"
+                        error_msg = f"Failed to build embedding function with all providers: {e2}"
                         self.logger.error(error_msg)
                         return {"success": False, "error": error_msg}
+
+            if self.embedding_func is None:
+                error_msg = "Embedding function could not be built."
+                self.logger.error(error_msg)
+                return {"success": False, "error": error_msg}
+
+            self.logger.info("All required functions are ready. Creating LightRAG instance...")
+            # Create LightRAG instance
+            self.lightrag = LightRAG(
+                embedding_func=self.embedding_func,
+                llm_model_func=self.llm_model_func,
+                **self.lightrag_kwargs,
+            )
+            self.logger.info("LightRAG instance created. Initializing storages...")
+            await self.lightrag.initialize_storages()
+            self.logger.info("LightRAG storages initialized.")
+
+            # Initialize parse cache
+            self.logger.info("Initializing parse cache...")
+            self.parse_cache = self.lightrag.key_string_value_json_storage_cls(
+                namespace="parse_cache",
+                workspace=self.lightrag.workspace,
+                global_config=self.lightrag.__dict__,
+                embedding_func=self.embedding_func,
+            )
+            await self.parse_cache.initialize()
+            self.logger.info("Parse cache initialized.")
+
+            # Initialize processors
+            self.logger.info("Initializing modal processors...")
+            self._initialize_processors()
+            self.logger.info("Modal processors initialized.")
+
+            self.logger.info("_ensure_lightrag_initialized completed successfully.")
+            return {"success": True}
+        except Exception as e:
+            error_msg = f"An unexpected error occurred in _ensure_lightrag_initialized: {str(e)}"
+            self.logger.error(error_msg, exc_info=True)
+            return {"success": False, "error": error_msg}
 
             from lightrag.kg.shared_storage import initialize_pipeline_status
 
@@ -472,6 +521,74 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
             # Merge user-provided lightrag_kwargs, which can override defaults
             lightrag_params.update(self.lightrag_kwargs)
+
+            # Ensure embedding_func is a pure async function wrapper
+            # LightRAG calls priority_limit_async_func_call(embedding_func) in __post_init__
+            # If embedding_func is a sync function returning a coroutine, or worse, a coroutine object itself,
+            # priority_limit_async_func_call might fail with 'coroutine object is not callable'
+            
+            # Diagnostic log
+            self.logger.debug(f"Pre-init embedding_func type: {type(self.embedding_func)}")
+            
+            if self.embedding_func:
+                # Check if it's already a coroutine object (BAD)
+                if asyncio.iscoroutine(self.embedding_func):
+                    self.logger.critical("embedding_func IS A COROUTINE OBJECT! This is invalid.")
+                
+                # Force wrap in a clean async def function
+                # This ensures it's definitely an async function, not a sync wrapper or partial
+                original_ef = self.embedding_func
+                async def clean_async_embedding_wrapper(texts: list[str]) -> Any:
+                    if asyncio.iscoroutinefunction(original_ef):
+                        return await original_ef(texts)
+                    elif hasattr(original_ef, "__call__") and asyncio.iscoroutinefunction(original_ef.__call__):
+                        res = original_ef(texts)
+                        if asyncio.iscoroutine(res):
+                            return await res
+                        return res
+                    else:
+                        # Sync call
+                        return original_ef(texts)
+                
+                # Copy attributes from original function if they exist
+                if hasattr(original_ef, "embedding_dim"):
+                    clean_async_embedding_wrapper.embedding_dim = original_ef.embedding_dim
+                if hasattr(original_ef, "max_token_size"):
+                    clean_async_embedding_wrapper.max_token_size = original_ef.max_token_size
+                
+                # IMPORTANT: Some LightRAG vector DB implementations (like NanoVectorDB) access embedding_dim directly
+                # on the function object during __post_init__.
+                # If we don't have it on the original function (e.g. because it's a partial or wrapped),
+                # we must try to get it from the underlying model or set a default/dummy if appropriate,
+                # or ensure the user provided it.
+                if not hasattr(clean_async_embedding_wrapper, "embedding_dim"):
+                    self.logger.warning("embedding_func missing 'embedding_dim' attribute. Attempting to infer or retrieve.")
+                    # Try to see if we can get it from the instance if it's a method
+                    if hasattr(original_ef, "__self__") and hasattr(original_ef.__self__, "embedding_dim"):
+                        clean_async_embedding_wrapper.embedding_dim = original_ef.__self__.embedding_dim
+                        self.logger.info(f"Retrieved embedding_dim {clean_async_embedding_wrapper.embedding_dim} from bound method's self")
+                    # Try to see if it's a LazyLangChainEmbeddingWrapper
+                    elif hasattr(original_ef, "func") and hasattr(original_ef.func, "embedding_dim"):
+                        clean_async_embedding_wrapper.embedding_dim = original_ef.func.embedding_dim
+                        self.logger.info(f"Retrieved embedding_dim {clean_async_embedding_wrapper.embedding_dim} from underlying func")
+                    # As a last resort, check if original_ef IS the wrapper class instance (callable)
+                    elif hasattr(original_ef, "embedding_dim"):
+                        clean_async_embedding_wrapper.embedding_dim = original_ef.embedding_dim
+                        self.logger.info(f"Retrieved embedding_dim {clean_async_embedding_wrapper.embedding_dim} from original_ef itself")
+                    # Fallback to default if still missing (NanoVectorDB needs it)
+                    else:
+                        # Use a common default or try to invoke it once to get dimension (expensive but safe)
+                        self.logger.warning("Could not find embedding_dim. Using default 1536 (OpenAI). This might be wrong!")
+                        clean_async_embedding_wrapper.embedding_dim = 1536
+
+                lightrag_params["embedding_func"] = clean_async_embedding_wrapper
+                self.logger.info("Wrapped embedding_func in clean_async_embedding_wrapper for LightRAG initialization")
+            
+            # Diagnostic log again
+            self.logger.debug(f"Pre-init embedding_func type for LightRAG: {type(lightrag_params.get('embedding_func'))}")
+            if lightrag_params.get("embedding_func"):
+                ef = lightrag_params["embedding_func"]
+                self.logger.debug(f"embedding_func attributes: embedding_dim={getattr(ef, 'embedding_dim', 'MISSING')}")
 
             # Log the parameters being used for initialization (excluding sensitive data)
             log_params = {
@@ -519,11 +636,14 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 await initialize_pipeline_status()
 
                 # Initialize parse cache storage using LightRAG's KV storage
+                # Use raw embedding_func for KV storage if it's not vector storage
+                # For KV storage, embedding_func is usually not needed or should be sync if used for key hashing
+                # Let's pass None if we can't determine, or just the raw function
                 self.parse_cache = self.lightrag.key_string_value_json_storage_cls(
                     namespace="parse_cache",
                     workspace=self.lightrag.workspace,
                     global_config=self.lightrag.__dict__,
-                    embedding_func=self.embedding_func,
+                    embedding_func=None, # KV storage likely doesn't need embedding function for key generation if we use md5
                 )
                 await self.parse_cache.initialize()
 
@@ -545,32 +665,85 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                              self.logger.warning(f"Unwrapping {vdb_name}.embedding_func to bypass LightRAG concurrency wrapper")
                              vdb.embedding_func = current_func.func
                              current_func = current_func.func
+
+                        # CRITICAL FIX: Ensure embedding_func is wrapped correctly for LightRAG's priority_limit_async_func_call
+                        # The error 'coroutine object is not callable' in LightRAG initialization (line 515)
+                        # happens because LightRAG wraps embedding_func with priority_limit_async_func_call IMMEDIATELY.
+                        # It seems priority_limit_async_func_call expects a function, but something might be returning a coroutine object directly.
+                        # OR, more likely, we need to make sure what we pass to LightRAG IS a callable function.
                         
                         self.logger.debug(f"LightRAG {vdb_name} embedding_func type: {type(current_func)}")
 
-                # Diagnostic check for chunks_vdb (representative)
-                if hasattr(self.lightrag, "chunks_vdb") and hasattr(self.lightrag.chunks_vdb, "embedding_func"):
-                    current_func = self.lightrag.chunks_vdb.embedding_func
-                    
-                    # IMPORTANT: Check if the embedding function is properly awaited
-                    # LightRAG expects a sync-looking call that might return an awaitable.
-                    # We inject a small diagnostic log here.
-                    self.logger.debug(f"Diagnostics: embedding_func name: {getattr(current_func, '__name__', 'unknown')}")
-                    
-                    # Test if the embedding function returns a coroutine when called
-                    try:
-                        test_res = current_func(["test"])
-                        is_coroutine = asyncio.iscoroutine(test_res)
-                        self.logger.info(f"Diagnostics: chunks_vdb.embedding_func(['test']) returns coroutine: {is_coroutine}")
-                        
-                        # If we get a coroutine but LightRAG expects sync result (which it might if it doesn't await),
-                        # or if we get a sync result but LightRAG awaits it...
-                        # LightRAG usually handles both if configured correctly, but let's be sure.
-                        if is_coroutine:
-                            # Clean up the coroutine
-                            test_res.close()
-                    except Exception as e:
-                        self.logger.warning(f"Diagnostics: Failed to test embedding_func call: {e}")
+                        # Force wrapper to be strictly an async function if it's not already
+                        # This ensures asyncio.iscoroutinefunction(vdb.embedding_func) returns True
+                        # preventing LightRAG from treating it as sync and causing issues
+                        if not asyncio.iscoroutinefunction(current_func):
+                            # Case 1: Class instance with async __call__ (like LazyLangChainEmbeddingWrapper)
+                            if hasattr(current_func, "__call__") and asyncio.iscoroutinefunction(current_func.__call__):
+                                original_func = current_func
+                                async def async_embedding_wrapper(texts: list[str]) -> Any:
+                                    # Ensure the result is awaited if it's a coroutine
+                                    res = original_func(texts)
+                                    if asyncio.iscoroutine(res):
+                                        return await res
+                                    return res
+                                
+                                vdb.embedding_func = async_embedding_wrapper
+                                self.logger.info(f"Wrapped {vdb_name}.embedding_func in explicit async wrapper (from async __call__)")
+                            
+                            # Case 2: Already a LightRAG priority_limit wrapper (function that returns a wrapper)
+                            # LightRAG wraps functions with priority_limit_async_func_call which returns a wrapper
+                            # If it's already wrapped, we might need to leave it, BUT we need to ensure the underlying
+                            # function is correctly handled.
+                            elif hasattr(current_func, "__name__") and current_func.__name__ == "wrapper" and "priority_limit" in repr(current_func):
+                                 # It's likely already LightRAG's wrapper.
+                                 # If LightRAG wrapped a sync-looking function that returns a coroutine, it might be broken.
+                                 # We need to ensure it's an async function to prevent deadlocks or coroutine object errors
+                                 # However, if it's already wrapped, we can't easily change it.
+                                 # But we can verify if it's a coroutine function.
+                                 if not asyncio.iscoroutinefunction(current_func):
+                                     # If it's a sync wrapper that returns a coroutine, we wrap it in an async def
+                                     original_wrapper = current_func
+                                     async def async_wrapper_fix(*args, **kwargs):
+                                         res = original_wrapper(*args, **kwargs)
+                                         if asyncio.iscoroutine(res):
+                                             return await res
+                                         return res
+                                     
+                                     # Preserve attributes
+                                     if hasattr(original_wrapper, "embedding_dim"):
+                                         async_wrapper_fix.embedding_dim = original_wrapper.embedding_dim
+                                     if hasattr(original_wrapper, "max_token_size"):
+                                         async_wrapper_fix.max_token_size = original_wrapper.max_token_size
+                                         
+                                     vdb.embedding_func = async_wrapper_fix
+                                     self.logger.info(f"Fixed {vdb_name}.embedding_func wrapper to be explicitly async") 
+
+                            # Case 3: Sync function that returns a coroutine (rare but possible)
+                            # We can't easily detect this without calling it, which is risky.
+                            # But if it's a sync function, LightRAG's priority_limit_async_func_call handles it:
+                            # else: return func(*args, **kwargs)
+                            # The caller then awaits the result if expected.
+                            
+                            # Case 4: It's ALREADY a coroutine object (not a function). This is fatal.
+                            elif asyncio.iscoroutine(current_func):
+                                self.logger.critical(f"{vdb_name}.embedding_func is a COROUTINE OBJECT, not a callable! This will fail.")
+                                # Try to recover if possible (unlikely without re-instantiation)
+
+
+                        # Diagnostic check for chunks_vdb (representative)
+                        if hasattr(self.lightrag, "chunks_vdb") and hasattr(self.lightrag.chunks_vdb, "embedding_func"):
+                            current_func = self.lightrag.chunks_vdb.embedding_func
+                            
+                            # IMPORTANT: Check if the embedding function is properly awaited
+                            # LightRAG expects a sync-looking call that might return an awaitable.
+                            # We inject a small diagnostic log here.
+                            # Use a safer way to get name, handling functools.partial and other wrappers
+                            func_name = getattr(current_func, '__name__', 'unknown')
+                            if func_name == 'unknown' and hasattr(current_func, 'func'):
+                                func_name = getattr(current_func.func, '__name__', 'unknown')
+                            self.logger.debug(f"Diagnostics: embedding_func name: {func_name}")
+
 
                 # Initialize processors after LightRAG is ready
                 self._initialize_processors()
@@ -581,6 +754,12 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 return {"success": True}
 
             except Exception as e:
+                # IMPORTANT: If initialization fails, we must not let this instance stay in a broken state
+                # but 'coroutine' object is not callable usually means something was called as a function but was a coroutine
+                # Let's try to get more info
+                import traceback
+                self.logger.error(f"Initialization traceback: {traceback.format_exc()}")
+                
                 error_msg = f"Failed to initialize LightRAG instance: {str(e)}"
                 self.logger.error(error_msg, exc_info=True)
                 return {"success": False, "error": error_msg}

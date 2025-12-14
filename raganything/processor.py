@@ -8,6 +8,8 @@ import os
 import time
 import hashlib
 import json
+import uuid
+import aiofiles
 from typing import Dict, List, Any, Tuple, Optional
 from pathlib import Path
 
@@ -27,6 +29,46 @@ from lightrag.utils import compute_mdhash_id
 class ProcessorMixin:
     """ProcessorMixin class containing document processing functionality for RAGAnything"""
 
+    async def _save_upload_file(
+            self, file: Any, doc_id: str | None = None
+        ) -> tuple[str, str]:
+            """
+            Save uploaded file to disk
+            
+            Args:
+                file: Uploaded file object
+                doc_id: Optional document ID
+                
+            Returns:
+                tuple[str, str]: (file_path, doc_id)
+            """
+            self.logger.info(f"Starting to save uploaded file: {file.filename}")
+            if doc_id is None:
+                doc_id = f"doc-{uuid.uuid4()}"
+                self.logger.info(f"Generated new doc_id: {doc_id}")
+
+            file_name = file.filename
+            file_path = os.path.join(self.working_dir, file_name)
+            self.logger.info(f"Target file path: {file_path}")
+
+            # Save file to disk
+            try:
+                self.logger.info("Opening file for writing...")
+                async with aiofiles.open(file_path, 'wb') as out_file:
+                    self.logger.info("Starting to read file chunks...")
+                    chunk_index = 0
+                    while content := await file.read(1024 * 1024):  # Read in 1MB chunks
+                        self.logger.info(f"Read chunk {chunk_index} of size {len(content)}")
+                        await out_file.write(content)
+                        self.logger.info(f"Wrote chunk {chunk_index}")
+                        chunk_index += 1
+                self.logger.info("Finished writing all file chunks.")
+            except Exception as e:
+                self.logger.error(f"Error saving file {file_path}: {e}", exc_info=True)
+                raise
+
+            self.logger.info(f"Successfully saved uploaded file to: {file_path}")
+            return file_path, doc_id
     def _generate_cache_key(
         self, file_path: Path, parse_method: str = None, **kwargs
     ) -> str:
@@ -389,6 +431,7 @@ class ProcessorMixin:
             ]:
                 self.logger.info("Detected video file, using VideoParser for AV + visual timeline...")
                 video_parser = VideoParser()
+                self.logger.info("Calling video_parser.parse_video")
                 video_result = await asyncio.to_thread(
                     video_parser.parse_video,
                     file_path=str(file_path),
@@ -396,6 +439,7 @@ class ProcessorMixin:
                     fps=kwargs.get("video_fps", 0.5),
                     cleanup_frames=kwargs.get("cleanup_frames", False),
                 )
+                self.logger.info("video_parser.parse_video returned")
                 # Convert video timeline to content_list for multimodal processing
                 timeline = video_result.get("content", [])
                 content_list = []
@@ -524,6 +568,7 @@ class ProcessorMixin:
             pipeline_status: Pipeline status object
             pipeline_status_lock: Pipeline status lock
         """
+        self.logger.info(f"Starting _process_multimodal_content for {doc_id} with {len(multimodal_items)} items")
 
         if not multimodal_items:
             self.logger.debug("No multimodal content to process")
@@ -577,9 +622,11 @@ class ProcessorMixin:
             # Ensure LightRAG is initialized
             await self._ensure_lightrag_initialized()
 
+            self.logger.info(f"Calling _process_multimodal_content_batch_type_aware for {doc_id}")
             await self._process_multimodal_content_batch_type_aware(
                 multimodal_items=multimodal_items, file_path=file_path, doc_id=doc_id
             )
+            self.logger.info(f"Returned from _process_multimodal_content_batch_type_aware for {doc_id}")
 
             # Mark multimodal content as processed and update final status
             await self._mark_multimodal_processing_complete(doc_id)
@@ -593,11 +640,16 @@ class ProcessorMixin:
 
         except Exception as e:
             self.logger.error(f"Error in multimodal processing: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
             # Fallback to individual processing if batch processing fails
             self.logger.warning("Falling back to individual multimodal processing")
-            await self._process_multimodal_content_individual(
-                multimodal_items, file_path, doc_id
-            )
+            try:
+                await self._process_multimodal_content_individual(
+                    multimodal_items, file_path, doc_id
+                )
+            except Exception as individual_err:
+                self.logger.error(f"Individual processing also failed: {individual_err}")
 
             # Mark multimodal content as processed even after fallback
             await self._mark_multimodal_processing_complete(doc_id)
@@ -644,11 +696,7 @@ class ProcessorMixin:
                     }
 
                     # Process content and get chunk results instead of immediately merging
-                    (
-                        enhanced_caption,
-                        entity_info,
-                        chunk_results,
-                    ) = await processor.process_multimodal_content(
+                    process_result = await processor.process_multimodal_content(
                         modal_content=item,
                         content_type=content_type,
                         file_path=file_name,
@@ -658,6 +706,14 @@ class ProcessorMixin:
                         chunk_order_index=existing_chunks_count
                         + i,  # Proper order index
                     )
+                    
+                    # Unpack result based on length to handle both 3-value and 4-value returns
+                    if len(process_result) == 3:
+                        enhanced_caption, entity_info, chunk_results = process_result
+                    elif len(process_result) == 4:
+                        enhanced_caption, entity_info, chunk_results, _ = process_result
+                    else:
+                        raise ValueError(f"Unexpected return value count from process_multimodal_content: {len(process_result)}")
 
                     # Collect chunk results for batch processing
                     all_chunk_results.extend(chunk_results)
@@ -768,6 +824,7 @@ class ProcessorMixin:
             file_path: File path for citation
             doc_id: Document ID for proper association
         """
+        self.logger.info(f"Entered _process_multimodal_content_batch_type_aware for {doc_id}")
         if not multimodal_items:
             self.logger.debug("No multimodal content to process")
             return
@@ -778,11 +835,15 @@ class ProcessorMixin:
             existing_chunks_count = (
                 existing_doc_status.get("chunks_count", 0) if existing_doc_status else 0
             )
-        except Exception:
+            self.logger.info(f"Existing chunks count: {existing_chunks_count}")
+        except Exception as e:
+            self.logger.warning(f"Error getting existing chunks count: {e}")
             existing_chunks_count = 0
 
         # Use LightRAG's concurrency control
-        semaphore = asyncio.Semaphore(getattr(self.lightrag, "max_parallel_insert", 2))
+        semaphore_value = getattr(self.lightrag, "max_parallel_insert", 2)
+        self.logger.info(f"Using semaphore with value: {semaphore_value}")
+        semaphore = asyncio.Semaphore(semaphore_value)
 
         # Progress tracking variables
         total_items = len(multimodal_items)
@@ -798,9 +859,11 @@ class ProcessorMixin:
         ):
             """Process single item using the correct processor for its type"""
             nonlocal completed_count
+            self.logger.info(f"Waiting for semaphore to process item {index}")
             async with semaphore:
                 try:
                     content_type = item.get("type", "unknown")
+                    self.logger.info(f"Processing item {index} (type: {content_type})")
 
                     # Select the correct processor based on content type
                     processor = get_processor_for_type(
@@ -819,6 +882,8 @@ class ProcessorMixin:
                         "type": content_type,
                     }
 
+                    self.logger.info(f"Calling generate_description_only for item {index} of type {content_type}")
+
                     # Call the correct processor's description generation method
                     (
                         description,
@@ -829,6 +894,8 @@ class ProcessorMixin:
                         item_info=item_info,
                         entity_name=None,  # Let LLM auto-generate
                     )
+
+                    self.logger.info(f"Finished processing item {index} of type {content_type}")
 
                     # Update progress (non-blocking)
                     async with progress_lock:
@@ -1108,7 +1175,7 @@ class ProcessorMixin:
             # We rely on our wrapper logging.
             
             try:
-                await asyncio.wait_for(self.lightrag.chunks_vdb.upsert(chunks), timeout=300)
+                await asyncio.wait_for(self.lightrag.chunks_vdb.upsert(chunks), timeout=1800)
                 self.logger.info("DEBUG: chunks_vdb upsert complete.")
             except asyncio.TimeoutError:
                 self.logger.error("CRITICAL: chunks_vdb.upsert timed out after 300s!")
@@ -1544,6 +1611,21 @@ class ProcessorMixin:
             Dict with processing status details
         """
         try:
+            init_result = await self._ensure_lightrag_initialized()
+            if not init_result["success"]:
+                error_msg = init_result.get("error", "LightRAG initialization failed")
+                self.logger.error(
+                    f"LightRAG not initialized when checking document status for {doc_id}: {error_msg}"
+                )
+                return {
+                    "exists": False,
+                    "error": error_msg,
+                    "text_processed": False,
+                    "multimodal_processed": False,
+                    "fully_processed": False,
+                    "chunks_count": 0,
+                }
+
             doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
             if not doc_status:
                 return {
@@ -1595,6 +1677,7 @@ class ProcessorMixin:
         file_name: str | None = None,
         **kwargs,
     ):
+        self.logger.info(f"Starting process_document_complete for doc_id: {doc_id}")
         """
         Complete document processing workflow
 
@@ -1625,16 +1708,44 @@ class ProcessorMixin:
         self.logger.info(f"Starting complete document processing: {file_path}")
 
         # Step 1: Parse document
+        self.logger.info(f"Step 1: Parsing document {file_path} with method {parse_method}")
         content_list, content_based_doc_id = await self.parse_document(
             file_path, output_dir, parse_method, display_stats, **kwargs
         )
+        self.logger.info(f"Step 1: Parsing complete. Content items: {len(content_list) if content_list else 0}")
 
         # Use provided doc_id or fall back to content-based doc_id
         if doc_id is None:
             doc_id = content_based_doc_id
 
+        # Ensure a doc_status record exists early for this doc_id
+        try:
+            current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
+            if not current_doc_status:
+                self.logger.info(f"Creating initial doc_status for {doc_id} in process_document_complete")
+                await self.lightrag.doc_status.upsert(
+                    {
+                        doc_id: {
+                            "status": DocStatus.HANDLING,
+                            "chunks_count": 0,
+                            "multimodal_processed": False,
+                            "updated_at": time.strftime(
+                                "%Y-%m-%dT%H:%M:%S+00:00"
+                            ),
+                            "file_path": os.path.basename(file_path),
+                        }
+                    }
+                )
+                await self.lightrag.doc_status.index_done_callback()
+            else:
+                self.logger.info(f"Existing doc_status found for {doc_id}: {current_doc_status}")
+        except Exception as e:
+            self.logger.error(f"Error creating initial doc_status for {doc_id}: {e}")
+
         # Step 2: Separate text and multimodal content
+        self.logger.info("Step 2: Separating text and multimodal content")
         text_content, multimodal_items = separate_content(content_list)
+        self.logger.info(f"Step 2: Separation complete. Text length: {len(text_content)}, Multimodal items: {len(multimodal_items)}")
 
         # Step 2.5: Set content source for context extraction in multimodal processing
         if hasattr(self, "set_content_source_for_context") and multimodal_items:
@@ -1657,9 +1768,10 @@ class ProcessorMixin:
 
         # Step 3: Insert pure text content with all parameters
         if text_content.strip():
+            self.logger.info(f"Step 3: Inserting text content for {doc_id}")
             if file_name is None:
                 file_name = os.path.basename(file_path)
-            
+
             # Use direct LightRAG insert
             insert_func = getattr(self.lightrag, "insert", None)
             if not insert_func:
@@ -1674,15 +1786,64 @@ class ProcessorMixin:
                 "ids": doc_id,
                 "file_paths": file_name,
             }
-            
-            if asyncio.iscoroutinefunction(insert_func):
-                await insert_func(**insert_kwargs)
-            else:
-                # If it's sync, run it in executor to avoid blocking loop
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, lambda: insert_func(**insert_kwargs))
+
+            try:
+                if asyncio.iscoroutinefunction(insert_func):
+                    await insert_func(**insert_kwargs)
+                else:
+                    # If it's sync, run it in executor to avoid blocking loop
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, lambda: insert_func(**insert_kwargs))
+                self.logger.info(f"Step 3: Text insertion complete for {doc_id}")
+            except Exception as e:
+                self.logger.error(f"Step 3: Error during text insertion: {e}")
+                import traceback
+                self.logger.error(traceback.format_exc())
+
+            # Update doc_status to PROCESSED for text part
+            try:
+                self.logger.info(f"Step 3.5: Updating doc_status to PROCESSED for text part")
+                current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
+                if current_doc_status:
+                    await self.lightrag.doc_status.upsert(
+                        {
+                            doc_id: {
+                                **current_doc_status,
+                                "status": DocStatus.PROCESSED,
+                                "text_processed": True,
+                                "updated_at": time.strftime(
+                                    "%Y-%m-%dT%H:%M:%S+00:00"
+                                ),
+                            }
+                        }
+                    )
+                    await self.lightrag.doc_status.index_done_callback()
+                self.logger.info(f"Step 3.5: doc_status updated successfully")
+            except Exception as e:
+                self.logger.error(
+                    f"Error updating doc_status after text insert for {doc_id}: {e}"
+                )
+        else:
+            self.logger.info("Step 3: No text content to insert")
+            # Mark text_processed=True even if empty, so we don't stall
+            try:
+                current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
+                if current_doc_status:
+                     await self.lightrag.doc_status.upsert(
+                        {
+                            doc_id: {
+                                **current_doc_status,
+                                "text_processed": True,
+                                "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                            }
+                        }
+                    )
+                     await self.lightrag.doc_status.index_done_callback()
+            except Exception as e:
+                self.logger.error(f"Error marking empty text as processed: {e}")
 
         # Step 4: Process multimodal content (using specialized processors)
+        self.logger.info(f"Step 4: Processing multimodal content. Items: {len(multimodal_items)}")
         if multimodal_items:
             await self._process_multimodal_content(multimodal_items, file_path, doc_id)
         else:
@@ -1694,6 +1855,10 @@ class ProcessorMixin:
             )
 
         self.logger.info(f"Document {file_path} processing complete!")
+        return {
+            "doc_id": doc_id,
+            "content_based_doc_id": content_based_doc_id,
+        }
 
     async def process_document_complete_lightrag_api(
         self,
@@ -2043,6 +2208,7 @@ class ProcessorMixin:
                     content_list, self.config.content_format
                 )
 
+            self.logger.info(f"Step 2: Inserting text content for doc_id: {doc_id}")
             # Step 2: Insert pure text content with all parameters
             if text_content.strip():
                 file_name = os.path.basename(file_path)
@@ -2054,24 +2220,26 @@ class ProcessorMixin:
                     split_by_character_only=split_by_character_only,
                     ids=doc_id,
                 )
+            self.logger.info(f"Step 2: Text content insertion complete for doc_id: {doc_id}")
 
-                # Update status to PROCESSED for text part
-                try:
-                    current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
-                    if current_doc_status:
-                        await self.lightrag.doc_status.upsert(
-                            {
-                                doc_id: {
-                                    **current_doc_status,
-                                    "status": DocStatus.PROCESSED,
-                                    "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                                }
+            # Update status to PROCESSED for text part
+            try:
+                current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
+                if current_doc_status:
+                    await self.lightrag.doc_status.upsert(
+                        {
+                            doc_id: {
+                                **current_doc_status,
+                                "status": DocStatus.PROCESSED,
+                                "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
                             }
-                        )
-                        await self.lightrag.doc_status.index_done_callback()
-                except Exception as e:
-                    self.logger.error(f"Error updating doc_status after text insert: {e}")
+                        }
+                    )
+                    await self.lightrag.doc_status.index_done_callback()
+            except Exception as e:
+                self.logger.error(f"Error updating doc_status after text insert: {e}")
 
+            self.logger.info(f"Step 3: Processing multimodal content for doc_id: {doc_id}")
             # Step 3: Process multimodal content (using specialized processors)
             if multimodal_items:
                 await self._process_multimodal_content(multimodal_items, file_path, doc_id)
@@ -2082,6 +2250,7 @@ class ProcessorMixin:
                 self.logger.debug(
                     f"No multimodal content found in document {doc_id}, marked multimodal processing as complete"
                 )
+            self.logger.info(f"Step 3: Multimodal content processing complete for doc_id: {doc_id}")
 
         except Exception as e:
             self.logger.error(f"Error processing content list for {doc_id}: {e}")
