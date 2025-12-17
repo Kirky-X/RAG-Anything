@@ -1,3 +1,9 @@
+# Apply patch for lightrag-hku dependency issue
+try:
+    import raganything.patches.lightrag_patch
+except ImportError:
+    pass
+
 from .raganything import RAGAnything as RAGAnything
 from .config import RAGAnythingConfig as RAGAnythingConfig
 
