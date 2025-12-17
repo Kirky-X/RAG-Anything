@@ -19,4 +19,3 @@ def test_insert_content_list_empty(client):
     # This calls LightRAG insert; depending on environment it may fail. We only check validation chain.
     resp = client.post("/api/doc/insert", json=body)
     assert resp.status_code in (200, 500)
-

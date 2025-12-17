@@ -1,8 +1,11 @@
 import os
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from raganything.config import RAGAnythingConfig
+
 
 def _write_tmp_toml(content: str) -> Path:
     fd, path = tempfile.mkstemp(suffix=".toml")
@@ -10,8 +13,9 @@ def _write_tmp_toml(content: str) -> Path:
         f.write(content)
     return Path(path)
 
+
 class TestRAGAnythingConfig:
-    
+
     def test_property_setters_and_getters(self):
         """Test configuration properties getters and setters."""
         cfg = RAGAnythingConfig()
@@ -68,20 +72,20 @@ class TestRAGAnythingConfig:
         fd, p = tempfile.mkstemp(suffix=".toml")
         os.close(fd)
         monkeypatch.setenv("CONFIG_TOML", p)
-        
+
         monkeypatch.setenv("WORKING_DIR", "/tmp/rag_storage")
         monkeypatch.setenv("PARSER", "docling")
-        
+
         cfg = RAGAnythingConfig()
         assert cfg.working_dir == "/tmp/rag_storage"
         assert cfg.parser == "docling"
-        
+
         os.unlink(p)
 
     def test_toml_loading_overrides_env(self, monkeypatch):
         """Test that TOML configuration overrides environment variables."""
         monkeypatch.setenv("WORKING_DIR", "/env/storage")
-        
+
         content = """
         [directory]
         working_dir = "/toml/storage"

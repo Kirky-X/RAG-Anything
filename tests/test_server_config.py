@@ -2,8 +2,6 @@ import os
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from raganything.server_config import load_server_configs
 
 

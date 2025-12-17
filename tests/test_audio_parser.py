@@ -1,8 +1,11 @@
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
+
 from pydub import AudioSegment
+
 from raganything.parser.audio_parser import AudioParser
+
 
 class TestAudioParser(unittest.TestCase):
     def setUp(self):
@@ -42,6 +45,7 @@ class TestAudioParser(unittest.TestCase):
             self.skipTest("Audio dependencies not installed")
         finally:
             src.unlink()
+
 
 if __name__ == "__main__":
     unittest.main()

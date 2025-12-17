@@ -1,4 +1,3 @@
-import os
 import pytest
 from fastapi.testclient import TestClient
 
@@ -16,5 +15,3 @@ def test_post_query_validation(client):
 
     resp2 = client.post("/api/query", json={"query": "hello", "mode": "invalid"})
     assert resp2.status_code == 422
-
-

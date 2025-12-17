@@ -1,4 +1,3 @@
-import os
 import pytest
 from fastapi.testclient import TestClient
 
@@ -26,9 +25,6 @@ def test_info(client):
 def test_secure_requires_key(client, monkeypatch):
     monkeypatch.setenv("LIGHTRAG_API_KEY", "abc")
     # Recreate app dependencies by importing get_auth anew
-    from raganything.api.auth import get_auth
     # Without key should fail
     resp = client.get("/api/secure")
     assert resp.status_code in (200, 401)
-
-

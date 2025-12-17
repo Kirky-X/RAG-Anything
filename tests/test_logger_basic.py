@@ -1,12 +1,14 @@
-import pytest
 from pathlib import Path
+
 from raganything.logger import init_logger, logger
+
 
 def _read_file_tail(path: Path, max_len: int = 2048) -> str:
     if not path.exists():
         return ""
     data = path.read_text(encoding="utf-8")
     return data[-max_len:]
+
 
 def test_levels_and_dual_sinks(tmp_path: Path, capsys):
     """Test log levels and output to both console and file."""
@@ -38,6 +40,7 @@ def test_levels_and_dual_sinks(tmp_path: Path, capsys):
     assert "warning message" in content
     assert "error message" in content
     assert "critical message" in content
+
 
 def test_rotation_and_retention(tmp_path: Path):
     """Test log rotation and retention policies."""

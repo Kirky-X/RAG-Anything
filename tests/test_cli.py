@@ -1,10 +1,12 @@
 import subprocess
-import pytest
 import sys
+
 from raganything import __version__
+
 
 def test_version():
     assert __version__ is not None
+
 
 def test_cli_help():
     """Test that the CLI help command works."""

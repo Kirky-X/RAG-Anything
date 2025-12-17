@@ -1,9 +1,11 @@
+import tempfile
 import unittest
 from pathlib import Path
-import tempfile
+
 from PIL import Image
 
 from raganything.parser.vlm_parser import VlmParser
+
 
 class TestVlmParser(unittest.IsolatedAsyncioTestCase):
     async def test_parse_image_async_offline(self):
@@ -23,7 +25,7 @@ class TestVlmParser(unittest.IsolatedAsyncioTestCase):
         parser = VlmParser(config_path=str(cfg_path))
         result = await parser.parse_image_async(img_path)
         self.assertEqual(result["filename"], "test.jpg")
-        self.assertTrue("Image size:" in result["description"]) 
+        self.assertTrue("Image size:" in result["description"])
         self.assertGreater(result["confidence"], 0.0)
         tmpdir.cleanup()
 
@@ -31,6 +33,7 @@ class TestVlmParser(unittest.IsolatedAsyncioTestCase):
         parser = VlmParser(config_path="config.toml")
         result = await parser.parse_image_async(Path("__not_exist__.jpg"))
         self.assertIn("File not found", result.get("error", ""))
+
 
 if __name__ == "__main__":
     unittest.main()

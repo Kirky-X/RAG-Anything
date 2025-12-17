@@ -1,9 +1,10 @@
 """自定义 Sink 注册与写入测试"""
 
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 
 from raganything.logger import register_sink, unregister_sink, SQLiteSink, init_logger, logger
+
 
 def test_sqlite_sink_write(tmp_path: Path):
     """Test logging to a custom SQLite sink."""
