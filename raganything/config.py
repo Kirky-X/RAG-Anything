@@ -4,9 +4,10 @@ Configuration classes for RAGAnything
 Contains configuration dataclasses with environment variable support and optional TOML loading
 """
 
+import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
-from lightrag.utils import get_env_value
+from raganything.utils import get_env_value
 
 
 def _import_toml_loader():
@@ -94,8 +95,8 @@ class VisionConfig:
 class RAGAnythingConfig:
     directory: DirectoryConfig = field(
         default_factory=lambda: DirectoryConfig(
-            working_dir=get_env_value("WORKING_DIR", "./rag_storage", str),
-            parser_output_dir=get_env_value("OUTPUT_DIR", "./output", str),
+            working_dir=get_env_value("WORKING_DIR", os.path.abspath("./rag_storage"), str),
+            parser_output_dir=get_env_value("OUTPUT_DIR", os.path.abspath("./output"), str),
         )
     )
     parsing: ParsingConfig = field(
@@ -336,8 +337,8 @@ class RAGAnythingConfig:
                 data = loader.load(f)  # type: ignore
             self._merge_dict(data)
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Failed to load TOML config from {path}: {e}")
+            from raganything.logger import logger
+            logger.error(f"Failed to load TOML config from {path}: {e}")
             raise
 
     def _merge_dict(self, cfg: Dict[str, Any]):
@@ -357,14 +358,14 @@ class RAGAnythingConfig:
                         if attr_type is list and isinstance(v, (list, tuple)):
                              pass # acceptable
                         else:
-                            import logging
-                            logging.getLogger(__name__).warning(
+                            from raganything.logger import logger
+                            logger.warning(
                                 f"Type mismatch in config '{section_name}.{k}': expected {attr_type.__name__}, got {type(v).__name__}. Using provided value."
                             )
                     setattr(dc_obj, k, v)
                 else:
-                    import logging
-                    logging.getLogger(__name__).warning(
+                    from raganything.logger import logger
+                    logger.warning(
                          f"Unknown config key '{section_name}.{k}' in TOML. Ignoring."
                     )
 
