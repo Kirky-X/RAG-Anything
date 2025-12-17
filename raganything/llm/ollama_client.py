@@ -2,14 +2,12 @@
 # All rights reserved.
 
 import asyncio
-import logging
 from typing import Any, List, Optional, Dict
 
+from raganything.logger import logger
 from langchain_ollama import ChatOllama
 from langchain_core.messages import BaseMessage, AIMessage
 from langchain_core.outputs import ChatResult
-
-logger = logging.getLogger(__name__)
 
 class RobustOllamaClient:
     """
