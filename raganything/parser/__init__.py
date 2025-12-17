@@ -13,6 +13,7 @@ from .mineru_parser import MineruParser, MineruExecutionError
 from .docling_parser import DoclingParser
 from .audio_parser import AudioParser
 from .video_parser import VideoParser
+from .vlm_parser import VlmParser
 
 __all__ = [
     "Parser",
@@ -21,4 +22,5 @@ __all__ = [
     "DoclingParser",
     "AudioParser",
     "VideoParser",
+    "VlmParser",
 ]
