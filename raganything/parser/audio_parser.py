@@ -86,6 +86,7 @@ class AudioParser(Parser):
             self._model = AutoModel(
                 model=self._model_path,
                 trust_remote_code=True,
+                remote_code=os.path.join(self._model_path, "model.py"),
                 device=device,
                 disable_update=True
             )
@@ -116,17 +117,51 @@ class AudioParser(Parser):
             logger.info(f"Converting {input_path.name} to 16kHz WAV...")
             
             # Load audio (pydub handles format detection and video containers)
-            with open(str(input_path), 'rb') as f:
-                audio = AudioSegment.from_file(f)
+            logger.info(f"Step A1: Loading audio from {input_path} with pydub...")
             
-            # Convert: 16kHz, mono, 16-bit
-            audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+            # Use a signal-based timeout or thread-based timeout if possible.
+            # Since pydub calls ffmpeg via subprocess or native python wave module, 
+            # for robustness in async environments, we rely on pydub but add a guard.
+            # Here we just proceed as we are in a synchronous method.
             
-            # Export
-            with open(temp_path, 'wb') as f:
-                audio.export(f, format="wav")
+            import signal
             
-            return Path(temp_path)
+            class TimeoutException(Exception): pass
+
+            def handler(signum, frame):
+                raise TimeoutException("Audio conversion timed out")
+
+            # Register the signal function handler
+            # Only works in main thread. If we are not in main thread, this might fail or be ignored.
+            # For now, we wrap in try-except to avoid crashing if signal usage is restricted.
+            try:
+                signal.signal(signal.SIGALRM, handler)
+                signal.alarm(300) # 5 minutes timeout for conversion
+            except (ValueError, AttributeError):
+                # Signal only works in main thread
+                pass
+                
+            try:
+                with open(str(input_path), 'rb') as f:
+                    audio = AudioSegment.from_file(f)
+                logger.info(f"Step A2: Audio loaded. Duration: {len(audio)/1000.0}s, Channels: {audio.channels}, Rate: {audio.frame_rate}")
+                
+                # Convert: 16kHz, mono, 16-bit
+                logger.info("Step A3: Resampling to 16kHz mono...")
+                audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+                
+                # Export
+                logger.info(f"Step A4: Exporting to temp WAV {temp_path}...")
+                with open(temp_path, 'wb') as f:
+                    audio.export(f, format="wav")
+                logger.info(f"Step A5: Export complete to {temp_path}")
+                
+                return Path(temp_path)
+            finally:
+                try:
+                    signal.alarm(0) # Disable alarm
+                except (ValueError, AttributeError):
+                    pass
             
         except Exception as e:
             logger.error(f"Audio conversion failed for {input_path}: {e}")
@@ -240,19 +275,28 @@ class AudioParser(Parser):
             else:
                 # Small file, process directly
                 logger.info(f"Transcribing {file_path.name}...")
-                res = self._model.generate(
-                    input=str(temp_wav_path),
-                    cache={},
-                    language=lang,
-                    use_itn=True,
-                    batch_size_s=60,
-                    merge_vad=True,  
-                    merge_length_s=15,
-                )
                 
-                # Extract text
-                if isinstance(res, list) and len(res) > 0:
-                    full_text = res[0].get("text", "")
+                # Check file size to avoid sending empty file to model
+                if os.path.getsize(str(temp_wav_path)) == 0:
+                     logger.warning("Empty WAV file generated, skipping transcription")
+                     full_text = ""
+                else:
+                    try:
+                        res = self._model.generate(
+                            input=str(temp_wav_path),
+                            cache={},
+                            language=lang,
+                            use_itn=True,
+                            batch_size_s=60,
+                            merge_vad=True,  
+                            merge_length_s=15,
+                        )
+                        # Extract text
+                        if isinstance(res, list) and len(res) > 0:
+                            full_text = res[0].get("text", "")
+                    except Exception as model_err:
+                        logger.error(f"Model generation failed: {model_err}")
+                        full_text = ""
             
             logger.info(f"Transcription complete. Length: {len(full_text)} chars")
             
