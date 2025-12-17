@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 from raganything.logger import logger
 from typing import Optional, List
 from .core import Notifier, HealthCheckResult, ComponentStatus

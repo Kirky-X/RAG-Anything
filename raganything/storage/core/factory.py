@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 from typing import Optional, Dict
 from raganything.storage.core.interfaces import StorageBackend
 from raganything.storage.backends.local_backend import LocalFileSystemBackend

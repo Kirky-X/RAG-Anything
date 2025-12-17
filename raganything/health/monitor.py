@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 import asyncio
 from typing import List, Dict
 from .core import HealthCheck, Notifier, HealthCheckResult, ComponentStatus

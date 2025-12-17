@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 from typing import Dict, List, Optional
 import datetime
 import uuid

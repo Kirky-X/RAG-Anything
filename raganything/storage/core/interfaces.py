@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Kirky.X
+# All rights reserved.
+
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
