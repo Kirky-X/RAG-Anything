@@ -1,4 +1,3 @@
-# type: ignore
 """
 MinerU Parser Module
 
