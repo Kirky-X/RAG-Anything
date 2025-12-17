@@ -999,3 +999,84 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 }
 
         return base_info
+
+    def reload_config(self):
+        """Reload configuration from source"""
+        self.config = RAGAnythingConfig()
+        self.working_dir = self.config.working_dir
+        if not os.path.exists(self.working_dir):
+            os.makedirs(self.working_dir)
+        
+        # Re-initialize processors
+        if self.lightrag:
+             self._initialize_processors()
+        self.logger.info("Configuration reloaded")
+
+    async def get_system_stats(self):
+        """Get system statistics"""
+        total_docs = 0
+        if self.lightrag and hasattr(self.lightrag, "doc_status_storage"):
+             try:
+                 if hasattr(self.lightrag.doc_status_storage, "get_all"):
+                     # Some storage backends return a dict or list
+                     docs = await self.lightrag.doc_status_storage.get_all()
+                     total_docs = len(docs)
+                 elif hasattr(self.lightrag.doc_status_storage, "__len__"):
+                     total_docs = len(self.lightrag.doc_status_storage)
+             except Exception:
+                 pass
+
+        storage_usage = "0 B"
+        try:
+            total_size = 0
+            for dirpath, dirnames, filenames in os.walk(self.working_dir):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if not os.path.islink(fp):
+                        total_size += os.path.getsize(fp)
+            
+            for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+                if total_size < 1024:
+                    storage_usage = f"{total_size:.2f} {unit}"
+                    break
+                total_size /= 1024
+        except Exception:
+            pass
+
+        from dataclasses import make_dataclass
+        Stats = make_dataclass("Stats", [("total_docs", int), ("queue_size", int), ("storage_usage", str), ("avg_processing_time", float)])
+        return Stats(total_docs, 0, storage_usage, 0.0)
+
+    async def delete_document(self, doc_id: str):
+        """Delete a document by ID"""
+        if not self.lightrag:
+            raise RuntimeError("LightRAG not initialized")
+        
+        # Attempt to remove from status storage
+        if hasattr(self.lightrag, "doc_status_storage"):
+             storage = self.lightrag.doc_status_storage
+             if hasattr(storage, "delete"):
+                 if asyncio.iscoroutinefunction(storage.delete):
+                     await storage.delete([doc_id])
+                 else:
+                     storage.delete([doc_id])
+             elif hasattr(storage, "pop"): # Dictionary-like
+                 storage.pop(doc_id, None)
+                 
+    async def cleanup_storage(self):
+        """Cleanup temporary files"""
+        deleted_count = 0
+        # Clean up parser output dir if it exists
+        parser_dir = self.config.parser_output_dir
+        if os.path.exists(parser_dir):
+             import shutil
+             # Count files
+             for _, _, files in os.walk(parser_dir):
+                 deleted_count += len(files)
+             # Remove and recreate
+             shutil.rmtree(parser_dir)
+             os.makedirs(parser_dir, exist_ok=True)
+             
+        from dataclasses import make_dataclass
+        CleanupResult = make_dataclass("CleanupResult", [("deleted_count", int)])
+        return CleanupResult(deleted_count)

@@ -92,3 +92,22 @@ class DocStatusResp(BaseModel):
     status: Optional[str] = None
     updated_at: Optional[str] = None
     raw_status: Optional[Any] = None
+
+
+class BatchProcessResp(BaseModel):
+    batch_id: str
+    total_files: int
+    status: str
+
+
+class ConfigResp(BaseModel):
+    multimodal: Any
+    batch: Any
+    parsing: Any
+
+
+class StatsResp(BaseModel):
+    total_documents: int
+    processing_queue: int
+    storage_usage: str
+    average_processing_time: float

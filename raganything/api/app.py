@@ -1,7 +1,9 @@
 # Copyright (c) 2025 Kirky.X
 # All rights reserved.
 
-from typing import Optional
+from typing import Optional, Any
+import os
+import uuid
 from fastapi import (
     FastAPI,
     Depends,
@@ -32,6 +34,9 @@ from .models import (
     UploadResp,
     ContentListInsertReq,
     DocStatusResp,
+    BatchProcessResp,
+    ConfigResp,
+    StatsResp,
 )
 from .auth import get_auth
 
@@ -297,6 +302,109 @@ async def doc_status(doc_id: str, ensure=Depends(get_auth)):
             status_code=500,
             detail=str(e),
         )
+
+
+@app.post("/api/batch/folder", response_model=BatchProcessResp)
+async def process_folder(
+    background_tasks: BackgroundTasks,
+    folder_path: str = Form(...),
+    recursive: bool = Form(True),
+    user: str = Form("default"),
+    ensure=Depends(get_auth)
+):
+    """Batch process an entire folder"""
+    if rag is None:
+        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+        
+    if not os.path.exists(folder_path):
+        raise HTTPException(status_code=404, detail=f"Folder not found: {folder_path}")
+        
+    total_files = 0
+    try:
+        for root, dirs, files in os.walk(folder_path):
+             total_files += len(files)
+             if not recursive:
+                 break
+    except Exception:
+        pass
+        
+    batch_id = f"batch-{uuid.uuid4()}"
+    
+    async def run_batch():
+        await rag.process_folder_complete(
+            folder_path=folder_path,
+            recursive=recursive,
+        )
+        
+    background_tasks.add_task(run_batch)
+    
+    return BatchProcessResp(
+        batch_id=batch_id,
+        total_files=total_files,
+        status="processing"
+    )
+
+
+@app.get("/api/config", response_model=ConfigResp)
+async def get_config(ensure=Depends(get_auth)):
+    """Get current system configuration"""
+    if rag is None:
+        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+    return ConfigResp(
+        multimodal=rag.config.multimodal,
+        batch=rag.config.batch,
+        parsing=rag.config.parsing
+    )
+
+
+@app.post("/api/config/reload")
+async def reload_config(ensure=Depends(get_auth)):
+    """Reload configuration"""
+    if rag is None:
+        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+    try:
+        rag.reload_config()
+        return {"status": "success", "message": "Configuration reloaded"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/stats", response_model=StatsResp)
+async def get_stats(ensure=Depends(get_auth)):
+    """Get system statistics"""
+    if rag is None:
+        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+    stats = await rag.get_system_stats()
+    return StatsResp(
+        total_documents=stats.total_docs,
+        processing_queue=stats.queue_size,
+        storage_usage=stats.storage_usage,
+        average_processing_time=stats.avg_processing_time
+    )
+
+
+@app.delete("/api/storage/doc/{doc_id}")
+async def delete_document(doc_id: str, ensure=Depends(get_auth)):
+    """Delete a document"""
+    if rag is None:
+        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+    try:
+        await rag.delete_document(doc_id)
+        return {"status": "success", "message": f"Document {doc_id} deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/storage/cleanup")
+async def cleanup_storage(ensure=Depends(get_auth)):
+    """Cleanup storage"""
+    if rag is None:
+        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+    try:
+        result = await rag.cleanup_storage()
+        return {"status": "success", "deleted_items": result.deleted_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def run():
