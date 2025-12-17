@@ -89,8 +89,7 @@ def configure_logging():
 async def process_with_rag(
     file_path: str,
     output_dir: str,
-    api_key: str,
-    base_url: str = None,
+    host: str = None,
     working_dir: str = None,
     parser: str = None,
 ):
@@ -100,34 +99,42 @@ async def process_with_rag(
     Args:
         file_path: Path to the document
         output_dir: Output directory for RAG results
-        api_key: OpenAI API key
-        base_url: Optional base URL for API
+        host: Optional host for API
         working_dir: Working directory for RAG storage
     """
     try:
         # Create RAGAnything configuration
-        config = RAGAnythingConfig(
-            working_dir=working_dir or "./rag_storage",
-            parser=parser,  # Parser selection: mineru or docling
-            parse_method="auto",  # Parse method: auto, ocr, or txt
-            enable_image_processing=True,
-            enable_table_processing=True,
-            enable_equation_processing=True,
-        )
+        config = RAGAnythingConfig()
+        config.directory.working_dir = working_dir or "./rag_storage"
+        config.parsing.parser = parser
+        config.parsing.parse_method = "auto"
+        config.multimodal.enable_image_processing = True
+        config.multimodal.enable_table_processing = True
+        config.multimodal.enable_equation_processing = True
 
-        # Define LLM model function
+        # Define LLM model function using Ollama
+        llm_provider = os.getenv("LLM_PROVIDER", "ollama")
+        llm_model = os.getenv("LLM_MODEL", "qwen3-vl:2b")
+        ollama_host = os.getenv("OLLAMA_BASE_URL", "http://172.24.160.1:11434")
+
         def llm_model_func(prompt, system_prompt=None, history_messages=[], **kwargs):
-            return openai_complete_if_cache(
-                "gpt-4o-mini",
-                prompt,
+            from lightrag.llm.ollama import _ollama_model_if_cache as ollama_complete_if_cache
+            
+            # Handle keyword_extraction for Ollama
+            keyword_extraction = kwargs.pop("keyword_extraction", None)
+            if keyword_extraction:
+                kwargs["format"] = "json"
+                
+            return ollama_complete_if_cache(
+                model=llm_model,
+                prompt=prompt,
                 system_prompt=system_prompt,
                 history_messages=history_messages,
-                api_key=api_key,
-                base_url=base_url,
+                host=ollama_host,
                 **kwargs,
             )
 
-        # Define vision model function for image processing
+        # Define vision model function for image processing using Ollama
         def vision_model_func(
             prompt,
             system_prompt=None,
@@ -136,23 +143,29 @@ async def process_with_rag(
             messages=None,
             **kwargs,
         ):
+            from lightrag.llm.ollama import _ollama_model_if_cache as ollama_complete_if_cache
+            
+            # Handle keyword_extraction for Ollama
+            keyword_extraction = kwargs.pop("keyword_extraction", None)
+            if keyword_extraction:
+                kwargs["format"] = "json"
+                
             # If messages format is provided (for multimodal VLM enhanced query), use it directly
             if messages:
-                return openai_complete_if_cache(
-                    "gpt-4o",
-                    "",
+                return ollama_complete_if_cache(
+                    model=llm_model,
+                    prompt="",
                     system_prompt=None,
                     history_messages=[],
                     messages=messages,
-                    api_key=api_key,
-                    base_url=base_url,
+                    host=ollama_host,
                     **kwargs,
                 )
             # Traditional single image format
             elif image_data:
-                return openai_complete_if_cache(
-                    "gpt-4o",
-                    "",
+                return ollama_complete_if_cache(
+                    model=llm_model,
+                    prompt="",
                     system_prompt=None,
                     history_messages=[],
                     messages=[
@@ -174,8 +187,7 @@ async def process_with_rag(
                         if image_data
                         else {"role": "user", "content": prompt},
                     ],
-                    api_key=api_key,
-                    base_url=base_url,
+                    host=ollama_host,
                     **kwargs,
                 )
             # Pure text format
@@ -183,17 +195,18 @@ async def process_with_rag(
                 return llm_model_func(prompt, system_prompt, history_messages, **kwargs)
 
         # Define embedding function - using environment variables for configuration
-        embedding_dim = int(os.getenv("EMBEDDING_DIM", "3072"))
-        embedding_model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")
+        embedding_dim = int(os.getenv("EMBEDDING_DIM", "1024"))
+        embedding_model = os.getenv("EMBEDDING_MODEL", "bge-m3:latest")
+        
+        from lightrag.llm.ollama import ollama_embed
 
         embedding_func = EmbeddingFunc(
             embedding_dim=embedding_dim,
             max_token_size=8192,
-            func=lambda texts: openai_embed(
+            func=lambda texts, **kwargs: ollama_embed(
                 texts,
-                model=embedding_model,
-                api_key=api_key,
-                base_url=base_url,
+                embed_model=embedding_model,
+                host=ollama_host,
             ),
         )
 
@@ -277,14 +290,9 @@ def main():
         "--output", "-o", default="./output", help="Output directory path"
     )
     parser.add_argument(
-        "--api-key",
-        default=os.getenv("LLM_BINDING_API_KEY"),
-        help="OpenAI API key (defaults to LLM_BINDING_API_KEY env var)",
-    )
-    parser.add_argument(
-        "--base-url",
-        default=os.getenv("LLM_BINDING_HOST"),
-        help="Optional base URL for API",
+        "--host",
+        default=os.getenv("OLLAMA_BASE_URL"),
+        help="Optional host for API",
     )
     parser.add_argument(
         "--parser",
@@ -294,23 +302,12 @@ def main():
 
     args = parser.parse_args()
 
-    # Check if API key is provided
-    if not args.api_key:
-        logger.error("Error: OpenAI API key is required")
-        logger.error("Set api key environment variable or use --api-key option")
-        return
-
-    # Create output directory if specified
-    if args.output:
-        os.makedirs(args.output, exist_ok=True)
-
     # Process with RAG
     asyncio.run(
         process_with_rag(
             args.file_path,
             args.output,
-            args.api_key,
-            args.base_url,
+            args.host,
             args.working_dir,
             args.parser,
         )
