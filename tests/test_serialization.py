@@ -48,7 +48,7 @@ async def test_pickle_llm():
     """Test picklability of LLM function."""
     config = LLMProviderConfig(
         provider="ollama",
-        model="qwen2.5-coder:7b",
+        model="qwen3:1.7b",
         api_base="http://localhost:11434"
     )
     
