@@ -48,21 +48,75 @@ class ProcessorMixin:
                 self.logger.info(f"Generated new doc_id: {doc_id}")
 
             file_name = file.filename
-            file_path = os.path.join(self.working_dir, file_name)
-            self.logger.info(f"Target file path: {file_path}")
+
+            working_dir = getattr(self, "working_dir", None)
+            if not working_dir and getattr(self, "config", None) is not None:
+                working_dir = getattr(self.config, "working_dir", None)
+            if not working_dir:
+                working_dir = "./rag_storage"
+
+            working_dir = os.path.abspath(working_dir)
+            self.logger.info(f"Resolved working directory for upload: {working_dir}")
+
+            try:
+                os.makedirs(working_dir, exist_ok=True)
+            except Exception as e:
+                self.logger.error(
+                    f"Failed to create working directory {working_dir}: {e}",
+                    exc_info=True,
+                )
+                raise
+
+            self.working_dir = working_dir
+
+            file_path = os.path.join(working_dir, file_name)
+            self.logger.info(f"Target file path for upload: {file_path}")
 
             # Save file to disk
             try:
                 self.logger.info("Opening file for writing...")
-                async with aiofiles.open(file_path, 'wb') as out_file:
+                async with aiofiles.open(file_path, "wb") as out_file:
                     self.logger.info("Starting to read file chunks...")
                     chunk_index = 0
                     while content := await file.read(1024 * 1024):  # Read in 1MB chunks
-                        self.logger.info(f"Read chunk {chunk_index} of size {len(content)}")
+                        self.logger.info(
+                            f"Read chunk {chunk_index} of size {len(content)}"
+                        )
                         await out_file.write(content)
                         self.logger.info(f"Wrote chunk {chunk_index}")
                         chunk_index += 1
                 self.logger.info("Finished writing all file chunks.")
+            except FileNotFoundError:
+                fallback_dir = "/tmp/rag_anything_uploads"
+                self.logger.warning(
+                    f"Primary upload path not available: {file_path}, "
+                    f"falling back to {fallback_dir}"
+                )
+                try:
+                    os.makedirs(fallback_dir, exist_ok=True)
+                    fallback_path = os.path.join(fallback_dir, file_name)
+                    async with aiofiles.open(fallback_path, "wb") as out_file:
+                        self.logger.info(
+                            "Starting to read file chunks (fallback path)..."
+                        )
+                        chunk_index = 0
+                        while content := await file.read(1024 * 1024):
+                            self.logger.info(
+                                f"Read chunk {chunk_index} of size {len(content)}"
+                            )
+                            await out_file.write(content)
+                            self.logger.info(f"Wrote chunk {chunk_index}")
+                            chunk_index += 1
+                    self.logger.info(
+                        f"Successfully saved uploaded file to fallback path: {fallback_path}"
+                    )
+                    file_path = fallback_path
+                except Exception as e:
+                    self.logger.error(
+                        f"Error saving file to fallback path {fallback_dir}: {e}",
+                        exc_info=True,
+                    )
+                    raise
             except Exception as e:
                 self.logger.error(f"Error saving file {file_path}: {e}", exc_info=True)
                 raise
@@ -448,65 +502,76 @@ class ProcessorMixin:
                     s = int(v % 60)
                     return f"{m:02d}:{s:02d}"
 
-                for item in timeline:
-                    if item.get("type") == "audio":
-                        # audio content now may include fine-grained segments
-                        text = item.get("content", "")
-                        start = float(item.get("timestamp", 0.0))
-                        end = float(item.get("end", start))
-                        speaker = item.get("speaker")
-                        segments = item.get("segments")
+                if timeline:
+                    for item in timeline:
+                        if item.get("type") == "audio":
+                            # audio content now may include fine-grained segments
+                            text = item.get("content", "")
+                            start = float(item.get("timestamp", 0.0))
+                            end = float(item.get("end", start))
+                            speaker = item.get("speaker")
+                            segments = item.get("segments")
 
-                        if isinstance(segments, list) and segments:
-                            for seg in segments:
-                                seg_text = seg.get("text", "")
-                                seg_start = float(seg.get("start", start))
-                                seg_end = float(seg.get("end", seg_start))
-                                seg_speaker = seg.get("speaker", speaker)
-                                if seg_text:
-                                    content_list.append({
-                                        "type": "text",
-                                        "text": f"[{_fmt_ts(seg_start)}-{_fmt_ts(seg_end)}] " + (f"[{seg_speaker}] " if seg_speaker else "") + seg_text,
+                            if isinstance(segments, list) and segments:
+                                for seg in segments:
+                                    seg_text = seg.get("text", "")
+                                    seg_start = float(seg.get("start", start))
+                                    seg_end = float(seg.get("end", seg_start))
+                                    seg_speaker = seg.get("speaker", speaker)
+                                    if seg_text:
+                                        content_list.append(
+                                            {
+                                                "text": f"[{_fmt_ts(seg_start)}-{_fmt_ts(seg_end)}] "
+                                                + (
+                                                    f"[{seg_speaker}] "
+                                                    if seg_speaker
+                                                    else ""
+                                                )
+                                                + seg_text,
+                                                "page_idx": 0,
+                                                "source_type": "video_audio",
+                                                "start": seg_start,
+                                                "end": seg_end,
+                                                "speaker": seg_speaker,
+                                            }
+                                        )
+                            elif text:
+                                content_list.append(
+                                    {
+                                        "text": f"[{_fmt_ts(start)}-{_fmt_ts(end)}] "
+                                        + (f"[{speaker}] " if speaker else "")
+                                        + text,
                                         "page_idx": 0,
                                         "source_type": "video_audio",
-                                        "start": seg_start,
-                                        "end": seg_end,
-                                        "speaker": seg_speaker,
-                                    })
-                        else:
-                            if text:
+                                        "start": start,
+                                        "end": end,
+                                        "speaker": speaker,
+                                    }
+                                )
+                        elif item.get("type") == "image":
+                            # Handle visual content (frames)
+                            img_path = item.get("path")
+                            timestamp = float(item.get("timestamp", 0.0))
+                            if img_path:
                                 content_list.append({
-                                    "type": "text",
-                                    "text": f"[{_fmt_ts(start)}-{_fmt_ts(end)}] " + (f"[{speaker}] " if speaker else "") + text,
+                                    "type": "image",
+                                    "img_path": img_path,
                                     "page_idx": 0,
-                                    "source_type": "video_audio",
-                                    "start": start,
-                                    "end": end,
-                                    "speaker": speaker,
+                                    "source_type": "video_frame",
+                                    "timestamp": timestamp,
+                                    "text": f"Frame at {_fmt_ts(timestamp)}"
                                 })
-                    elif item.get("type") == "visual":
-                        desc = item.get("content", "")
-                        frame_path = item.get("frame_path", "")
-                        # Map to image multimodal item to reuse image processors
-                        content_list.append({
-                            "type": "image",
-                            "img_path": frame_path,
-                            "image_caption": [desc] if desc else [],
-                            "image_footnote": [],
-                            "page_idx": 0
-                        })
-            else:
-                # For other or unknown formats, use generic parser
-                self.logger.info(
-                    f"Using generic parser for {ext} file (method={parse_method})..."
-                )
-                content_list = await asyncio.to_thread(
-                    doc_parser.parse_document,
-                    file_path=file_path,
-                    method=parse_method,
-                    output_dir=output_dir,
-                    **kwargs,
-                )
+                        elif item.get("type") == "visual":
+                            desc = item.get("content", "")
+                            frame_path = item.get("frame_path", "")
+                            # Map to image multimodal item to reuse image processors
+                            content_list.append({
+                                "type": "image",
+                                "img_path": frame_path,
+                                "image_caption": [desc] if desc else [],
+                                "image_footnote": [],
+                                "page_idx": 0
+                            })
 
         except MineruExecutionError as e:
             self.logger.error(f"Mineru command failed: {e}")
@@ -650,9 +715,16 @@ class ProcessorMixin:
                 )
             except Exception as individual_err:
                 self.logger.error(f"Individual processing also failed: {individual_err}")
+                import traceback
+                self.logger.error(traceback.format_exc())
 
             # Mark multimodal content as processed even after fallback
-            await self._mark_multimodal_processing_complete(doc_id)
+            # We must ensure this is called even if individual processing fails
+            # otherwise the document will be stuck in 'handling' state forever
+            try:
+                await self._mark_multimodal_processing_complete(doc_id)
+            except Exception as mark_err:
+                self.logger.error(f"Failed to mark multimodal processing as complete: {mark_err}")
 
     async def _process_multimodal_content_individual(
         self, multimodal_items: List[Dict[str, Any]], file_path: str, doc_id: str
