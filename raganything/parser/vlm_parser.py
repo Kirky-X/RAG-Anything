@@ -3,7 +3,7 @@
 
 import base64
 import time
-import logging
+from raganything.logger import logger
 import io
 import asyncio
 from pathlib import Path
@@ -26,7 +26,7 @@ except ImportError:
 from raganything.parser.base_parser import Parser
 from raganything.llm import build_llm, LLMProviderConfig
 
-logger = logging.getLogger(__name__)
+
 
 class VlmParser(Parser):
     """
@@ -91,10 +91,11 @@ class VlmParser(Parser):
         provider = vision_config.get("provider", "ollama")
         model = vision_config.get("model", "qwen3-vl:2b")
         api_base = vision_config.get("api_base", "http://172.24.160.1:11434")
-        timeout = vision_config.get("timeout", 10)
+        # Ensure timeout is int
+        timeout = int(vision_config.get("timeout", 10))
         max_retries = vision_config.get("max_retries", 3)
         
-        logger.info(f"Initializing VlmParser with model={model}, provider={provider}, base={api_base}")
+        logger.info(f"Initializing VlmParser with model={model}, provider={provider}, base={api_base}, timeout={timeout}")
         
         # Check network connectivity for Ollama
         import socket
@@ -192,14 +193,37 @@ class VlmParser(Parser):
         try:
             # Feature Extraction
             max_size = kwargs.get("max_size", 1024) # Default max dimension 1024px
+            logger.info(f"Encoding image {file_path} with max_size={max_size}")
             image_base64 = self._encode_image(file_path, max_size=max_size)
             
             # Description Generation
             # We pass image_data to the LLM call
-            response = await self.llm(
-                prompt=prompt,
-                image_data=image_base64
-            )
+            logger.info(f"Sending request to VLM for {file_path}")
+            llm_start_time = time.time()
+            
+            # Wrap the LLM call with a timeout to prevent indefinite hanging
+            # Use a default timeout of 120 seconds if not configured
+            vlm_timeout = kwargs.get("timeout", self.config.get("raganything", {}).get("vision", {}).get("timeout", 120))
+            if isinstance(vlm_timeout, str):
+                try:
+                    vlm_timeout = int(vlm_timeout)
+                except ValueError:
+                    vlm_timeout = 120
+            
+            try:
+                response = await asyncio.wait_for(
+                    self.llm(
+                        prompt=prompt,
+                        image_data=image_base64
+                    ),
+                    timeout=vlm_timeout
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"VLM request timed out after {vlm_timeout}s for {file_path}")
+                raise TimeoutError(f"Request timed out after {vlm_timeout}s")
+                
+            llm_end_time = time.time()
+            logger.info(f"VLM request for {file_path} completed in {llm_end_time - llm_start_time:.2f}s")
             
             end_time = time.time()
             latency = end_time - start_time
