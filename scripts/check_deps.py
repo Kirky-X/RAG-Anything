@@ -1,4 +1,3 @@
-
 import sys
 import traceback
 
@@ -8,6 +7,7 @@ print(f"Python version: {sys.version}")
 try:
     print("Attempting to import pydub...")
     import pydub
+
     print(f"pydub imported successfully: {pydub.__file__}")
 except ImportError:
     print("Failed to import pydub")
@@ -19,6 +19,7 @@ except Exception:
 try:
     print("Attempting to import funasr...")
     import funasr
+
     print(f"funasr imported successfully: {funasr.__file__}")
 except ImportError:
     print("Failed to import funasr")
@@ -29,6 +30,7 @@ except Exception:
 
 try:
     from raganything.parser.audio_parser import AUDIO_DEPS_AVAILABLE
+
     print(f"AUDIO_DEPS_AVAILABLE: {AUDIO_DEPS_AVAILABLE}")
 except Exception:
     print("Error importing AUDIO_DEPS_AVAILABLE")

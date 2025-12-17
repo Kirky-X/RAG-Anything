@@ -1,7 +1,9 @@
-import tomllib
-import tomli_w
-from typing import Any, Dict
 import os
+import tomllib
+from typing import Any, Dict
+
+import tomli_w
+
 
 def merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -14,6 +16,7 @@ def merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
         else:
             merged[key] = value
     return merged
+
 
 def main():
     base_path = "env.example"
@@ -43,8 +46,9 @@ def main():
     # Write back
     with open(output_path, "wb") as f:
         tomli_w.dump(final_config, f)
-    
+
     print(f"Successfully merged {base_path} and {override_path} into {output_path}")
+
 
 if __name__ == "__main__":
     main()
