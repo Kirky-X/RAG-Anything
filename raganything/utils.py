@@ -4,11 +4,40 @@ Utility functions for RAGAnything
 Contains helper functions for content separation, text insertion, and other utilities
 """
 
+import os
 import base64
-from typing import Dict, List, Any, Tuple
+import hashlib
+from typing import Dict, List, Any, Tuple, Optional, Type, TypeVar
 from pathlib import Path
-from lightrag.utils import logger
+from raganything.logger import logger
 
+T = TypeVar("T")
+
+def get_env_value(key: str, default: T, expected_type: Type[T]) -> T:
+    """Get environment variable with type conversion"""
+    value = os.getenv(key)
+    if value is None:
+        return default
+    
+    try:
+        if expected_type is bool:
+            return value.lower() in ("true", "1", "yes", "on") # type: ignore
+        return expected_type(value) # type: ignore
+    except Exception:
+        return default
+
+def compute_mdhash_id(content: str, prefix: str = "") -> str:
+    """
+    Compute MD5 hash ID for content
+    
+    Args:
+        content: The content to hash
+        prefix: Optional prefix for the ID
+        
+    Returns:
+        str: MD5 hash ID with prefix
+    """
+    return prefix + hashlib.md5(content.encode("utf-8")).hexdigest()
 
 def separate_content(
     content_list: List[Dict[str, Any]],
