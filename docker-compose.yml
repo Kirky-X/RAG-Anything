@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  rag-anything-test:
+    build: .
+    image: raganything:latest
+    container_name: raganything-test
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app
+    command: python3 -m pytest tests/
