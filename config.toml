@@ -1,28 +1,46 @@
-### 配置示例（TOML 格式，采用嵌套结构）
-# 将本文件复制为 `config.toml`，或设置环境变量 `CONFIG_TOML` 指向该文件。
-# 若未提供 TOML，本库仍会使用环境变量作为默认来源以保持兼容。
+OPENAI_API_KEY = "your_openai_api_key_here"
+ANTHROPIC_API_KEY = "your_anthropic_api_key_here"
+COHERE_API_KEY = "your_cohere_api_key_here"
+GROQ_API_KEY = "your_groq_api_key_here"
+HUGGING_FACE_HUB_TOKEN = "your_huggingface_token_here"
+MODELSCOPE_TOKEN = "your_modelscope_token_here"
+STORAGE_TYPE = "local"
+LOCAL_STORAGE_PATH = "/tmp/rag_anything_storage"
+MINIO_ENDPOINT = "localhost:9000"
+MINIO_ACCESS_KEY = "minioadmin"
+MINIO_SECRET_KEY = "minioadmin"
+MINIO_BUCKET = "rag-anything"
+MINIO_SECURE = "False"
+LLM_PROVIDER = "ollama"
+LLM_MODEL = "qwen3-vl:2b"
+EMBEDDING_MODEL = "bge-m3:latest"
+OLLAMA_BASE_URL = "http://172.24.160.1:11434"
+LMSTUDIO_API_BASE = "http://localhost:1234/v1"
+VECTOR_DB_TYPE = "chroma"
+VECTOR_DB_PATH = "/tmp/rag_anything_vectordb"
+MILVUS_HOST = "localhost"
+MILVUS_PORT = "19530"
+LOG_LEVEL = "INFO"
+CACHE_DIR = "/tmp/rag_anything_cache"
 
 [server]
-# 服务监听地址与端口
 host = "0.0.0.0"
 port = 9621
-# WebUI 标题与描述（如有前端工程）
 webui_title = "My Graph KB"
 webui_description = "Simple and Fast Graph Based RAG System"
-# 工作进程与跨域设置
 workers = 2
-cors_origins = ["http://localhost:3000", "http://localhost:8080"]
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:8080",
+]
 
 [ollama]
-# 用于模拟/拉取 Ollama 模型的标签
 emulating_model_tag = "latest"
 
 [tiktoken]
-# 离线环境下的 tiktoken 缓存目录
 cache_dir = "/tmp/tiktoken_cache"
 
 [auth]
-# 登录账户与令牌配置（供 API 服务器使用）
 accounts = "admin:admin123,user1:pass456"
 token_secret = "Your-Key-For-LightRAG-API-Server"
 token_expire_hours = 48
@@ -30,84 +48,67 @@ guest_token_expire_hours = 24
 jwt_algorithm = "HS256"
 
 [api]
-# 访问 LightRAG API 的密钥与白名单路径
 lightrag_api_key = "your-secure-api-key-here"
-whitelist_paths = ["/health", "/api/*"]
+whitelist_paths = [
+    "/health",
+    "/api/*",
+]
 
 [ssl]
-# 启用 HTTPS 及证书路径（如有需要）
 enabled = false
 certfile = "/path/to/cert.pem"
 keyfile = "/path/to/key.pem"
 
 [directory]
-# 目录配置（Docker 部署时通常由镜像设置）
 input_dir = "<absolute_path_for_doc_input_dir>"
 working_dir = "./rag_storage"
 parser_output_dir = "./output"
 
 [raganything.parsing]
-# 解析器配置：mineru 或 docling；解析方法：auto/ocr/txt
 parser = "mineru"
 parse_method = "auto"
 display_content_stats = true
 
 [raganything.multimodal]
-# 多模态开关
 enable_image_processing = true
 enable_table_processing = true
 enable_equation_processing = true
 
 [raganything.batch]
-# 批处理参数
 max_concurrent_files = 1
 supported_file_extensions = [
-  ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".gif", ".webp",
-  ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".md",
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".bmp",
+    ".tiff",
+    ".tif",
+    ".gif",
+    ".webp",
+    ".doc",
+    ".docx",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".txt",
+    ".md",
 ]
 recursive_folder_processing = true
 
 [raganything.context]
-# 上下文抽取设置
 context_window = 1
-context_mode = "page"  # 可选："page" 或 "chunk"
+context_mode = "page"
 max_context_tokens = 2000
 include_headers = true
 include_captions = true
-context_filter_content_types = ["text"]
+context_filter_content_types = [
+    "text",
+]
 content_format = "minerU"
 
-[logging]
-# 日志配置（示例脚本可能读取）
-level = "INFO"
-verbose = false
-max_bytes = 10485760
-backup_count = 5
-dir = "/path/to/log/directory"
-
-[query]
-# 查询相关参数
-history_turns = 3
-cosine_threshold = 0.2
-top_k = 60
-max_token_text_chunk = 4000
-max_token_relation_desc = 4000
-max_token_entity_desc = 4000
-
-[summary]
-# 实体与关系摘要
-language = "English"
-force_llm_summary_on_merge = 6
-max_token_summary = 500
-
-[insert]
-# 文档拆分与并发
-max_parallel_insert = 2
-chunk_size = 1200
-chunk_overlap_size = 100
-
 [raganything.llm]
-# LLM 提供方设置（供库内部使用）
 provider = "openai"
 model = "gpt-4o-mini"
 api_base = "https://api.openai.com/v1"
@@ -116,26 +117,48 @@ timeout = 60
 max_retries = 2
 
 [raganything.embedding]
-# 向量嵌入设置（供库内部使用）
-provider = "ollama"
-model = "bge-m3:latest"
-api_base = "http://localhost:11434"
-api_key = "your_api_key"
+provider = "huggingface"
+model = "BAAI/bge-m3"
+api_base = ""
+api_key = ""
 dim = 1024
 batch_num = 32
 func_max_async = 16
 
 [raganything.vision]
-# 视觉模型设置（供库内部使用）
 provider = "ollama"
 model = "qwen3-vl:2b"
 api_base = "http://172.24.160.1:11434"
 api_key = ""
-timeout = 60
-max_retries = 2
+timeout = 120
+max_retries = 3
+
+[logging]
+level = "INFO"
+verbose = false
+max_bytes = 10485760
+backup_count = 5
+dir = "/path/to/log/directory"
+
+[query]
+history_turns = 3
+cosine_threshold = 0.2
+top_k = 60
+max_token_text_chunk = 4000
+max_token_relation_desc = 4000
+max_token_entity_desc = 4000
+
+[summary]
+language = "English"
+force_llm_summary_on_merge = 6
+max_token_summary = 500
+
+[insert]
+max_parallel_insert = 2
+chunk_size = 1200
+chunk_overlap_size = 100
 
 [runtime.llm]
-# 运行时 LLM 缓存与并发（示例/服务器可能使用）
 enable_llm_cache = true
 enable_llm_cache_for_extract = true
 timeout = 240
@@ -149,14 +172,12 @@ azure_openai_api_version = "2024-08-01-preview"
 azure_openai_deployment = "gpt-4o"
 
 [storage]
-# 存储类型（如外部服务器工程使用）
 lightrag_kv_storage = "PGKVStorage"
 lightrag_vector_storage = "PGVectorStorage"
 lightrag_doc_status_storage = "PGDocStatusStorage"
 lightrag_graph_storage = "Neo4JStorage"
 
 [postgres]
-# PostgreSQL 配置
 host = "localhost"
 port = 5432
 user = "your_username"
@@ -165,18 +186,15 @@ database = "your_database"
 max_connections = 12
 
 [neo4j]
-# Neo4j 配置
 uri = "neo4j+s://xxxxxxxx.databases.neo4j.io"
 username = "neo4j"
 password = "your_password"
 
 [mongo]
-# MongoDB 配置
 uri = "mongodb://root:root@localhost:27017/"
 database = "LightRAG"
 
 [milvus]
-# Milvus 配置
 uri = "http://localhost:19530"
 db_name = "lightrag"
 user = "root"
@@ -184,10 +202,8 @@ password = "your_password"
 token = "your_token"
 
 [qdrant]
-# Qdrant 配置
 url = "http://localhost:16333"
 api_key = "your-api-key"
 
 [redis]
-# Redis 配置
 uri = "redis://localhost:6379"
