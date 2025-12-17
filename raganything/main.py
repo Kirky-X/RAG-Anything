@@ -6,8 +6,6 @@ RAGAnything CLI Entry Point
 import os
 import argparse
 import asyncio
-import logging
-import logging.config
 from pathlib import Path
 
 # Add project root directory to Python path
@@ -16,8 +14,9 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
 from lightrag.llm.openai import openai_complete_if_cache, openai_embed
-from lightrag.utils import EmbeddingFunc, logger, set_verbose_debug
+from lightrag.utils import EmbeddingFunc, set_verbose_debug
 from raganything import RAGAnything, RAGAnythingConfig
+from raganything.logger import logger, init_logger
 
 from dotenv import load_dotenv
 
@@ -30,52 +29,15 @@ def configure_logging():
     log_dir = os.getenv("LOG_DIR", "/tmp/raganything/logs")
     log_file_path = os.path.abspath(os.path.join(log_dir, "raganything.log"))
 
-    print(f"\nRAGAnything log file: {log_file_path}\n")
+    print(f"\\nRAGAnything log file: {log_file_path}\\n")
     os.makedirs(os.path.dirname(log_dir), exist_ok=True)
 
     # Get log file max size and backup count from environment variables
-    log_max_bytes = int(os.getenv("LOG_MAX_BYTES", 10485760))  # Default 10MB
-    log_backup_count = int(os.getenv("LOG_BACKUP_COUNT", 5))  # Default 5 backups
+    # log_max_bytes = int(os.getenv("LOG_MAX_BYTES", 10485760))  # Default 10MB
+    # log_backup_count = int(os.getenv("LOG_BACKUP_COUNT", 5))  # Default 5 backups
 
-    logging.config.dictConfig(
-        {
-            "version": 1,
-            "disable_existing_loggers": False,
-            "formatters": {
-                "default": {
-                    "format": "%(levelname)s: %(message)s",
-                },
-                "detailed": {
-                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                },
-            },
-            "handlers": {
-                "console": {
-                    "formatter": "default",
-                    "class": "logging.StreamHandler",
-                    "stream": "ext://sys.stderr",
-                },
-                "file": {
-                    "formatter": "detailed",
-                    "class": "logging.handlers.RotatingFileHandler",
-                    "filename": log_file_path,
-                    "maxBytes": log_max_bytes,
-                    "backupCount": log_backup_count,
-                    "encoding": "utf-8",
-                },
-            },
-            "loggers": {
-                "lightrag": {
-                    "handlers": ["console", "file"],
-                    "level": "INFO",
-                    "propagate": False,
-                },
-            },
-        }
-    )
-
-    # Set the logger level to INFO
-    logger.setLevel(logging.INFO)
+    init_logger(log_dir=Path(log_dir))
+    
     # Enable verbose debug if needed
     set_verbose_debug(os.getenv("VERBOSE", "false").lower() == "true")
 
