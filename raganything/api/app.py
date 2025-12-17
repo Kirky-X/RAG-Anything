@@ -10,10 +10,19 @@ from fastapi import (
     File,
     Form,
     Request,
+    BackgroundTasks,
 )
+from raganything.logger import logger
 from fastapi.middleware.cors import CORSMiddleware
 from raganything.server_config import load_server_configs, uvicorn_run_params
 from raganything import RAGAnything, RAGAnythingConfig
+from raganything.health import (
+    HealthMonitor,
+    OllamaHealthCheck,
+    SystemResourceCheck,
+    ConsoleNotifier,
+    ComponentStatus,
+)
 from .models import (
     HealthResp,
     InfoResp,
@@ -49,12 +58,56 @@ rag: Optional[RAGAnything] = None
 @app.on_event("startup")
 async def startup_event():
     global rag
-    rag = RAGAnything(config=RAGAnythingConfig())
+    # Apply patches before initializing anything else
+    import raganything.patches.lightrag_patch
+    
+    # Initialize Health Monitor and run pre-checks
+    monitor = HealthMonitor()
+    monitor.add_check(OllamaHealthCheck("config.toml"))
+    monitor.add_check(SystemResourceCheck())
+    monitor.add_notifier(ConsoleNotifier())
+    
+    logger.info("Running system health pre-checks...")
+    
+    results = await monitor.run_checks()
+    unhealthy = [r for r in results.values() if r.status == ComponentStatus.UNHEALTHY]
+    
+    if unhealthy:
+        logger.error("⚠️ SYSTEM STARTUP WARNING: Some components are unhealthy!")
+        for r in unhealthy:
+            logger.error(f"  - {r.component_name}: {r.message}")
+        # We continue startup but logged critical warnings
+    else:
+        logger.info("✅ All system pre-checks passed.")
+
+    rag = RAGAnything()
+    await rag.initialize()
+    rag.logger.info("Server has started and RAGAnything is initialized.")
 
 
 @app.get("/health", response_model=HealthResp)
 async def health():
     return HealthResp(ok=True)
+
+
+@app.get("/health/detailed")
+async def health_detailed():
+    """Run detailed health checks on demand."""
+    monitor = HealthMonitor()
+    monitor.add_check(OllamaHealthCheck("config.toml"))
+    monitor.add_check(SystemResourceCheck())
+    
+    results = await monitor.run_checks()
+    
+    response = {}
+    for name, res in results.items():
+        response[name] = {
+            "status": res.status.name,
+            "message": res.message,
+            "metadata": res.metadata,
+            "timestamp": res.timestamp.isoformat()
+        }
+    return response
 
 
 @app.get("/api/info", response_model=InfoResp)
@@ -86,7 +139,7 @@ async def query(body: QueryReq, ensure=Depends(get_auth)):
             system_prompt=body.system_prompt,
             **kwargs,
         )
-        return QueryResp(result=result)
+        return QueryResp(result=result or "")
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -114,49 +167,91 @@ async def query_multimodal(body: QueryMultiReq, ensure=Depends(get_auth)):
         )
 
 
-@app.post("/api/doc/upload", response_model=UploadResp)
+
+import asyncio
+
+async def process_document_background(file_path: str, doc_id: str, user: str):
+    rag.logger.info(f"ENTERING process_document_background for doc_id: {doc_id}")
+    try:
+        rag.logger.info(f"Background processing started for doc_id {doc_id} (file: {file_path})")
+        rag.logger.info(f"RAG instance ID: {id(rag)}")
+        
+        # Ensure initial status is set immediately before calling process_document_complete
+        try:
+             # Check if we need to initialize
+             rag.logger.info(f"Calling _ensure_lightrag_initialized for {doc_id}")
+             init_res = await rag._ensure_lightrag_initialized()
+             rag.logger.info(f"_ensure_lightrag_initialized returned for {doc_id}")
+             if not init_res.get("success"):
+                 rag.logger.error(f"Failed to initialize LightRAG in background task: {init_res}")
+             
+             if rag.lightrag:
+                  rag.logger.info(f"LightRAG instance ID: {id(rag.lightrag)}")
+                  import time
+                  import os
+                  from raganything.base import DocStatus
+                  
+                  rag.logger.info(f"Getting status for {doc_id}")
+                  current_status = await rag.lightrag.doc_status.get_by_id(doc_id)
+                  rag.logger.info(f"Status for {doc_id} is: {current_status}")
+                  if not current_status:
+                      rag.logger.info(f"Pre-initializing status for {doc_id} in background task wrapper")
+                      await rag.lightrag.doc_status.upsert({
+                         doc_id: {
+                             "status": DocStatus.HANDLING,
+                             "chunks_count": 0,
+                             "multimodal_processed": False,
+                             "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                             "file_path": os.path.basename(file_path),
+                         }
+                      })
+                      await rag.lightrag.doc_status.index_done_callback()
+                      
+                      # Verify immediate write
+                      verify = await rag.lightrag.doc_status.get_by_id(doc_id)
+                      rag.logger.info(f"Verified status in background task for {doc_id}: {verify}")
+                  else:
+                      rag.logger.info(f"Status already exists for {doc_id} in background task: {current_status}")
+        except Exception as pre_init_error:
+            rag.logger.warning(f"Failed to pre-initialize status for {doc_id}: {pre_init_error}")
+            import traceback
+            rag.logger.warning(traceback.format_exc())
+
+        rag.logger.info(f"About to call process_document_complete for doc_id: {doc_id}")
+        await rag.process_document_complete(file_path, doc_id=doc_id, user=user)
+        rag.logger.info(f"Background processing completed for doc_id {doc_id}")
+    except Exception as e:
+        rag.logger.error(f"Error processing file in background for doc_id {doc_id}: {e}", exc_info=True)
+
+@app.post("/api/doc/upload", response_model=UploadResp, status_code=202)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    output_dir: Optional[str] = Form(None),
-    parse_method: Optional[str] = Form(None),
-    display_stats: Optional[bool] = Form(None),
-    split_by_character: Optional[str] = Form(None),
-    split_by_character_only: bool = Form(False),
     doc_id: Optional[str] = Form(None),
+    user: str = Form("default"),
     ensure=Depends(get_auth),
 ):
-    if rag is None:
-        raise HTTPException(
-            status_code=500,
-            detail="RAGAnything not initialized",
-        )
     try:
-        import tempfile
-        import os
-        suffix = f"_{file.filename}"
-        with tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=suffix,
-        ) as tmp:
-            content = await file.read()
-            tmp.write(content)
-            tmp_path = tmp.name
-        await rag.process_document_complete(
-            file_path=tmp_path,
-            output_dir=output_dir or "",
-            parse_method=parse_method or "",
-            display_stats=bool(display_stats) if display_stats is not None else False,
-            split_by_character=split_by_character,
-            split_by_character_only=split_by_character_only,
-            doc_id=doc_id,
+        rag.logger.info(f"Received upload request for doc_id: {doc_id}")
+        file_path, final_doc_id = await rag._save_upload_file(file, doc_id=doc_id)
+        rag.logger.info(f"File saved to: {file_path}, final_doc_id: {final_doc_id}")
+        
+        background_tasks.add_task(
+            process_document_background, file_path, final_doc_id, user
         )
-        os.unlink(tmp_path)
-        return UploadResp(doc_id=doc_id, file_name=str(file.filename), status="processed")
+        rag.logger.info(f"Added process_document_background to background_tasks for doc_id: {final_doc_id}")
+        
+        return UploadResp(
+            doc_id=final_doc_id,
+            file_name=file_path,
+            status="processing",
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=str(e),
         )
+
 
 
 @app.post("/api/doc/insert", response_model=UploadResp)
