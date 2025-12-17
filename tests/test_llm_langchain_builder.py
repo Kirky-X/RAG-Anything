@@ -79,7 +79,7 @@ def test_build_openrouter_and_call_messages():
 
 def test_build_ollama_and_call_text():
     _install_fake_langchain_ollama()
-    cfg = LLMProviderConfig(provider="ollama", model="llama3.1", api_base="http://localhost:11434")
+    cfg = LLMProviderConfig(provider="ollama", model="qwen3:1.7b", api_base="http://localhost:11434")
     llm = build_llm(cfg)
     import asyncio
     out = asyncio.run(llm("hello"))
