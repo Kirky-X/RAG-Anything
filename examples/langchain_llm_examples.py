@@ -34,7 +34,7 @@ async def demo_openrouter_messages():
 async def demo_ollama_text():
     cfg = LLMProviderConfig(
         provider="ollama",
-        model=os.getenv("LLM_MODEL", "llama3.1"),
+        model=os.getenv("LLM_MODEL", "qwen3:1.7b"),
         api_base=os.getenv("LLM_API_BASE", "http://localhost:11434"),
     )
     llm = build_llm(cfg)
