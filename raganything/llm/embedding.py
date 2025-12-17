@@ -4,6 +4,7 @@
 import os
 from typing import Any, Dict, List, Optional
 import numpy as np
+from raganything.logger import logger
 
 def build_embedding_func(
     provider: str,
@@ -50,8 +51,19 @@ def build_embedding_func(
         except Exception as e:
             raise ValueError(f"LangChain OpenAI embeddings unavailable: {e}")
 
+        # Check for dummy key to use local fallback (e.g. for testing)
+        current_key = api_key or os.environ.get("OPENAI_API_KEY")
+        if current_key == "DUMMY_KEY":
+            from raganything.logger import logger
+            logger.warning("Using LocalEmbeddingWrapper because OPENAI_API_KEY is DUMMY_KEY")
+            return EmbeddingFunc(
+                embedding_dim=embedding_dim,
+                max_token_size=max_token_size,
+                func=LocalEmbeddingWrapper(embedding_dim),
+            )
+
         # Fail fast if API key is missing to allow fallback logic to work
-        if not api_key and not os.environ.get("OPENAI_API_KEY"):
+        if not current_key:
              raise ValueError("OpenAI API key is required but not provided in arguments or environment variables.")
 
         init_kwargs: Dict[str, Any] = {"model": model}
@@ -96,6 +108,14 @@ def build_embedding_func(
         init_kwargs: Dict[str, Any] = {"model_name": model}
         init_kwargs.update(extra)
 
+        # IMPORTANT: Ensure HuggingFaceEmbeddings doesn't try to use multiprocessing which might fail in some environments
+        # or when called from within an async loop
+        if "encode_kwargs" not in init_kwargs:
+            init_kwargs["encode_kwargs"] = {}
+        # Force batch size to be reasonable to avoid OOM
+        if "batch_size" not in init_kwargs.get("encode_kwargs", {}):
+            init_kwargs["encode_kwargs"]["batch_size"] = 32
+
         return EmbeddingFunc(
             embedding_dim=embedding_dim,
             max_token_size=max_token_size,
@@ -138,67 +158,37 @@ class LazyLangChainEmbeddingWrapper:
     async def __call__(self, texts: List[str]) -> List[List[float]]:
         # Run sync method in a thread to avoid blocking event loop
         import asyncio
-        import logging
+        from raganything.logger import logger
         import sys
-        logger = logging.getLogger("LazyLangChainEmbeddingWrapper")
-        msg = f"Embedding request for {len(texts)} texts. First text len: {len(texts[0]) if texts else 0}"
-        logger.debug(msg)
-        print(f"[EmbeddingWrapper] {msg}", file=sys.stderr, flush=True)
+        
+        # If texts is empty, return empty list
+        if not texts:
+            return np.array([])
+            
+        # logger = logging.getLogger("LazyLangChainEmbeddingWrapper")
+        # msg = f"Embedding request for {len(texts)} texts. First text len: {len(texts[0]) if texts else 0}"
+        # logger.debug(msg)
+        # print(f"[EmbeddingWrapper] {msg}", file=sys.stderr, flush=True)
         
         try:
             # Check client initialization
             if self._client is None:
-                logger.debug(f"Initializing client with kwargs: {self.init_kwargs}")
-                print(f"[EmbeddingWrapper] Initializing client...", file=sys.stderr, flush=True)
+                # logger.debug(f"Initializing client with kwargs: {self.init_kwargs}")
+                # print(f"[EmbeddingWrapper] Initializing client...", file=sys.stderr, flush=True)
+                # Initialize client immediately (this is sync but fast usually)
+                self._client = self.provider_cls(**self.init_kwargs)
             
-            # Use asyncio.wait_for to enforce a timeout on the thread execution
-            # This protects against the sync call hanging indefinitely
-            print(f"[EmbeddingWrapper] calling asyncio.to_thread with {len(texts)} texts...", file=sys.stderr, flush=True)
-            
-            # Heartbeat task to show we are alive
-            async def _heartbeat():
-                import asyncio
-                import sys
-                count = 0
-                while True:
-                    await asyncio.sleep(5)
-                    count += 5
-                    print(f"[EmbeddingWrapper] Still waiting for embedding... ({len(texts)} texts, {count}s elapsed)", file=sys.stderr, flush=True)
+            # Use asyncio.to_thread to run the sync embed_documents call in a separate thread
+            # This is crucial for avoiding event loop blocking
+            result = await asyncio.to_thread(self.client.embed_documents, texts)
+            return np.array(result)
 
-            heartbeat_task = asyncio.create_task(_heartbeat())
-            
-            try:
-                result = await asyncio.wait_for(
-                    asyncio.to_thread(self.client.embed_documents, texts),
-                    timeout=300 # Increased to 300 seconds (5 minutes) for large batches/slow models
-                )
-                print(f"[EmbeddingWrapper] Embedding request complete. Result len: {len(result)}", file=sys.stderr, flush=True)
-                logger.debug("Embedding request complete.")
-                return np.array(result)
-            except asyncio.TimeoutError:
-                err_msg = f"Embedding generation timed out after 300s for {len(texts)} texts"
-                logger.error(err_msg)
-                print(f"[EmbeddingWrapper] {err_msg}", file=sys.stderr, flush=True)
-                raise
-            except Exception as e:
-                # Capture full traceback for better debugging
-                import traceback
-                tb = traceback.format_exc()
-                logger.error(f"Embedding generation failed: {e}\n{tb}")
-                print(f"[EmbeddingWrapper] Embedding generation failed: {e}\n{tb}", file=sys.stderr, flush=True)
-                raise
-            finally:
-                heartbeat_task.cancel()
-                try:
-                    await heartbeat_task
-                except asyncio.CancelledError:
-                    pass
         except Exception as e:
-            # Fallback for outer try block if anything weird happens outside the inner try
+            # Capture full traceback for better debugging
             import traceback
             tb = traceback.format_exc()
-            logger.error(f"Embedding wrapper outer error: {e}\n{tb}")
-            print(f"[EmbeddingWrapper] Embedding wrapper outer error: {e}\n{tb}", file=sys.stderr, flush=True)
+            logger.error(f"Embedding generation failed: {e}\n{tb}")
+            print(f"[EmbeddingWrapper] Embedding generation failed: {e}\n{tb}", file=sys.stderr, flush=True)
             raise
 
 
