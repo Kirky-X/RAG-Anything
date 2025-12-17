@@ -226,6 +226,10 @@ class Parser:
                         f"Could not decode text file {text_path.name} with any supported encoding"
                     )
 
+            # Remove all HTML tags to avoid reportlab parsing errors
+            import re
+            text_content = re.sub(r"<[^>]+>", "", text_content)
+
             # Prepare output directory
             if output_dir:
                 base_output_dir = Path(output_dir)
