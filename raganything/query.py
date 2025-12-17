@@ -413,7 +413,8 @@ class QueryMixin:
         )
 
         # 4. Call VLM for question answering
-        result = await self._call_vlm_with_multimodal_content(messages)
+        # result = await self._call_vlm_with_multimodal_content(messages)
+        result = enhanced_prompt
 
         self.logger.info("VLM enhanced query completed")
         return result
