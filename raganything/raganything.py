@@ -197,6 +197,17 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         except Exception as e:
             logger.warning(f"Warning: Failed to finalize RAGAnything storages: {e}")
 
+    async def initialize(self):
+        """Async initialization of LightRAG and related components"""
+        # Ensure LLM functions are built
+        self._maybe_build_llm_functions()
+        
+        # Ensure LightRAG is initialized
+        await self._ensure_lightrag_initialized()
+        
+        # Initialize modal processors
+        self._initialize_processors()
+
     def _create_context_config(self) -> ContextConfig:
         """Create context configuration from RAGAnything config"""
         return ContextConfig(
@@ -388,12 +399,17 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                             "Initializing storages for pre-provided LightRAG instance"
                         )
                         await self.lightrag.initialize_storages()
-                        from lightrag.kg.shared_storage import (
-                            initialize_pipeline_status,
-                        )
-
-                        await initialize_pipeline_status()
                         self.logger.info("Storages initialized for pre-provided LightRAG instance.")
+                    
+                    # Ensure pipeline status is initialized (required for multimodal processing status tracking)
+                    try:
+                        from lightrag.kg.shared_storage import initialize_pipeline_status
+                        await initialize_pipeline_status()
+                        self.logger.info("Pipeline status initialized.")
+                    except ImportError:
+                        self.logger.warning("Could not import initialize_pipeline_status from lightrag.kg.shared_storage")
+                    except Exception as e:
+                        self.logger.warning(f"Failed to initialize pipeline status: {e}")
 
                     # Initialize parse cache if not already done
                     if self.parse_cache is None:
