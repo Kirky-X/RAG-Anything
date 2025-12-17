@@ -14,13 +14,13 @@ import cv2
 import json
 import time
 import shutil
-import logging
 import tempfile
 import asyncio
 import numpy as np
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Any, Callable
+from raganything.logger import logger
 from PIL import Image
 try:
     from skimage.metrics import structural_similarity as ssim
@@ -42,7 +42,7 @@ from raganything.parser.base_parser import Parser
 from raganything.parser.audio_parser import AudioParser
 from raganything.parser.vlm_parser import VlmParser
 
-logger = logging.getLogger(__name__)
+
 
 class VideoParser(Parser):
     """
@@ -477,43 +477,31 @@ class VideoParser(Parser):
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            loop = None
             
-        if loop.is_running():
-            # If we are already in an async environment (which we likely are given this is called from async context usually)
-            # We can't use run_until_complete on the running loop.
-            # But parse_video is sync... 
-            # If parse_video is called from a sync context, get_running_loop raises RuntimeError, so we make a new one.
-            # If parse_video is called from an async context (e.g. wrapper), it might be problematic if we block here.
-            # The current implementation assumes it can control the loop.
-            
-            # Since parse_video is a sync function, if it's called from async code, it blocks the loop!
-            # The proper way is to use a separate thread or nest_asyncio.
-            # For now, let's detect if we are in a loop and if so, use a new loop in a thread or fail?
-            # Actually, if we are in a running loop, we can't block it with run_until_complete.
-            # We must use nest_asyncio or assume the caller handles async.
-            # But wait, this is `parse_video` which is synchronous. 
-            
-            # Let's try to handle the common case:
-            # If there is a running loop, we probably shouldn't be here in sync code.
-            # But if we are, we can use `asyncio.run_coroutine_threadsafe` if we have another thread,
-            # or we just assume we are top level.
-            
-            # The simplest fix for "RuntimeError: This event loop is already running" is:
+        if loop and loop.is_running():
+            # If we are already in an async environment, use nest_asyncio to allow re-entrant loop
             import nest_asyncio
             nest_asyncio.apply(loop)
+            logger.info("Using existing loop with nest_asyncio for frame analysis")
             visual_segments = loop.run_until_complete(self._analyze_frames(
-                 frames=frames,
-                 progress_callback=lambda p: logger.info(f"Analysis progress: {p*100:.1f}%")
-             ))
-             # loop.close() # Do not close the loop if it was already running or if we plan to reuse it
+                frames=frames,
+                progress_callback=lambda p: logger.info(f"Analysis progress: {p*100:.1f}%")
+            ))
         else:
-             visual_segments = loop.run_until_complete(self._analyze_frames(
-                 frames=frames,
-                 progress_callback=lambda p: logger.info(f"Analysis progress: {p*100:.1f}%")
-             ))
-             loop.close()
+            # No running loop, create a new one
+            logger.info("Creating new loop for frame analysis")
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                visual_segments = loop.run_until_complete(self._analyze_frames(
+                    frames=frames,
+                    progress_callback=lambda p: logger.info(f"Analysis progress: {p*100:.1f}%")
+                ))
+            finally:
+                loop.close()
+        logger.info(f"Visual Analysis Complete. Found {len(visual_segments)} segments.")
+
         
         # 4. Alignment & Merging
         logger.info("Stage 4: Alignment & Merging")
