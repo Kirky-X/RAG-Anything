@@ -84,8 +84,8 @@ def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerC
             with open(config_toml_path, "rb") as f:
                 data = loader.load(f)  # type: ignore
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Failed to load TOML config from {config_toml_path}: {e}")
+            from raganything.logger import logger
+            logger.error(f"Failed to load TOML config from {config_toml_path}: {e}")
             raise
 
     server_section = data.get("server", {})
@@ -248,6 +248,7 @@ def uvicorn_run_params(server: ServerConfig) -> Dict[str, Any]:
         "host": server.host,
         "port": server.port,
         "workers": server.workers,
+        "reload": True,
     }
     if server.ssl.enabled and server.ssl.certfile and server.ssl.keyfile:
         params.update({
