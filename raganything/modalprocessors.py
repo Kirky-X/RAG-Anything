@@ -893,24 +893,35 @@ class ImageModalProcessor(BaseModalProcessor):
             # Call vision model with encoded image
             logger.info(f"Calling VLM for image analysis: {image_path}")
             try:
+                # Remove system_prompt as it's not supported by all LLM functions
+                # Some LLM functions (like those using use_llm_func_with_cache) don't accept system_prompt
+                # We prepend it to the prompt instead
+                full_prompt = f"{PROMPTS['IMAGE_ANALYSIS_SYSTEM']}\n\n{vision_prompt}"
+                
+                # Use a simpler invocation method if the wrapped function is a LangChainLLM
+                # to avoid potential issues with argument handling in async contexts
                 response = await asyncio.wait_for(
                     self.modal_caption_func(
-                        vision_prompt,
+                        full_prompt,
                         image_data=image_base64,
-                        system_prompt=PROMPTS["IMAGE_ANALYSIS_SYSTEM"],
                     ),
                     timeout=300,  # 5 minutes timeout
                 )
                 logger.info(f"VLM response received for image: {image_path}")
-            except asyncio.TimeoutError:
-                logger.error(f"VLM call timed out for image: {image_path}")
+            except (asyncio.TimeoutError, Exception) as call_err:
+                error_msg = str(call_err)
+                logger.error(f"VLM call failed or timed out for image {image_path}: {error_msg}")
+                # Check if it's a connection error
+                if "Connection" in error_msg or "connect" in error_msg or "ClientConnectorError" in error_msg:
+                     logger.warning("Connection error detected. Returning fallback response.")
+                
                 # Return a fallback response instead of raising to allow pipeline to continue
                 response = json.dumps({
-                    "detailed_description": f"Image analysis timed out for {image_path}",
+                    "detailed_description": f"Image analysis failed or timed out for {image_path}. Error: {error_msg}",
                     "entity_info": {
                         "entity_name": entity_name if entity_name else f"image_{compute_mdhash_id(str(modal_content))}",
                         "entity_type": "image",
-                        "summary": "Analysis timed out"
+                        "summary": "Analysis failed or timed out"
                     }
                 })
 
@@ -992,7 +1003,7 @@ class ImageModalProcessor(BaseModalProcessor):
                 "entity_type": "image",
                 "summary": f"Image content: {str(modal_content)[:100]}",
             }
-            return str(modal_content), fallback_entity
+            return str(modal_content), fallback_entity, [], []
 
     def _parse_response(
         self, response: str, entity_name: str = None
@@ -1137,9 +1148,11 @@ class TableModalProcessor(BaseModalProcessor):
                 )
 
             # Call LLM for table analysis
+            # Prepend system prompt to the main prompt
+            full_prompt = f"{PROMPTS['TABLE_ANALYSIS_SYSTEM']}\n\n{table_prompt}"
+            
             response = await self.modal_caption_func(
-                table_prompt,
-                system_prompt=PROMPTS["TABLE_ANALYSIS_SYSTEM"],
+                full_prompt
             )
 
             # Parse response (reuse existing logic)
@@ -1221,7 +1234,7 @@ class TableModalProcessor(BaseModalProcessor):
                 "entity_type": "table",
                 "summary": f"Table content: {str(modal_content)[:100]}",
             }
-            return str(modal_content), fallback_entity
+            return str(modal_content), fallback_entity, [], []
 
     def _parse_table_response(
         self, response: str, entity_name: str = None
@@ -1325,9 +1338,11 @@ class EquationModalProcessor(BaseModalProcessor):
                 )
 
             # Call LLM for equation analysis
+            # Prepend system prompt to the main prompt
+            full_prompt = f"{PROMPTS['EQUATION_ANALYSIS_SYSTEM']}\n\n{equation_prompt}"
+            
             response = await self.modal_caption_func(
-                equation_prompt,
-                system_prompt=PROMPTS["EQUATION_ANALYSIS_SYSTEM"],
+                full_prompt
             )
 
             # Parse response (reuse existing logic)
@@ -1405,7 +1420,7 @@ class EquationModalProcessor(BaseModalProcessor):
                 "entity_type": "equation",
                 "summary": f"Equation content: {str(modal_content)[:100]}",
             }
-            return str(modal_content), fallback_entity
+            return str(modal_content), fallback_entity, [], []
 
     def _parse_equation_response(
         self, response: str, entity_name: str = None
@@ -1497,11 +1512,14 @@ class GenericModalProcessor(BaseModalProcessor):
                 )
 
             # Call LLM for generic analysis
+            system_prompt = PROMPTS["GENERIC_ANALYSIS_SYSTEM"].format(
+                content_type=content_type
+            )
+            # Prepend system prompt to the main prompt
+            full_prompt = f"{system_prompt}\n\n{generic_prompt}"
+            
             response = await self.modal_caption_func(
-                generic_prompt,
-                system_prompt=PROMPTS["GENERIC_ANALYSIS_SYSTEM"].format(
-                    content_type=content_type
-                ),
+                full_prompt
             )
 
             # Parse response (reuse existing logic)
@@ -1567,7 +1585,7 @@ class GenericModalProcessor(BaseModalProcessor):
                 "entity_type": content_type,
                 "summary": f"{content_type} content: {str(modal_content)[:100]}",
             }
-            return str(modal_content), fallback_entity
+            return str(modal_content), fallback_entity, [], []
 
     def _parse_generic_response(
         self, response: str, entity_name: str = None, content_type: str = "content"
