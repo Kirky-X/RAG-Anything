@@ -58,6 +58,7 @@ video = [
     "opencv-python",
     "imagehash",
     "scikit-image",
+    "pydub",
 ]
 all = [
     "Pillow>=10.0.0",
