@@ -122,3 +122,6 @@ data_file = "/tmp/.coverage"
 
 [tool.coverage.report]
 skip_empty = true
+
+[tool.uv]
+index-url = "https://mirrors.aliyun.com/pypi/simple/"  
