@@ -930,9 +930,28 @@ class ProcessorMixin:
         total_items = len(multimodal_items)
         completed_count = 0
         progress_lock = asyncio.Lock()
+        start_time = time.time()
 
         # Log processing start
         self.logger.info(f"Starting to process {total_items} multimodal content items")
+        
+        # Update document status to show processing progress
+        try:
+            await self.lightrag.doc_status.upsert({
+                doc_id: {
+                    "status": DocStatus.HANDLING,
+                    "multimodal_processing_progress": {
+                        "total_items": total_items,
+                        "completed_items": 0,
+                        "progress_percentage": 0.0,
+                        "start_time": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                        "estimated_remaining_time": "calculating..."
+                    },
+                    "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                }
+            })
+        except Exception as e:
+            self.logger.warning(f"Failed to update processing progress status: {e}")
 
         # Stage 1: Concurrent generation of descriptions using correct processors for each type
         async def process_single_item_with_correct_processor(
@@ -986,9 +1005,33 @@ class ProcessorMixin:
                             or completed_count == total_items
                         ):
                             progress_percent = (completed_count / total_items) * 100
+                            elapsed_time = time.time() - start_time
+                            items_per_second = completed_count / max(elapsed_time, 0.001)
+                            remaining_items = total_items - completed_count
+                            estimated_remaining_time = remaining_items / max(items_per_second, 0.001)
+                            
                             self.logger.info(
                                 f"Multimodal chunk generation progress: {completed_count}/{total_items} ({progress_percent:.1f}%)"
                             )
+                            
+                            # Update document status with progress
+                            try:
+                                await self.lightrag.doc_status.upsert({
+                                    doc_id: {
+                                        "multimodal_processing_progress": {
+                                            "total_items": total_items,
+                                            "completed_items": completed_count,
+                                            "progress_percentage": progress_percent,
+                                            "start_time": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                            "elapsed_time_seconds": elapsed_time,
+                                            "items_per_second": items_per_second,
+                                            "estimated_remaining_time": f"{estimated_remaining_time:.1f}s"
+                                        },
+                                        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                    }
+                                })
+                            except Exception as e:
+                                self.logger.warning(f"Failed to update processing progress: {e}")
 
                     return {
                         "index": index,
@@ -1637,11 +1680,16 @@ class ProcessorMixin:
         try:
             current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
             if current_doc_status:
+                # Count total chunks after multimodal processing
+                chunks_count = await self._count_chunks_for_document(doc_id)
+                self.logger.info(f"Document {doc_id} has {chunks_count} total chunks after multimodal processing")
+                
                 await self.lightrag.doc_status.upsert(
                     {
                         doc_id: {
                             **current_doc_status,
                             "multimodal_processed": True,
+                            "chunks_count": chunks_count,
                             "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
                         }
                     }
@@ -1680,6 +1728,33 @@ class ProcessorMixin:
                 f"Error checking document processing status for {doc_id}: {e}"
             )
             return False
+
+    async def _count_chunks_for_document(self, doc_id: str) -> int:
+        """
+        Count the number of chunks for a specific document.
+        
+        Args:
+            doc_id: Document ID to count chunks for
+            
+        Returns:
+            int: Number of chunks for the document
+        """
+        try:
+            # Check if LightRAG has chunks_vdb with filtering capability
+            if hasattr(self.lightrag, 'chunks_vdb') and hasattr(self.lightrag.chunks_vdb, 'get_all'):
+                # Get all chunks and filter by doc_id
+                all_chunks = await self.lightrag.chunks_vdb.get_all()
+                doc_chunks = [
+                    chunk_id for chunk_id, chunk_data in all_chunks.items() 
+                    if chunk_data.get('full_doc_id') == doc_id
+                ]
+                return len(doc_chunks)
+            else:
+                self.logger.warning("chunks_vdb not available or doesn't support get_all")
+                return 0
+        except Exception as e:
+            self.logger.error(f"Error counting chunks for document {doc_id}: {e}")
+            return 0
 
     async def get_document_processing_status(self, doc_id: str) -> Dict[str, Any]:
         """
@@ -2312,15 +2387,20 @@ class ProcessorMixin:
                 )
             self.logger.info(f"Step 2: Text content insertion complete for doc_id: {doc_id}")
 
-            # Update status to PROCESSED for text part
+            # Update status to PROCESSED for text part and count chunks
             try:
                 current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
                 if current_doc_status:
+                    # Count chunks for this document
+                    chunks_count = await self._count_chunks_for_document(doc_id)
+                    self.logger.info(f"Document {doc_id} has {chunks_count} chunks after text insertion")
+                    
                     await self.lightrag.doc_status.upsert(
                         {
                             doc_id: {
                                 **current_doc_status,
                                 "status": DocStatus.PROCESSED,
+                                "chunks_count": chunks_count,
                                 "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
                             }
                         }
