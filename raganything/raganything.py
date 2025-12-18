@@ -251,11 +251,15 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         self.modal_processors = {}
 
         if self.config.enable_image_processing:
-            self.modal_processors["image"] = ImageModalProcessor(
-                lightrag=self.lightrag,
-                modal_caption_func=self.vision_model_func or self.llm_model_func,
-                context_extractor=self.context_extractor,
-            )
+            if self.vision_model_func is None:
+                self.logger.error("Vision model function is not available. Image processing will be disabled.")
+                # Don't create image processor if vision model is not available
+            else:
+                self.modal_processors["image"] = ImageModalProcessor(
+                    lightrag=self.lightrag,
+                    modal_caption_func=self.vision_model_func,
+                    context_extractor=self.context_extractor,
+                )
 
         if self.config.enable_table_processing:
             self.modal_processors["table"] = TableModalProcessor(
@@ -331,9 +335,9 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     f"Vision function built via LangChain provider: {vcfg.provider}"
                 )
             except Exception as e:
-                self.logger.warning(f"Failed to build LangChain VLM: {e}")
-            except Exception as e:
-                self.logger.warning(f"Failed to build LangChain Vision: {e}")
+                self.logger.error(f"Failed to build LangChain Vision model: {e}")
+                # Don't proceed if vision model fails to build - this prevents fallback to LLM
+                raise RuntimeError(f"Vision model configuration failed: {e}")
 
         # LLM text function fallback to Ollama when OpenAI not configured
         if self.llm_model_func is None:
@@ -1186,16 +1190,27 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         if not self.lightrag:
             raise RuntimeError("LightRAG not initialized")
 
-        # Attempt to remove from status storage
-        if hasattr(self.lightrag, "doc_status_storage"):
-            storage = self.lightrag.doc_status_storage
-            if hasattr(storage, "delete"):
-                if asyncio.iscoroutinefunction(storage.delete):
-                    await storage.delete([doc_id])
-                else:
-                    storage.delete([doc_id])
-            elif hasattr(storage, "pop"):  # Dictionary-like
-                storage.pop(doc_id, None)
+        # Ensure pipeline status is initialized before deletion
+        try:
+            from lightrag.kg.shared_storage import initialize_pipeline_status
+            await initialize_pipeline_status()
+            self.logger.debug("Pipeline status initialized for deletion")
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize pipeline status: {e}")
+
+        # Use LightRAG's comprehensive document deletion method
+        try:
+            result = await self.lightrag.adelete_by_doc_id(doc_id)
+            if result.status == "success":
+                self.logger.info(f"Successfully deleted document {doc_id}: {result.message}")
+            elif result.status == "not_found":
+                self.logger.warning(f"Document {doc_id} not found for deletion")
+            else:
+                self.logger.error(f"Failed to delete document {doc_id}: {result.message}")
+            return result
+        except Exception as e:
+            self.logger.error(f"Error deleting document {doc_id}: {e}")
+            raise
 
     async def cleanup_storage(self):
         """Cleanup temporary files"""

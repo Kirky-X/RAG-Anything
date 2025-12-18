@@ -32,7 +32,7 @@ class SSLConfig:
 @dataclass
 class ServerConfig:
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = 8001
     workers: int = 1
     cors_origins: List[str] = field(default_factory=list)
     webui_title: str = ""
