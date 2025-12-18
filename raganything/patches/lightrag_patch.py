@@ -253,9 +253,39 @@ def create_prefixed_exception(exc: Exception, prefix: str) -> Exception:
         new_exc.args = (f"{prefix}: {str(exc)}",)
         return new_exc
 
-def fix_tuple_delimiter_corruption(content: str) -> str:
+def fix_tuple_delimiter_corruption(record: str, delimiter_core: str, tuple_delimiter: str) -> str:
     """Fix tuple delimiter corruption (Stub)"""
-    return content
+    return record
+
+def fix_completion_delimiter(result: str, completion_delimiter: str = "<|COMPLETE|>") -> str:
+    """Fix missing completion delimiter in LLM output
+    
+    Args:
+        result: LLM output string
+        completion_delimiter: Expected completion delimiter
+        
+    Returns:
+        Fixed result with completion delimiter added if missing
+    """
+    if not result:
+        return result
+        
+    # Check if completion delimiter is already present
+    if completion_delimiter in result:
+        return result
+        
+    # If result ends with entities or relations, add the delimiter
+    stripped_result = result.strip()
+    if stripped_result and (stripped_result.endswith("entity") or stripped_result.endswith("relation")):
+        logger.warning(f"Adding missing completion delimiter to LLM output")
+        return result + "\n" + completion_delimiter
+    
+    # If result is not empty but doesn't end properly, add delimiter
+    if stripped_result:
+        logger.warning(f"Adding completion delimiter to improperly formatted LLM output")
+        return result.rstrip() + "\n" + completion_delimiter
+    
+    return result
 
 def convert_to_user_format(content: str) -> str:
     """Convert to user format (Stub)"""
