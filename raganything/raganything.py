@@ -478,14 +478,15 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     self.logger.info(
                         "Pre-provided LightRAG instance verification complete."
                     )
-                    return {"success": True}
+                    # Continue with the rest of initialization instead of returning early
 
                 except Exception as e:
                     error_msg = (
                         f"Failed to initialize pre-provided LightRAG instance: {str(e)}"
                     )
                     self.logger.error(error_msg, exc_info=True)
-                    return {"success": False, "error": error_msg}
+                    # Don't return error, let the exception propagate
+                    raise RuntimeError(error_msg)
 
             self.logger.info("No pre-provided LightRAG instance. Building new one...")
             # Try build llm/vision functions from config if missing
@@ -556,6 +557,12 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
             await self.lightrag.initialize_storages()
             self.logger.info("LightRAG storages initialized.")
 
+            # Initialize pipeline status
+            self.logger.info("Initializing pipeline status...")
+            from lightrag.kg.shared_storage import initialize_pipeline_status
+            await initialize_pipeline_status()
+            self.logger.info("Pipeline status initialized.")
+
             # Initialize parse cache
             self.logger.info("Initializing parse cache...")
             self.parse_cache = self.lightrag.key_string_value_json_storage_cls(
@@ -573,11 +580,13 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
             self.logger.info("Modal processors initialized.")
 
             self.logger.info("_ensure_lightrag_initialized completed successfully.")
-            return {"success": True}
+            # Don't return success status, just complete
+            return
         except Exception as e:
             error_msg = f"An unexpected error occurred in _ensure_lightrag_initialized: {str(e)}"
             self.logger.error(error_msg, exc_info=True)
-            return {"success": False, "error": error_msg}
+            # Don't return error, let the exception propagate
+            raise RuntimeError(error_msg)
 
             from lightrag.kg.shared_storage import initialize_pipeline_status
 

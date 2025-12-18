@@ -154,7 +154,7 @@ force_llm_summary_on_merge = 6
 max_token_summary = 500
 
 [insert]
-max_parallel_insert = 2
+max_parallel_insert = 8
 chunk_size = 1200
 chunk_overlap_size = 100
 

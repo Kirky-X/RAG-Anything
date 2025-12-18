@@ -146,6 +146,9 @@ class ContextExtractor:
         Returns:
             Context text from surrounding pages
         """
+        if current_item_info is None:
+            return ""
+            
         current_page = current_item_info.get("page_idx", 0)
         window_size = self.config.context_window
 
@@ -186,6 +189,9 @@ class ContextExtractor:
         Returns:
             Context text from surrounding chunks
         """
+        if current_item_info is None:
+            return ""
+            
         current_index = current_item_info.get("index", 0)
         window_size = self.config.context_window
 
@@ -292,6 +298,9 @@ class ContextExtractor:
         Returns:
             Context text from surrounding chunks
         """
+        if current_item_info is None:
+            return ""
+            
         current_index = current_item_info.get("index", 0)
         window_size = self.config.context_window
 

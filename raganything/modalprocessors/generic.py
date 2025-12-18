@@ -47,6 +47,8 @@ class GenericModalProcessor(BaseModalProcessor):
             context = ""
             if item_info:
                 context = self._get_context_for_item(item_info)
+            else:
+                logger.warning("item_info is None, skipping context extraction")
 
             # Build generic analysis prompt with context
             if context:

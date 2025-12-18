@@ -6,7 +6,8 @@ Contains configuration dataclasses with environment variable support and optiona
 
 import os
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
+
 from raganything.utils import get_env_value
 
 
@@ -40,6 +41,8 @@ class MultimodalConfig:
     enable_image_processing: bool
     enable_table_processing: bool
     enable_equation_processing: bool
+    enable_audio_processing: bool
+    enable_video_processing: bool
 
 
 @dataclass
@@ -111,6 +114,8 @@ class RAGAnythingConfig:
             enable_image_processing=get_env_value("ENABLE_IMAGE_PROCESSING", True, bool),
             enable_table_processing=get_env_value("ENABLE_TABLE_PROCESSING", True, bool),
             enable_equation_processing=get_env_value("ENABLE_EQUATION_PROCESSING", True, bool),
+            enable_audio_processing=get_env_value("ENABLE_AUDIO_PROCESSING", True, bool),
+            enable_video_processing=get_env_value("ENABLE_VIDEO_PROCESSING", True, bool),
         )
     )
     batch: BatchConfig = field(

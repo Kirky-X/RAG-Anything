@@ -248,7 +248,7 @@ def uvicorn_run_params(server: ServerConfig) -> Dict[str, Any]:
         "host": server.host,
         "port": server.port,
         "workers": server.workers,
-        "reload": True,
+        "reload": False,  # Disable reload to avoid port conflicts
     }
     if server.ssl.enabled and server.ssl.certfile and server.ssl.keyfile:
         params.update({

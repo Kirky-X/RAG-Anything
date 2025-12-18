@@ -155,7 +155,7 @@ class LazyLangChainEmbeddingWrapper:
             self._client = self.provider_cls(**self.init_kwargs)
         return self._client
 
-    async def __call__(self, texts: List[str]) -> List[List[float]]:
+    async def __call__(self, texts: List[str], **kwargs) -> List[List[float]]:
         # Run sync method in a thread to avoid blocking event loop
         import asyncio
         from raganything.logger import logger
@@ -196,7 +196,7 @@ class LocalEmbeddingWrapper:
     def __init__(self, embedding_dim: int):
         self.embedding_dim = embedding_dim
 
-    async def __call__(self, texts: List[str]) -> Any:
+    async def __call__(self, texts: List[str], **kwargs) -> Any:
         import sys
         # Local mock implementation
         print(f"[LocalEmbeddingWrapper] Called with {len(texts)} texts (ASYNC)", file=sys.stderr, flush=True)

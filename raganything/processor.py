@@ -838,6 +838,7 @@ class ProcessorMixin:
                         {
                             doc_id: {
                                 **current_doc_status,  # Keep existing fields
+                                "status": current_doc_status.get("status", DocStatus.PROCESSED),
                                 "chunks_list": updated_chunks_list,  # Integrated chunks list
                                 "chunks_count": updated_chunks_count,  # Updated total count
                                 "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
@@ -1016,20 +1017,24 @@ class ProcessorMixin:
                             
                             # Update document status with progress
                             try:
-                                await self.lightrag.doc_status.upsert({
-                                    doc_id: {
-                                        "multimodal_processing_progress": {
-                                            "total_items": total_items,
-                                            "completed_items": completed_count,
-                                            "progress_percentage": progress_percent,
-                                            "start_time": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                                            "elapsed_time_seconds": elapsed_time,
-                                            "items_per_second": items_per_second,
-                                            "estimated_remaining_time": f"{estimated_remaining_time:.1f}s"
-                                        },
-                                        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                                    }
-                                })
+                                current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
+                                if current_doc_status:
+                                    await self.lightrag.doc_status.upsert({
+                                        doc_id: {
+                                            **current_doc_status,
+                                            "status": current_doc_status.get("status", DocStatus.HANDLING),
+                                            "multimodal_processing_progress": {
+                                                "total_items": total_items,
+                                                "completed_items": completed_count,
+                                                "progress_percentage": progress_percent,
+                                                "start_time": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                                "elapsed_time_seconds": elapsed_time,
+                                                "items_per_second": items_per_second,
+                                                "estimated_remaining_time": f"{estimated_remaining_time:.1f}s"
+                                            },
+                                            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                        }
+                                    })
                             except Exception as e:
                                 self.logger.warning(f"Failed to update processing progress: {e}")
 
@@ -1655,6 +1660,7 @@ class ProcessorMixin:
                     {
                         doc_id: {
                             **current_doc_status,  # Keep existing fields
+                            "status": current_doc_status.get("status", DocStatus.PROCESSED),
                             "chunks_list": updated_chunks_list,  # Integrated chunks list
                             "chunks_count": updated_chunks_count,  # Updated total count
                             "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
@@ -1688,6 +1694,7 @@ class ProcessorMixin:
                     {
                         doc_id: {
                             **current_doc_status,
+                            "status": current_doc_status.get("status", DocStatus.PROCESSED),
                             "multimodal_processed": True,
                             "chunks_count": chunks_count,
                             "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
@@ -1739,21 +1746,143 @@ class ProcessorMixin:
         Returns:
             int: Number of chunks for the document
         """
+        self.logger.info(f"Starting chunk counting for document: {doc_id}")
+        
         try:
-            # Check if LightRAG has chunks_vdb with filtering capability
-            if hasattr(self.lightrag, 'chunks_vdb') and hasattr(self.lightrag.chunks_vdb, 'get_all'):
-                # Get all chunks and filter by doc_id
-                all_chunks = await self.lightrag.chunks_vdb.get_all()
-                doc_chunks = [
-                    chunk_id for chunk_id, chunk_data in all_chunks.items() 
-                    if chunk_data.get('full_doc_id') == doc_id
-                ]
-                return len(doc_chunks)
-            else:
-                self.logger.warning("chunks_vdb not available or doesn't support get_all")
+            # Check if chunks_vdb exists
+            if not hasattr(self.lightrag, 'chunks_vdb'):
+                self.logger.warning("chunks_vdb not available on LightRAG instance")
                 return 0
+            
+            chunks_vdb = self.lightrag.chunks_vdb
+            self.logger.info(f"chunks_vdb type: {type(chunks_vdb)}")
+            
+            # Method 1: Try to use get_all if available
+            if hasattr(chunks_vdb, 'get_all'):
+                try:
+                    self.logger.info("Attempting Method 1: Using get_all()")
+                    all_chunks = await chunks_vdb.get_all()
+                    self.logger.info(f"Retrieved {len(all_chunks)} total chunks from storage")
+                    
+                    doc_chunks = []
+                    for chunk_id, chunk_data in all_chunks.items():
+                        if isinstance(chunk_data, dict) and chunk_data.get('full_doc_id') == doc_id:
+                            doc_chunks.append(chunk_id)
+                    
+                    chunk_count = len(doc_chunks)
+                    self.logger.info(f"Method 1 - Found {chunk_count} chunks for document {doc_id}")
+                    if chunk_count > 0:
+                        return chunk_count
+                except Exception as e:
+                    self.logger.warning(f"Method 1 failed: {e}")
+            
+            # Method 2: Try to access internal data structure directly (similar to fix_doc_status.py)
+            if hasattr(chunks_vdb, '_data'):
+                try:
+                    self.logger.info("Attempting Method 2: Accessing _data attribute")
+                    chunks_data = dict(chunks_vdb._data)
+                    self.logger.info(f"Retrieved {len(chunks_data)} total chunks from _data")
+                    
+                    doc_chunks = []
+                    for chunk_id, chunk_data in chunks_data.items():
+                        if isinstance(chunk_data, dict) and chunk_data.get('full_doc_id') == doc_id:
+                            doc_chunks.append(chunk_id)
+                    
+                    chunk_count = len(doc_chunks)
+                    self.logger.info(f"Method 2 - Found {chunk_count} chunks for document {doc_id}")
+                    if chunk_count > 0:
+                        return chunk_count
+                except Exception as e:
+                    self.logger.warning(f"Method 2 failed: {e}")
+            
+            # Method 3: Try to use filter or search methods if available
+            if hasattr(chunks_vdb, 'filter'):
+                try:
+                    self.logger.info("Attempting Method 3: Using filter()")
+                    filtered_chunks = await chunks_vdb.filter({'full_doc_id': doc_id})
+                    chunk_count = len(filtered_chunks)
+                    self.logger.info(f"Method 3 - Found {chunk_count} chunks for document {doc_id}")
+                    if chunk_count > 0:
+                        return chunk_count
+                except Exception as e:
+                    self.logger.warning(f"Method 3 failed: {e}")
+            
+            # Method 4: Check available attributes on chunks_vdb
+            self.logger.info(f"Available attributes on chunks_vdb: {[attr for attr in dir(chunks_vdb) if not attr.startswith('_')]}")
+            
+            # Method 5: Try using query method for NanoVectorDBStorage
+            if hasattr(chunks_vdb, 'query'):
+                try:
+                    self.logger.info("Attempting Method 5: Using query() for NanoVectorDBStorage")
+                    # Try to query chunks by document ID using different approaches
+                    
+                    # First, try to get all chunks by querying with document ID
+                    try:
+                        # Query with document ID to find related chunks
+                        query_result = await chunks_vdb.query(
+                            query=doc_id,  # Use document ID as query
+                            top_k=1000  # High limit to get as many as possible
+                        )
+                        
+                        if query_result and isinstance(query_result, list):
+                            chunk_count = len(query_result)
+                            self.logger.info(f"Method 5a - Found {chunk_count} chunks for document {doc_id}")
+                            if chunk_count > 0:
+                                return chunk_count
+                    except Exception as query_e:
+                        self.logger.warning(f"Method 5a query failed: {query_e}")
+                    
+                    # Try alternative query approach
+                    try:
+                        # Some vector DBs store metadata differently
+                        all_chunks_query = await chunks_vdb.query(query=doc_id, top_k=1000)
+                        if all_chunks_query and isinstance(all_chunks_query, list):
+                            chunk_count = len(all_chunks_query)
+                            self.logger.info(f"Method 5b - Found {chunk_count} chunks for document {doc_id}")
+                            if chunk_count > 0:
+                                return chunk_count
+                    except Exception as alt_query_e:
+                        self.logger.warning(f"Method 5b alternative query failed: {alt_query_e}")
+                        
+                except Exception as e:
+                    self.logger.warning(f"Method 5 failed: {e}")
+            
+            # Method 6: Try using get_by_id with pattern matching for chunk IDs
+            if hasattr(chunks_vdb, 'get_by_id'):
+                try:
+                    self.logger.info("Attempting Method 6: Using get_by_id() with pattern matching")
+                    # Try to find chunks by pattern - this is experimental
+                    chunk_pattern = f"{doc_id}-chunk-"
+                    
+                    # Since we can't get all keys, try some common chunk ID patterns
+                    test_chunk_ids = [f"{doc_id}-chunk-{i}" for i in range(10)]  # Test first 10 chunks
+                    matching_chunks = []
+                    
+                    for test_id in test_chunk_ids:
+                        try:
+                            chunk_data = await chunks_vdb.get_by_id(test_id)
+                            if chunk_data:
+                                # Verify this chunk belongs to our document
+                                if isinstance(chunk_data, dict) and chunk_data.get('full_doc_id') == doc_id:
+                                    matching_chunks.append(test_id)
+                        except Exception:
+                            # Chunk doesn't exist, continue
+                            continue
+                    
+                    if matching_chunks:
+                        chunk_count = len(matching_chunks)
+                        self.logger.info(f"Method 6 - Found {chunk_count} chunks with pattern for document {doc_id}")
+                        return chunk_count
+                        
+                except Exception as e:
+                    self.logger.warning(f"Method 6 failed: {e}")
+            
+            self.logger.warning(f"No suitable method found to count chunks for document {doc_id}")
+            return 0
         except Exception as e:
             self.logger.error(f"Error counting chunks for document {doc_id}: {e}")
+            import traceback
+            self.logger.error(f"Full traceback: {traceback.format_exc()}")
             return 0
 
     async def get_document_processing_status(self, doc_id: str) -> Dict[str, Any]:
@@ -2377,37 +2506,68 @@ class ProcessorMixin:
             # Step 2: Insert pure text content with all parameters
             if text_content.strip():
                 file_name = os.path.basename(file_path)
-                await insert_text_content(
+                track_id = await insert_text_content(
                     self.lightrag,
                     input=text_content,
                     file_paths=file_name,
                     split_by_character=split_by_character,
                     split_by_character_only=split_by_character_only,
                     ids=doc_id,
+                    wait_for_processing=True,  # Wait for processing to complete
+                    max_wait_time=60,  # Maximum wait time in seconds
                 )
-            self.logger.info(f"Step 2: Text content insertion complete for doc_id: {doc_id}")
+                self.logger.info(f"Step 2: Text content insertion complete for doc_id: {doc_id} with track_id: {track_id}")
+            else:
+                self.logger.info(f"Step 2: No text content to insert for doc_id: {doc_id}")
 
-            # Update status to PROCESSED for text part and count chunks
+            # Ensure status field exists immediately after text insertion
             try:
                 current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
                 if current_doc_status:
-                    # Count chunks for this document
-                    chunks_count = await self._count_chunks_for_document(doc_id)
-                    self.logger.info(f"Document {doc_id} has {chunks_count} chunks after text insertion")
-                    
-                    await self.lightrag.doc_status.upsert(
-                        {
-                            doc_id: {
-                                **current_doc_status,
-                                "status": DocStatus.PROCESSED,
-                                "chunks_count": chunks_count,
-                                "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                            }
+                    # Check if status field is missing and create it if necessary
+                    if "status" not in current_doc_status:
+                        self.logger.info(f"Creating missing status field for document {doc_id}")
+                        
+                        # Count chunks after processing is complete
+                        chunks_count = await self._count_chunks_for_document(doc_id)
+                        self.logger.info(f"Found {chunks_count} chunks for document {doc_id} after processing")
+                        
+                        # Create complete status entry with all required fields
+                        updated_status = {
+                            **current_doc_status,
+                            "status": DocStatus.PROCESSED,
+                            "chunks_count": chunks_count,
+                            "file_path": os.path.basename(file_path),
+                            "multimodal_processed": False,
+                            "created_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
                         }
-                    )
-                    await self.lightrag.doc_status.index_done_callback()
+                        
+                        await self.lightrag.doc_status.upsert({doc_id: updated_status})
+                        await self.lightrag.doc_status.index_done_callback()
+                        self.logger.info(f"Created status field for document {doc_id} with {chunks_count} chunks")
+                    else:
+                        # Status exists, just update chunk count and timestamp
+                        chunks_count = 0
+                        for retry in range(3):
+                            chunks_count = await self._count_chunks_for_document(doc_id)
+                            self.logger.info(f"Update attempt {retry + 1}: Found {chunks_count} chunks for document {doc_id}")
+                            if chunks_count > 0:
+                                break
+                            if retry < 2:  # Don't sleep on the last attempt
+                                await asyncio.sleep(1.0)  # Wait longer between retries
+                        updated_status = {
+                            **current_doc_status,
+                            "chunks_count": chunks_count,
+                            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                        }
+                        await self.lightrag.doc_status.upsert({doc_id: updated_status})
+                        await self.lightrag.doc_status.index_done_callback()
+                        self.logger.info(f"Updated existing status for document {doc_id} with {chunks_count} chunks")
             except Exception as e:
-                self.logger.error(f"Error updating doc_status after text insert: {e}")
+                self.logger.error(f"Error ensuring status field exists after text insert: {e}")
+                import traceback
+                traceback.print_exc()
 
             self.logger.info(f"Step 3: Processing multimodal content for doc_id: {doc_id}")
             # Step 3: Process multimodal content (using specialized processors)
@@ -2424,6 +2584,8 @@ class ProcessorMixin:
 
         except Exception as e:
             self.logger.error(f"Error processing content list for {doc_id}: {e}")
+            import traceback
+            self.logger.error(f"Full traceback: {traceback.format_exc()}")
             # Mark as FAILED
             try:
                 current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
@@ -2441,6 +2603,7 @@ class ProcessorMixin:
                     await self.lightrag.doc_status.index_done_callback()
             except Exception as update_err:
                 self.logger.error(f"Failed to update doc_status to FAILED: {update_err}")
+                self.logger.error(f"Update error traceback: {traceback.format_exc()}")
             raise e
 
         self.logger.info(f"Content list insertion complete for: {file_path}")

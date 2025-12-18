@@ -154,6 +154,12 @@ class ImageModalProcessor(BaseModalProcessor):
             except (asyncio.TimeoutError, Exception) as call_err:
                 error_msg = str(call_err)
                 logger.error(f"VLM call failed or timed out for image {image_path}: {error_msg}")
+                
+                # Handle OpenAI APIConnectionError specifically
+                if "APIConnectionError" in error_msg and "missing 1 required keyword-only argument: 'request'" in error_msg:
+                    logger.warning("OpenAI APIConnectionError compatibility issue detected. Using fallback response.")
+                    error_msg = "OpenAI API connection error - compatibility issue with image processing"
+                
                 # Check if it's a connection error
                 if "Connection" in error_msg or "connect" in error_msg or "ClientConnectorError" in error_msg:
                      logger.warning("Connection error detected. Returning fallback response.")

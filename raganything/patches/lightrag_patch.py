@@ -139,11 +139,17 @@ def truncate_list_by_token_size(list_data: List[Any], key: Callable[[Any], str],
     """Truncate a list of data by token size (Stub)"""
     return list_data
 
-async def handle_cache(func, args, kwargs):
-    """Handle cache (Stub)"""
-    if asyncio.iscoroutinefunction(func):
-        return await func(*args, **kwargs)
-    return func(*args, **kwargs)
+async def handle_cache(
+    hashing_kv,
+    args_hash,
+    prompt,
+    mode="default",
+    cache_type="unknown",
+) -> tuple[str, int] | None:
+    """Generic cache handling function with flattened cache keys (Stub)"""
+    # For now, return None to indicate cache miss
+    # This allows the system to work while we implement proper caching later
+    return None
 
 async def save_to_cache(key, value):
     """Save to cache (Stub)"""
@@ -247,11 +253,22 @@ def create_prefixed_exception(exc: Exception, prefix: str) -> Exception:
     try:
         # Try to create with message first
         return type(exc)(f"{prefix}: {str(exc)}")
-    except TypeError:
-        # If that fails, try to create with no arguments and set args manually
-        new_exc = type(exc)()
-        new_exc.args = (f"{prefix}: {str(exc)}",)
-        return new_exc
+    except TypeError as te:
+        # Handle specific cases like APIConnectionError that require special arguments
+        error_msg = f"{prefix}: {str(exc)}"
+        try:
+            # For APIConnectionError and similar exceptions that require specific args
+            if "APIConnectionError" in str(type(exc)):
+                # Create a simple RuntimeError with the prefixed message
+                return RuntimeError(error_msg)
+            else:
+                # Try creating with no arguments and set args manually
+                new_exc = type(exc)()
+                new_exc.args = (error_msg,)
+                return new_exc
+        except Exception:
+            # Last resort: create a RuntimeError with the message
+            return RuntimeError(error_msg)
 
 def fix_tuple_delimiter_corruption(record: str, delimiter_core: str, tuple_delimiter: str) -> str:
     """Fix tuple delimiter corruption (Stub)"""

@@ -175,6 +175,8 @@ async def insert_text_content(
     split_by_character_only: bool = False,
     ids: str | list[str] | None = None,
     file_paths: str | list[str] | None = None,
+    wait_for_processing: bool = True,
+    max_wait_time: int = 60,
 ):
     """
     Insert pure text content into LightRAG
@@ -188,14 +190,25 @@ async def insert_text_content(
         split_by_character is None, this parameter is ignored.
         ids: single string of the document ID or list of unique document IDs, if not provided, MD5 hash IDs will be generated
         file_paths: single string of the file path or list of file paths, used for citation
+        wait_for_processing: if True, wait for document processing to complete before returning
+        max_wait_time: maximum time to wait for processing completion (in seconds)
     """
     logger.info("Starting text content insertion into LightRAG...")
 
     # Use LightRAG's insert method with all parameters
     import asyncio
-    insert_func = getattr(lightrag, "insert", None)
+    import time
+    from raganything.base import DocStatus
+    
+    insert_func = getattr(lightrag, "ainsert", None)
     if insert_func is None:
-        return
+        return None
+    
+    # Determine document IDs for tracking
+    doc_ids = ids if ids else []
+    if isinstance(doc_ids, str):
+        doc_ids = [doc_ids]
+    
     kwargs = {
         "input": input,
         "file_paths": file_paths,
@@ -203,13 +216,56 @@ async def insert_text_content(
         "split_by_character_only": split_by_character_only,
         "ids": ids,
     }
+    
     if asyncio.iscoroutinefunction(insert_func):
-        await insert_func(**kwargs)
+        track_id = await insert_func(**kwargs)
     else:
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, lambda: insert_func(**kwargs))
-
+        track_id = await loop.run_in_executor(None, lambda: insert_func(**kwargs))
+    
+    logger.info(f"Text content insertion initiated with track_id: {track_id}")
+    
+    if wait_for_processing and doc_ids:
+        logger.info(f"Waiting for document processing to complete for IDs: {doc_ids}")
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait_time:
+            # Check if all documents are processed
+            all_processed = True
+            for doc_id in doc_ids:
+                try:
+                    doc_status = await lightrag.doc_status.get_by_id(doc_id)
+                    if not doc_status:
+                        all_processed = False
+                        break
+                    
+                    status = doc_status.get("status", DocStatus.PENDING)
+                    if status in [DocStatus.PENDING, DocStatus.PROCESSING]:
+                        all_processed = False
+                        logger.info(f"Document {doc_id} status: {status}")
+                        break
+                    elif status == DocStatus.FAILED:
+                        logger.error(f"Document {doc_id} processing failed")
+                        # Don't break here, check other documents
+                    elif status == DocStatus.PROCESSED:
+                        logger.info(f"Document {doc_id} processing completed")
+                        
+                except Exception as e:
+                    logger.warning(f"Error checking status for document {doc_id}: {e}")
+                    all_processed = False
+                    break
+            
+            if all_processed:
+                logger.info("All documents processed successfully")
+                break
+                
+            # Wait before checking again
+            await asyncio.sleep(2.0)
+        else:
+            logger.warning(f"Processing wait timeout after {max_wait_time} seconds")
+    
     logger.info("Text content insertion complete")
+    return track_id
 
 
 async def insert_text_content_with_multimodal_content(
@@ -241,7 +297,7 @@ async def insert_text_content_with_multimodal_content(
 
     # Use LightRAG's insert method with all parameters
     try:
-        await lightrag.insert(
+        await lightrag.ainsert(
             input=input,
             # multimodal_content=multimodal_content, # LightRAG's insert method might not support this yet, need to verify signature
             file_paths=file_paths,

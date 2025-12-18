@@ -111,17 +111,55 @@ class QueryMixin:
                 - vlm_enhanced: bool, default True when vision_model_func is available.
                   If True, will parse image paths in retrieved context and replace them
                   with base64 encoded images for VLM processing.
+                - wait_for_processing: bool, default False. If True, will wait for documents to be processed.
+                - max_wait_time: int, default 30. Maximum seconds to wait for processing.
 
         Returns:
             str: Query result
         """
+        # Handle bypass mode
         if (mode or "").lower() == "bypass":
             return await self.llm_model_func(query, system_prompt=system_prompt)
+        
+        # Get wait parameters
+        wait_for_processing = kwargs.pop("wait_for_processing", False)
+        max_wait_time = kwargs.pop("max_wait_time", 30)
+        
         await self._ensure_lightrag_initialized()
         if self.lightrag is None:
             raise ValueError(
                 "No LightRAG instance available. Please process documents first or provide a pre-initialized LightRAG instance."
             )
+        
+        # Check if we should wait for documents to be processed
+        if wait_for_processing and hasattr(self, 'get_document_processing_status'):
+            import asyncio
+            start_time = asyncio.get_event_loop().time()
+            
+            while (asyncio.get_event_loop().time() - start_time) < max_wait_time:
+                # Get all documents that are not fully processed
+                unprocessed_docs = []
+                try:
+                    # This is a simplified check - in production you'd want to check specific docs
+                    all_docs = await self.lightrag.doc_status.filter()
+                    for doc in all_docs:
+                        doc_id = doc.get("id") or doc.get("doc_id")
+                        if doc_id:
+                            status = await self.get_document_processing_status(doc_id)
+                            if status.get("exists") and not status.get("fully_processed"):
+                                unprocessed_docs.append(doc_id)
+                except Exception as e:
+                    self.logger.warning(f"Error checking document status: {e}")
+                    break
+                
+                if not unprocessed_docs:
+                    self.logger.info("All documents are fully processed")
+                    break
+                
+                self.logger.info(f"Waiting for documents to be processed: {unprocessed_docs}")
+                await asyncio.sleep(2)  # Wait 2 seconds before checking again
+            else:
+                self.logger.warning(f"Timeout waiting for document processing after {max_wait_time} seconds")
 
         # Check if VLM enhanced query should be used
         vlm_enhanced = kwargs.pop("vlm_enhanced", None)

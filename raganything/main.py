@@ -3,20 +3,57 @@
 RAGAnything CLI Entry Point
 """
 
-import os
 import argparse
 import asyncio
-from pathlib import Path
-
+import os
+import re
 # Add project root directory to Python path
 import sys
+from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from lightrag.llm.openai import openai_complete_if_cache, openai_embed
-from lightrag.utils import EmbeddingFunc, set_verbose_debug
+# Use Ollama for LLM instead of OpenAI
+from lightrag.llm.ollama import _ollama_model_if_cache as ollama_complete_if_cache
+from lightrag.utils import set_verbose_debug
+import lightrag.operate
+
+# Monkey patch handle_cache in lightrag.operate to fix argument error
+if hasattr(lightrag.operate, 'handle_cache'):
+    original_handle_cache = lightrag.operate.handle_cache
+
+
+    async def patched_handle_cache(hashing_kv, args_hash, prompt, mode="default", cache_type="unknown"):
+        # Call the original function with the correct signature
+        return await original_handle_cache(hashing_kv, args_hash, prompt, mode, cache_type)
+
+
+    lightrag.operate.handle_cache = patched_handle_cache
+
+# Monkey patch fix_tuple_delimiter_corruption in lightrag.operate
+if hasattr(lightrag.operate, 'fix_tuple_delimiter_corruption'):
+    def patched_fix_tuple_delimiter_corruption(record, delimiter_core, tuple_delimiter):
+        if not record or not delimiter_core or not tuple_delimiter:
+            return record
+
+        # Escape the delimiter core for regex use
+        escaped_delimiter_core = re.escape(delimiter_core)
+
+        # Apply fixes (simplified version of the one in utils.py)
+        # Fix: <|##|> -> <|#|>, etc.
+        record = re.sub(
+            rf"<\|{escaped_delimiter_core}\|*?{escaped_delimiter_core}\|>",
+            tuple_delimiter,
+            record,
+        )
+        return record
+
+
+    lightrag.operate.fix_tuple_delimiter_corruption = patched_fix_tuple_delimiter_corruption
+
 from raganything import RAGAnything, RAGAnythingConfig
-from raganything.logger import logger, init_logger
+from raganything.config import DirectoryConfig, ParsingConfig, MultimodalConfig
+from raganything.logger import logger
 
 from dotenv import load_dotenv
 
@@ -24,19 +61,10 @@ load_dotenv(dotenv_path=".env", override=False)
 
 
 def configure_logging():
-    """Configure logging for the application"""
-    # Get log directory path from environment variable or use tmp directory
-    log_dir = os.getenv("LOG_DIR", "/tmp/raganything/logs")
-    log_file_path = os.path.abspath(os.path.join(log_dir, "raganything.log"))
-
-    print(f"\\nRAGAnything log file: {log_file_path}\\n")
-    os.makedirs(os.path.dirname(log_dir), exist_ok=True)
-
-    # Get log file max size and backup count from environment variables
-    # log_max_bytes = int(os.getenv("LOG_MAX_BYTES", 10485760))  # Default 10MB
-    # log_backup_count = int(os.getenv("LOG_BACKUP_COUNT", 5))  # Default 5 backups
-
-    init_logger(log_dir=Path(log_dir))
+    """Configure logging for the application using local logger"""
+    # Use the local logger that's already configured in raganything.logger
+    # The logger is automatically initialized when imported
+    logger.info("RAGAnything CLI logging initialized")
     
     # Enable verbose debug if needed
     set_verbose_debug(os.getenv("VERBOSE", "false").lower() == "true")
@@ -45,8 +73,6 @@ def configure_logging():
 async def process_with_rag(
     file_path: str,
     output_dir: str,
-    api_key: str,
-    base_url: str = None,
     working_dir: str = None,
     parser: str = None,
 ):
@@ -56,34 +82,70 @@ async def process_with_rag(
     Args:
         file_path: Path to the document
         output_dir: Output directory for RAG results
-        api_key: OpenAI API key
-        base_url: Optional base URL for API
         working_dir: Working directory for RAG storage
+        parser: Parser to use (mineru or docling)
     """
     try:
         # Create RAGAnything configuration
         config = RAGAnythingConfig(
-            working_dir=working_dir or "./rag_storage",
-            parser=parser,  # Parser selection: mineru or docling
-            parse_method="auto",  # Parse method: auto, ocr, or txt
-            enable_image_processing=True,
-            enable_table_processing=True,
-            enable_equation_processing=True,
+            directory=DirectoryConfig(
+                working_dir=working_dir or "./rag_storage",
+                parser_output_dir=output_dir,
+            ),
+            parsing=ParsingConfig(
+                parser=parser,  # Parser selection: mineru or docling
+                parse_method="auto",  # Parse method: auto, ocr, or txt
+                display_content_stats=True,
+            ),
+            multimodal=MultimodalConfig(
+                enable_image_processing=True,
+                enable_table_processing=True,
+                enable_equation_processing=True,
+                enable_audio_processing=True,
+                enable_video_processing=True,
+            ),
         )
 
-        # Define LLM model function
+        # Define LLM model function using Ollama
         def llm_model_func(prompt, system_prompt=None, history_messages=[], **kwargs):
-            return openai_complete_if_cache(
-                "gpt-4o-mini",
-                prompt,
+            # Debug logging to trace parameter types
+            print(f"=== DEBUG llm_model_func called ===")
+            print(f"prompt type: {type(prompt)}, value: {repr(prompt)[:200]}")
+            print(f"system_prompt type: {type(system_prompt)}, value: {repr(system_prompt)[:200]}")
+            print(f"history_messages type: {type(history_messages)}, length: {len(history_messages)}")
+            print(f"kwargs keys: {list(kwargs.keys())}")
+            
+            # Check if prompt is a dict (which would cause the encode error)
+            if isinstance(prompt, dict):
+                print(f"ERROR: prompt is a dict instead of string!")
+                print(f"prompt content: {prompt}")
+                # Try to extract text content from dict
+                if "query" in prompt:
+                    prompt = prompt["query"]
+                    print(f"Extracted query from dict: {prompt}")
+                elif "content" in prompt:
+                    prompt = prompt["content"]
+                    print(f"Extracted content from dict: {prompt}")
+                else:
+                    # Convert dict to string as fallback
+                    prompt = str(prompt)
+                    print(f"Converted dict to string: {prompt}")
+            
+            # Handle keyword_extraction for Ollama
+            keyword_extraction = kwargs.pop("keyword_extraction", None)
+            if keyword_extraction:
+                kwargs["format"] = "json"
+
+            return ollama_complete_if_cache(
+                model=os.getenv("LLM_MODEL", "qwen3-vl:2b"),
+                prompt=prompt,
                 system_prompt=system_prompt,
                 history_messages=history_messages,
-                api_key=api_key,
-                base_url=base_url,
+                host=os.getenv("OLLAMA_BASE_URL", "http://172.24.160.1:11434"),
                 **kwargs,
             )
 
-        # Define vision model function for image processing
+        # Define vision model function for image processing using Ollama
         def vision_model_func(
             prompt,
             system_prompt=None,
@@ -92,23 +154,42 @@ async def process_with_rag(
             messages=None,
             **kwargs,
         ):
+            # Handle keyword_extraction for Ollama
+            keyword_extraction = kwargs.pop("keyword_extraction", None)
+            if keyword_extraction:
+                kwargs["format"] = "json"
+
             # If messages format is provided (for multimodal VLM enhanced query), use it directly
             if messages:
-                return openai_complete_if_cache(
-                    "gpt-4o",
-                    "",
-                    system_prompt=None,
-                    history_messages=[],
-                    messages=messages,
-                    api_key=api_key,
-                    base_url=base_url,
+                # Extract the prompt content from messages if prompt is empty
+                if not prompt and messages:
+                    # Find the last user message or use the first message content
+                    for msg in reversed(messages):
+                        if isinstance(msg, dict) and msg.get("role") == "user":
+                            content = msg.get("content", "")
+                            if isinstance(content, list):
+                                # Handle multimodal content
+                                for item in content:
+                                    if isinstance(item, dict) and item.get("type") == "text":
+                                        prompt = item.get("text", "")
+                                        break
+                            else:
+                                prompt = content
+                            break
+                
+                return ollama_complete_if_cache(
+                    model=os.getenv("LLM_MODEL", "qwen3-vl:2b"),
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    history_messages=history_messages,
+                    host=os.getenv("OLLAMA_BASE_URL", "http://172.24.160.1:11434"),
                     **kwargs,
                 )
             # Traditional single image format
             elif image_data:
-                return openai_complete_if_cache(
-                    "gpt-4o",
-                    "",
+                return ollama_complete_if_cache(
+                    model=os.getenv("LLM_MODEL", "qwen3-vl:2b"),
+                    prompt="",
                     system_prompt=None,
                     history_messages=[],
                     messages=[
@@ -130,27 +211,27 @@ async def process_with_rag(
                         if image_data
                         else {"role": "user", "content": prompt},
                     ],
-                    api_key=api_key,
-                    base_url=base_url,
+                    host=os.getenv("OLLAMA_BASE_URL", "http://172.24.160.1:11434"),
                     **kwargs,
                 )
             # Pure text format
             else:
                 return llm_model_func(prompt, system_prompt, history_messages, **kwargs)
 
-        # Define embedding function - using environment variables for configuration
-        embedding_dim = int(os.getenv("EMBEDDING_DIM", "3072"))
-        embedding_model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")
+        # Define embedding function using Ollama instead of OpenAI
+        embedding_dim = int(os.getenv("EMBEDDING_DIM", "1024"))
+        embedding_model = os.getenv("EMBEDDING_MODEL", "bge-m3:latest")
+        ollama_host = os.getenv("OLLAMA_BASE_URL", "http://172.24.160.1:11434")
 
-        embedding_func = EmbeddingFunc(
+        # Use the build_embedding_func from raganything.llm.embedding
+        from raganything.llm.embedding import build_embedding_func
+
+        embedding_func = build_embedding_func(
+            provider="ollama",
+            model=embedding_model,
+            api_base=ollama_host,
             embedding_dim=embedding_dim,
             max_token_size=8192,
-            func=lambda texts: openai_embed(
-                texts,
-                model=embedding_model,
-                api_key=api_key,
-                base_url=base_url,
-            ),
         )
 
         # Initialize RAGAnything with new dataclass structure
@@ -163,7 +244,7 @@ async def process_with_rag(
 
         # Process document
         await rag.process_document_complete(
-            file_path=file_path, output_dir=output_dir, parse_method="auto"
+            file_path=file_path, output_dir=output_dir, parse_method="auto", video_fps=0.05
         )
 
         # Example queries - demonstrating different query approaches
@@ -233,28 +314,12 @@ def main():
         "--output", "-o", default="./output", help="Output directory path"
     )
     parser.add_argument(
-        "--api-key",
-        default=os.getenv("LLM_BINDING_API_KEY"),
-        help="OpenAI API key (defaults to LLM_BINDING_API_KEY env var)",
-    )
-    parser.add_argument(
-        "--base-url",
-        default=os.getenv("LLM_BINDING_HOST"),
-        help="Optional base URL for API",
-    )
-    parser.add_argument(
         "--parser",
         default=os.getenv("PARSER", "mineru"),
-        help="Optional base URL for API",
+        help="Parser to use (defaults to PARSER env var or 'mineru')",
     )
 
     args = parser.parse_args()
-
-    # Check if API key is provided
-    if not args.api_key:
-        logger.error("Error: OpenAI API key is required")
-        logger.error("Set api key environment variable or use --api-key option")
-        return
 
     # Create output directory if specified
     if args.output:
@@ -265,8 +330,6 @@ def main():
         process_with_rag(
             args.file_path,
             args.output,
-            args.api_key,
-            args.base_url,
             args.working_dir,
             args.parser,
         )

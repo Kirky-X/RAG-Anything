@@ -25,7 +25,7 @@ from raganything.health import (
     ConsoleNotifier,
     ComponentStatus,
 )
-from .models import (
+from raganything.api.models import (
     HealthResp,
     InfoResp,
     QueryReq,
@@ -38,7 +38,7 @@ from .models import (
     ConfigResp,
     StatsResp,
 )
-from .auth import get_auth
+from raganything.api.auth import get_auth
 
 
 srv, api = load_server_configs()
@@ -138,13 +138,34 @@ async def query(body: QueryReq, ensure=Depends(get_auth)):
         kwargs = {"vlm_enhanced": False}
         if body.top_k is not None:
             kwargs["top_k"] = body.top_k
+        
+        # Add smart processing wait if requested
+        if getattr(body, 'wait_for_processing', False):
+            kwargs["wait_for_processing"] = True
+            kwargs["max_wait_time"] = getattr(body, 'max_wait_time', 30)
+        
         result = await rag.aquery(
             body.query,
             mode=body.mode,
             system_prompt=body.system_prompt,
             **kwargs,
         )
-        return QueryResp(result=result or "")
+        
+        # Enhanced response with processing status
+        response_data = {"result": result or ""}
+        
+        # If result is empty, check if documents are still processing
+        if not result and hasattr(rag, 'get_system_stats'):
+            try:
+                stats = await rag.get_system_stats()
+                if stats.processing_queue > 0:
+                    response_data["warning"] = f"Query returned empty results. {stats.processing_queue} documents are still processing. Try again later or use wait_for_processing=true parameter."
+                else:
+                    response_data["info"] = "Query returned empty results. No relevant content found in processed documents."
+            except Exception:
+                pass
+        
+        return QueryResp(**response_data)
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -203,11 +224,14 @@ async def process_document_background(file_path: str, doc_id: str, user: str):
                       rag.logger.info(f"Pre-initializing status for {doc_id} in background task wrapper")
                       await rag.lightrag.doc_status.upsert({
                          doc_id: {
+                             "content_summary": "Document being processed...",
+                             "content_length": 0,
+                             "file_path": os.path.basename(file_path),
                              "status": DocStatus.HANDLING,
+                             "created_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                             "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
                              "chunks_count": 0,
                              "multimodal_processed": False,
-                             "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                             "file_path": os.path.basename(file_path),
                          }
                       })
                       await rag.lightrag.doc_status.index_done_callback()
@@ -409,5 +433,24 @@ async def cleanup_storage(ensure=Depends(get_auth)):
 
 def run():
     import uvicorn
+    import argparse
+    import sys
+    
+    parser = argparse.ArgumentParser(description="RAG-Anything API Server")
+    parser.add_argument("--port", type=int, help="Port to run the server on")
+    parser.add_argument("--host", type=str, help="Host to bind the server to")
+    
+    args = parser.parse_args()
+    
+    # Override server config if provided
+    if args.port:
+        srv.port = args.port
+    if args.host:
+        srv.host = args.host
+    
     params = uvicorn_run_params(srv)
     uvicorn.run("raganything.api.app:app", **params)
+
+
+if __name__ == "__main__":
+    run()
