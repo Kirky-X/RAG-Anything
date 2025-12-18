@@ -75,6 +75,12 @@ tiktoken_cache/
 
 # Test resources
 tests/resource/
+tests/resource/**
+*.mp4
+*.wav
+*.mp3
+*.avi
+*.mov
 
 # Cline files
 memory-bank/
