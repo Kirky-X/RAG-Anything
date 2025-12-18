@@ -86,3 +86,9 @@ CLAUDE.md
 
 # Model cache
 models_cache/
+*.pt
+*.pth
+*.bin
+*.onnx
+*.safetensors
+*.ckpt
