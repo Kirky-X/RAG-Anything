@@ -164,7 +164,7 @@ async def query_multimodal(body: QueryMultiReq, ensure=Depends(get_auth)):
             top_k=body.top_k,
             vlm_enhanced=False,
         )
-        return QueryResp(result=result)
+        return QueryResp(result=result or "")
     except Exception as e:
         raise HTTPException(
             status_code=500,

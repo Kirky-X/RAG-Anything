@@ -31,7 +31,7 @@ class QueryReq(BaseModel):
 
 
 class QueryResp(BaseModel):
-    result: str
+    result: Optional[str] = ""
 
 
 class MultiModalItem(BaseModel):

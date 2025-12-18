@@ -284,6 +284,9 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
     def _maybe_build_llm_functions(self):
         """Build LangChain-backed llm/vision functions when not provided, based on config."""
+        # Import here to ensure it's available in this scope
+        from raganything.llm import LLMProviderConfig, build_llm
+        
         # LLM text function
         if self.llm_model_func is None:
             if not validate_provider(self.config.llm_provider):
@@ -328,6 +331,8 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     f"Vision function built via LangChain provider: {vcfg.provider}"
                 )
             except Exception as e:
+                self.logger.warning(f"Failed to build LangChain VLM: {e}")
+            except Exception as e:
                 self.logger.warning(f"Failed to build LangChain Vision: {e}")
 
         # LLM text function fallback to Ollama when OpenAI not configured
@@ -352,8 +357,6 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
             except Exception as e:
                 # Fallback to Ollama locally if configured via env (OLLAMA_HOST)
                 try:
-                    from raganything.llm import LLMProviderConfig, build_llm
-
                     ocfg = LLMProviderConfig(
                         provider="ollama",
                         model="qwen3:8b",

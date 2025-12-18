@@ -480,6 +480,15 @@ class ProcessorMixin:
                     output_dir=output_dir,
                     **kwargs,
                 )
+            elif ext in [".txt", ".md"]:
+                self.logger.info(f"Detected text/markdown file: {ext}")
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        text_content = f.read()
+                    content_list = [{"type": "text", "text": text_content, "page_idx": 0}]
+                except Exception as e:
+                    self.logger.error(f"Error reading text file {file_path}: {e}")
+                    raise e
             elif ext in [
                 ".mp4", ".mov", ".mkv", ".avi", ".wmv", ".flv", ".webm", ".mpeg"
             ]:
@@ -1858,6 +1867,15 @@ class ProcessorMixin:
                 "ids": doc_id,
                 "file_paths": file_name,
             }
+
+            # CRITICAL FIX: Clear pre-existing status to prevent LightRAG from skipping
+            # because we created a placeholder status earlier which LightRAG interprets as "already processed"
+            try:
+                if await self.lightrag.doc_status.get_by_id(doc_id):
+                    self.logger.info(f"Clearing pre-existing status for {doc_id} to force processing")
+                    await self.lightrag.doc_status.delete([doc_id])
+            except Exception as e:
+                self.logger.warning(f"Failed to clear status for {doc_id}: {e}")
 
             try:
                 if asyncio.iscoroutinefunction(insert_func):
