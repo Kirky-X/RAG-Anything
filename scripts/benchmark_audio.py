@@ -11,7 +11,9 @@ from raganything.models.device import device_manager
 from raganything.parser.audio_parser import AudioParser
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +29,9 @@ def generate_dummy_audio(duration_sec=5, sample_rate=16000):
     return Path(temp_file.name)
 
 
-def run_benchmark_pass(parser: AudioParser, audio_path: Path, iterations: int = 5) -> dict:
+def run_benchmark_pass(
+    parser: AudioParser, audio_path: Path, iterations: int = 5
+) -> dict:
     """Run a single benchmark pass."""
     latencies = []
 
@@ -47,7 +51,7 @@ def run_benchmark_pass(parser: AudioParser, audio_path: Path, iterations: int = 
         "min": min(latencies),
         "max": max(latencies),
         "avg": sum(latencies) / len(latencies),
-        "total": sum(latencies)
+        "total": sum(latencies),
     }
 
 
@@ -97,7 +101,7 @@ def benchmark_audio_parser():
         print(f"{'RTF (Real Time Factor)':<20} | {results['avg'] / 5.0:.4f}x")
         print("=" * 60 + "\n")
 
-        if results['avg'] / 5.0 < 1.0:
+        if results["avg"] / 5.0 < 1.0:
             print("✅ Performance is faster than real-time!")
         else:
             print("⚠️ Performance is slower than real-time.")
@@ -105,6 +109,7 @@ def benchmark_audio_parser():
     except Exception as e:
         logger.error(f"Benchmark failed: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         if audio_path.exists():

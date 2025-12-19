@@ -29,7 +29,6 @@ from typing import Optional
 
 from loguru import logger as _logger
 
-
 _CONFIGURED = False
 
 
@@ -68,7 +67,9 @@ def init_logger(
     env_retention = os.getenv("RAG_LOG_RETENTION")
 
     level = (env_level or level).upper()
-    base_log_dir = Path(env_dir) if env_dir else (log_dir or Path("/tmp/raganything/logs"))
+    base_log_dir = (
+        Path(env_dir) if env_dir else (log_dir or Path("/tmp/raganything/logs"))
+    )
     retention = env_retention or retention
 
     base_log_dir.mkdir(parents=True, exist_ok=True)
@@ -102,7 +103,9 @@ def init_logger(
     )
     # 兼容类似 "1 files" 的保留写法
     retention_value = retention
-    if isinstance(retention_value, str) and retention_value.strip().lower().endswith(" files"):
+    if isinstance(retention_value, str) and retention_value.strip().lower().endswith(
+        " files"
+    ):
         try:
             retention_value = int(retention_value.strip().split()[0])
         except Exception:
@@ -172,7 +175,9 @@ class BaseLogSink:
         raise NotImplementedError
 
 
-def register_sink(sink: BaseLogSink | object, level: str = "INFO", enqueue: bool = True, **kwargs) -> int:
+def register_sink(
+    sink: BaseLogSink | object, level: str = "INFO", enqueue: bool = True, **kwargs
+) -> int:
     """注册自定义日志 Sink。
 
     该函数为扩展点，对外暴露统一注册入口。`sink` 可以是实现了 `__call__(message)` 的对象，

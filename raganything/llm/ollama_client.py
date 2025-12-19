@@ -2,25 +2,28 @@
 # All rights reserved.
 
 import asyncio
-from typing import Any, List, Optional, Dict
+from typing import Any, Dict, List, Optional
+
+from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.outputs import ChatResult
+from langchain_ollama import ChatOllama
 
 from raganything.logger import logger
-from langchain_ollama import ChatOllama
-from langchain_core.messages import BaseMessage, AIMessage
-from langchain_core.outputs import ChatResult
+
 
 class RobustOllamaClient:
     """
     A wrapper around ChatOllama that provides connection management,
     retries, and error handling.
     """
+
     def __init__(
         self,
         model: str,
         base_url: str,
         timeout: float = 30.0,
         max_retries: int = 3,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the RobustOllamaClient.
@@ -36,16 +39,13 @@ class RobustOllamaClient:
         self.base_url = base_url
         self.max_retries = max_retries
         self.timeout = timeout
-        
+
         # Initialize the underlying ChatOllama client
         # We pass other kwargs to ChatOllama (e.g. temperature)
         self.client = ChatOllama(
-            model=model,
-            base_url=base_url,
-            timeout=timeout,
-            **kwargs
+            model=model, base_url=base_url, timeout=timeout, **kwargs
         )
-        
+
     async def ainvoke(self, messages: List[BaseMessage], **kwargs) -> Any:
         """
         Invoke the model asynchronously with retry logic.
@@ -62,7 +62,7 @@ class RobustOllamaClient:
             RuntimeError: If an unknown error occurs.
         """
         last_exception = None
-        
+
         for attempt in range(self.max_retries + 1):
             try:
                 # Attempt to invoke the client
@@ -73,16 +73,18 @@ class RobustOllamaClient:
                     f"Ollama request failed (attempt {attempt + 1}/{self.max_retries + 1}). "
                     f"Error: {str(e)}"
                 )
-                
+
                 # Determine if we should retry
                 if attempt < self.max_retries:
                     # Exponential backoff: 1s, 2s, 4s...
-                    sleep_time = 1 * (2 ** attempt)
+                    sleep_time = 1 * (2**attempt)
                     logger.info(f"Retrying in {sleep_time} seconds...")
                     await asyncio.sleep(sleep_time)
                 else:
-                    logger.error(f"Max retries reached for Ollama request. Last error: {str(e)}")
-        
+                    logger.error(
+                        f"Max retries reached for Ollama request. Last error: {str(e)}"
+                    )
+
         # If we exhaust retries, raise the last exception
         if last_exception:
             raise last_exception

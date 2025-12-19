@@ -12,23 +12,20 @@ Includes:
 - GenericModalProcessor: Processor for other modal content
 """
 
-import re
-import json
-import time
 import asyncio
 import base64
-from typing import Dict, Any, Tuple, List
+import json
+import re
+import time
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple
 
-from lightrag.utils import (
-    logger,
-    compute_mdhash_id,
-)
+from lightrag.kg.shared_storage import (get_namespace_data,
+                                        get_pipeline_status_lock)
 from lightrag.lightrag import LightRAG
-from dataclasses import asdict
-from lightrag.kg.shared_storage import get_namespace_data, get_pipeline_status_lock
 from lightrag.operate import extract_entities, merge_nodes_and_edges
+from lightrag.utils import compute_mdhash_id, logger
 
 # Import prompt templates
 from raganything.prompt import PROMPTS
@@ -148,7 +145,7 @@ class ContextExtractor:
         """
         if current_item_info is None:
             return ""
-            
+
         current_page = current_item_info.get("page_idx", 0)
         window_size = self.config.context_window
 
@@ -191,7 +188,7 @@ class ContextExtractor:
         """
         if current_item_info is None:
             return ""
-            
+
         current_index = current_item_info.get("index", 0)
         window_size = self.config.context_window
 
@@ -300,7 +297,7 @@ class ContextExtractor:
         """
         if current_item_info is None:
             return ""
-            
+
         current_index = current_item_info.get("index", 0)
         window_size = self.config.context_window
 

@@ -19,14 +19,14 @@ class TestAudioParser(unittest.TestCase):
     def test_convert_to_wav_16k_real(self):
         tone = AudioSegment.silent(duration=1000).set_frame_rate(22050).set_channels(2)
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
-            # Fix: pydub export takes a file-like object or filename, 
+            # Fix: pydub export takes a file-like object or filename,
             # but using filename directly keeps it open in pydub's internal implementation sometimes?
             # Actually, using open file handle is safer.
             tone.export(tf, format="wav")
             src = Path(tf.name)
         out = self.parser._convert_to_wav_16k(src)
         self.assertTrue(out.exists())
-        with open(str(out), 'rb') as f:
+        with open(str(out), "rb") as f:
             AudioSegment.from_file(f)
         out.unlink()
         src.unlink()

@@ -4,8 +4,8 @@ try:
 except ImportError:
     pass
 
-from .raganything import RAGAnything as RAGAnything
 from .config import RAGAnythingConfig as RAGAnythingConfig
+from .raganything import RAGAnything as RAGAnything
 
 __version__ = "1.2.8"
 __author__ = "Zirui Guo"

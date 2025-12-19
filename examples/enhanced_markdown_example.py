@@ -15,15 +15,15 @@ Features demonstrated:
 """
 
 import logging
-from pathlib import Path
-import tempfile
-
 # Add project root directory to Python path
 import sys
+import tempfile
+from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from raganything.enhanced_markdown import EnhancedMarkdownConverter, MarkdownConfig
+from raganything.enhanced_markdown import (EnhancedMarkdownConverter,
+                                           MarkdownConfig)
 
 
 def create_sample_markdown_content():

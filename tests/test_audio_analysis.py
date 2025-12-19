@@ -16,9 +16,10 @@ class TestAudioParserAnalysis(unittest.TestCase):
         # Create a simple silent wav file
         try:
             from pydub import AudioSegment
+
             # 1 second of silence
             audio = AudioSegment.silent(duration=1000, frame_rate=16000)
-            with open(self.test_audio_path, 'wb') as f:
+            with open(self.test_audio_path, "wb") as f:
                 audio.export(f, format="wav")
         except ImportError:
             self.skipTest("pydub not installed")
@@ -48,7 +49,7 @@ class TestAudioParserAnalysis(unittest.TestCase):
         # Since it's silent audio
         self.assertEqual(waveform["max_amplitude"], 0)
         self.assertEqual(waveform["rms"], 0)
-        self.assertEqual(waveform["dBFS"], -float('inf'))
+        self.assertEqual(waveform["dBFS"], -float("inf"))
 
     def test_analyze_missing_file(self):
         """Test that analyze_audio raises FileNotFoundError for missing files."""
@@ -56,5 +57,5 @@ class TestAudioParserAnalysis(unittest.TestCase):
             self.parser.analyze_audio("non_existent.wav")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

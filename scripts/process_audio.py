@@ -9,12 +9,12 @@ from raganything.parser.audio_parser import AudioParser
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler("/tmp/audio_extraction_process.log"),
-        logging.StreamHandler(sys.stdout)
+        logging.StreamHandler(sys.stdout),
     ],
-    force=True  # Ensure we overwrite any existing config
+    force=True,  # Ensure we overwrite any existing config
 )
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,11 @@ def extract_audio(video_path: Path, output_path: Path) -> bool:
     command = [
         "ffmpeg",
         "-y",  # Overwrite output file
-        "-i", str(video_path),
+        "-i",
+        str(video_path),
         "-vn",  # Disable video
-        "-acodec", "copy",  # Copy audio stream (no transcoding) if compatible, else ffmpeg might default
+        "-acodec",
+        "copy",  # Copy audio stream (no transcoding) if compatible, else ffmpeg might default
         # User requested: "保持原始音频质量，不进行压缩或转码" (Keep original quality, no compression/transcoding)
         # However, simply copying (-acodec copy) might result in an m4a/aac file inside a .wav container if we force .wav extension, which is bad.
         # Or if we output to .mp3, we can't "copy" if source is aac.
@@ -42,7 +44,7 @@ def extract_audio(video_path: Path, output_path: Path) -> bool:
         # But "Output WAV or MP3" -> implies format change.
         # Safe bet: Transcode to WAV (lossless) to satisfy "WAV" requirement and "Quality" (no lossy compression).
         # So we will use PCM WAV.
-        str(output_path)
+        str(output_path),
     ]
 
     # Wait, if I use -acodec copy, I should match the extension of the source audio stream.
@@ -52,10 +54,12 @@ def extract_audio(video_path: Path, output_path: Path) -> bool:
     command = [
         "ffmpeg",
         "-y",
-        "-i", str(video_path),
+        "-i",
+        str(video_path),
         "-vn",
-        "-c:a", "pcm_s16le",  # Transcode to uncompressed PCM WAV
-        str(output_path)
+        "-c:a",
+        "pcm_s16le",  # Transcode to uncompressed PCM WAV
+        str(output_path),
     ]
 
     try:
@@ -64,7 +68,7 @@ def extract_audio(video_path: Path, output_path: Path) -> bool:
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
         logger.info("Audio extraction successful.")
         return True
@@ -122,7 +126,9 @@ def main():
 
         logger.info(f"Verified Duration: {duration:.2f}s")
         logger.info(f"Verified Channels: {analysis_result['metadata']['channels']}")
-        logger.info(f"Verified Sample Rate: {analysis_result['metadata']['sample_rate']}")
+        logger.info(
+            f"Verified Sample Rate: {analysis_result['metadata']['sample_rate']}"
+        )
 
         # 4. Transcription (User Request)
         logger.info("=== Step 4: Transcription ===")

@@ -38,6 +38,7 @@ def test_logging_rotation_and_retention_from_config(tmp_path):
     # Force re-initialization to ensure settings are applied if needed
     try:
         from raganything.logger import init_logger
+
         init_logger(level="DEBUG", log_dir=Path(os.environ["LOG_DIR"]))
     except Exception:
         pass

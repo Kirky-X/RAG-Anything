@@ -1,13 +1,14 @@
 # Copyright (c) 2025 Kirky.X
 # All rights reserved.
 
-import base64
-import time
-from raganything.logger import logger
-import io
 import asyncio
+import base64
+import io
+import time
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+
+from raganything.logger import logger
 
 # Optional imports handling
 try:
@@ -23,9 +24,8 @@ except ImportError:
     except ImportError:
         toml = None
 
+from raganything.llm import LLMProviderConfig, build_llm
 from raganything.parser.base_parser import Parser
-from raganything.llm import build_llm, LLMProviderConfig
-
 
 
 class VlmParser(Parser):
@@ -33,7 +33,7 @@ class VlmParser(Parser):
     VlmParser class for understanding and describing image content.
     Uses a VLM (Visual Language Model) via the defined LLM interface.
     """
-    
+
     def __init__(self, config_path: str = "config.toml"):
         """Initialize the VlmParser.
 
@@ -42,12 +42,14 @@ class VlmParser(Parser):
         """
         super().__init__()
         if not Image:
-            raise ImportError("Pillow is required for VlmParser. Install with `pip install Pillow`.")
-            
+            raise ImportError(
+                "Pillow is required for VlmParser. Install with `pip install Pillow`."
+            )
+
         self.config_path = Path(config_path)
         self.config = self._load_config(self.config_path)
         self.llm = self._init_llm()
-        
+
     def _load_config(self, path: Path) -> Dict[str, Any]:
         """Load configuration from TOML file.
 
@@ -58,18 +60,20 @@ class VlmParser(Parser):
             Dict[str, Any]: Configuration dictionary.
         """
         if not toml:
-             logger.warning("tomli or tomllib not found. Cannot load config.toml. Using defaults.")
-             return {}
-             
+            logger.warning(
+                "tomli or tomllib not found. Cannot load config.toml. Using defaults."
+            )
+            return {}
+
         if not path.exists():
-             # Try absolute path if relative failed
-             abs_path = Path("/home/project/RAG-Anything") / path
-             if abs_path.exists():
-                 path = abs_path
-             else:
-                 logger.warning(f"Config file {path} not found. Using defaults.")
-                 return {}
-             
+            # Try absolute path if relative failed
+            abs_path = Path("/home/project/RAG-Anything") / path
+            if abs_path.exists():
+                path = abs_path
+            else:
+                logger.warning(f"Config file {path} not found. Using defaults.")
+                return {}
+
         try:
             with open(path, "rb") as f:
                 return toml.load(f)
@@ -86,7 +90,7 @@ class VlmParser(Parser):
         """
         rag_config = self.config.get("raganything", {})
         vision_config = rag_config.get("vision", {})
-        
+
         # Fallback to hardcoded defaults if config is missing or empty
         provider = vision_config.get("provider", "ollama")
         model = vision_config.get("model", "qwen3-vl:2b")
@@ -94,11 +98,14 @@ class VlmParser(Parser):
         # Ensure timeout is int
         timeout = int(vision_config.get("timeout", 10))
         max_retries = vision_config.get("max_retries", 3)
-        
-        logger.info(f"Initializing VlmParser with model={model}, provider={provider}, base={api_base}, timeout={timeout}")
-        
+
+        logger.info(
+            f"Initializing VlmParser with model={model}, provider={provider}, base={api_base}, timeout={timeout}"
+        )
+
         # Check network connectivity for Ollama
         import socket
+
         try:
             # Simple connectivity check
             host = api_base.replace("http://", "").replace("https://", "").split(":")[0]
@@ -107,18 +114,22 @@ class VlmParser(Parser):
             s.settimeout(2)
             result = s.connect_ex((host, port))
             s.close()
-            
+
             if result != 0:
-                logger.warning(f"Ollama might be unreachable at {api_base} (connect_ex returned {result}). Proceeding anyway as requested.")
+                logger.warning(
+                    f"Ollama might be unreachable at {api_base} (connect_ex returned {result}). Proceeding anyway as requested."
+                )
         except Exception as e:
-            logger.warning(f"Network check failed: {e}. Proceeding anyway as requested.")
+            logger.warning(
+                f"Network check failed: {e}. Proceeding anyway as requested."
+            )
 
         cfg = LLMProviderConfig(
             provider=provider,
             model=model,
             api_base=api_base,
             timeout=timeout,
-            max_retries=max_retries
+            max_retries=max_retries,
         )
         return build_llm(cfg)
 
@@ -129,7 +140,7 @@ class VlmParser(Parser):
 
         Args:
             image_path (Path): Path to the image file.
-            max_size (Optional[int]): Maximum dimension (width or height) for resizing. 
+            max_size (Optional[int]): Maximum dimension (width or height) for resizing.
                                       If None, original size is kept.
 
         Returns:
@@ -145,23 +156,30 @@ class VlmParser(Parser):
                     original_size = img.size
                     if max(original_size) > max_size:
                         img.thumbnail((max_size, max_size))
-                        logger.debug(f"Resized image from {original_size} to {img.size}")
-                    
+                        logger.debug(
+                            f"Resized image from {original_size} to {img.size}"
+                        )
+
                 # Convert to RGB to ensure compatibility (e.g. remove alpha channel)
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
-                    
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+
                 buffered = io.BytesIO()
                 # Use JPEG for efficiency unless it's very small
                 img.save(buffered, format="JPEG", quality=85)
-                return base64.b64encode(buffered.getvalue()).decode('utf-8')
+                return base64.b64encode(buffered.getvalue()).decode("utf-8")
         except Exception as e:
             raise RuntimeError(f"Failed to process image {image_path}: {e}")
 
-    async def parse_image_async(self, file_path: Union[str, Path], prompt: str = "Describe this image in detail.", **kwargs) -> Dict[str, Any]:
+    async def parse_image_async(
+        self,
+        file_path: Union[str, Path],
+        prompt: str = "Describe this image in detail.",
+        **kwargs,
+    ) -> Dict[str, Any]:
         """
         Asynchronously parse a single image file and return description.
-        
+
         Args:
             file_path (Union[str, Path]): Path to the image file.
             prompt (str): Prompt to send to the VLM. Defaults to "Describe this image in detail.".
@@ -178,67 +196,73 @@ class VlmParser(Parser):
         """
         start_time = time.time()
         file_path = Path(file_path)
-        
+
         if not file_path.exists():
-             # Error handling
-             return {
+            # Error handling
+            return {
                 "filename": file_path.name,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "description": "",
                 "error": f"File not found: {file_path}",
                 "latency_seconds": 0.0,
-                "confidence": 0.0
+                "confidence": 0.0,
             }
 
         try:
             # Feature Extraction
-            max_size = kwargs.get("max_size", 1024) # Default max dimension 1024px
+            max_size = kwargs.get("max_size", 1024)  # Default max dimension 1024px
             logger.info(f"Encoding image {file_path} with max_size={max_size}")
             image_base64 = self._encode_image(file_path, max_size=max_size)
-            
+
             # Description Generation
             # We pass image_data to the LLM call
             logger.info(f"Sending request to VLM for {file_path}")
             llm_start_time = time.time()
-            
+
             # Wrap the LLM call with a timeout to prevent indefinite hanging
             # Use a default timeout of 120 seconds if not configured
-            vlm_timeout = kwargs.get("timeout", self.config.get("raganything", {}).get("vision", {}).get("timeout", 120))
+            vlm_timeout = kwargs.get(
+                "timeout",
+                self.config.get("raganything", {})
+                .get("vision", {})
+                .get("timeout", 120),
+            )
             if isinstance(vlm_timeout, str):
                 try:
                     vlm_timeout = int(vlm_timeout)
                 except ValueError:
                     vlm_timeout = 120
-            
+
             try:
                 response = await asyncio.wait_for(
-                    self.llm(
-                        prompt=prompt,
-                        image_data=image_base64
-                    ),
-                    timeout=vlm_timeout
+                    self.llm(prompt=prompt, image_data=image_base64),
+                    timeout=vlm_timeout,
                 )
             except asyncio.TimeoutError:
-                logger.error(f"VLM request timed out after {vlm_timeout}s for {file_path}")
+                logger.error(
+                    f"VLM request timed out after {vlm_timeout}s for {file_path}"
+                )
                 raise TimeoutError(f"Request timed out after {vlm_timeout}s")
-                
+
             llm_end_time = time.time()
-            logger.info(f"VLM request for {file_path} completed in {llm_end_time - llm_start_time:.2f}s")
-            
+            logger.info(
+                f"VLM request for {file_path} completed in {llm_end_time - llm_start_time:.2f}s"
+            )
+
             end_time = time.time()
             latency = end_time - start_time
-            
+
             # Confidence Score (Mocked as LLM API doesn't standardly return this)
-            confidence = 0.95 
-            
+            confidence = 0.95
+
             return {
                 "filename": file_path.name,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "description": response,
                 "latency_seconds": round(latency, 4),
-                "confidence": confidence
+                "confidence": confidence,
             }
-            
+
         except Exception as e:
             logger.error(f"Error parsing image {file_path}: {e}")
             return {
@@ -247,13 +271,13 @@ class VlmParser(Parser):
                 "description": "",
                 "error": str(e),
                 "latency_seconds": round(time.time() - start_time, 4),
-                "confidence": 0.0
+                "confidence": 0.0,
             }
 
     def parse(self, file_path: Union[str, Path], **kwargs) -> Dict[str, Any]:
         """
         Synchronous wrapper for parsing.
-        
+
         Args:
             file_path (Union[str, Path]): Path to the image file.
             **kwargs: Additional arguments.
@@ -267,24 +291,26 @@ class VlmParser(Parser):
                 loop = asyncio.get_running_loop()
             except RuntimeError:
                 loop = None
-                
+
             if loop and loop.is_running():
                 # If we are already in an async loop, we can't use run_until_complete easily without nesting
                 # But since this is a sync method called potentially from sync code, we assume it's fine.
                 # Ideally, users should use parse_image_async if they are in async context.
                 # For this task, we assume sync execution via script.
-                logger.warning("Calling sync parse() from running event loop is risky. Use parse_image_async() instead.")
+                logger.warning(
+                    "Calling sync parse() from running event loop is risky. Use parse_image_async() instead."
+                )
                 # Use a separate thread or task? For now, just try to run it.
                 import nest_asyncio
+
                 nest_asyncio.apply()
-                result = loop.run_until_complete(self.parse_image_async(file_path, **kwargs))
+                result = loop.run_until_complete(
+                    self.parse_image_async(file_path, **kwargs)
+                )
             else:
                 result = asyncio.run(self.parse_image_async(file_path, **kwargs))
-                
+
             return result
         except Exception as e:
             logger.error(f"Fatal error in parse: {e}")
-            return {
-                "filename": Path(file_path).name,
-                "error": str(e)
-            }
+            return {"filename": Path(file_path).name, "error": str(e)}

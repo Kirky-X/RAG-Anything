@@ -1,6 +1,7 @@
 # Copyright (c) 2025 Kirky.X
 # All rights reserved.
 
+
 def validate_provider(provider: str) -> bool:
     """Validate if the given provider is supported.
 

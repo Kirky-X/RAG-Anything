@@ -3,11 +3,13 @@
 
 import platform
 from typing import Optional
+
 import psutil
 
 # Try to import torch, but don't fail if it's not installed yet
 try:
     import torch
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -20,6 +22,7 @@ class DeviceManager:
     Singleton class for managing compute resources (CPU/GPU).
     Automatically detects available hardware and prioritizes GPU.
     """
+
     _instance = None
 
     def __new__(cls):
@@ -54,15 +57,19 @@ class DeviceManager:
                 _ = torch.tensor([1.0]).cuda()
                 return "cuda"
             except Exception as e:
-                logger.warning(f"CUDA available but failed to initialize: {e}. Falling back to CPU.")
-        
+                logger.warning(
+                    f"CUDA available but failed to initialize: {e}. Falling back to CPU."
+                )
+
         if torch.backends.mps.is_available():
             try:
                 # Verify MPS
                 _ = torch.tensor([1.0]).to("mps")
                 return "mps"
             except Exception as e:
-                logger.warning(f"MPS available but failed to initialize: {e}. Falling back to CPU.")
+                logger.warning(
+                    f"MPS available but failed to initialize: {e}. Falling back to CPU."
+                )
 
         return "cpu"
 
@@ -91,12 +98,14 @@ class DeviceManager:
         logger.info("Compute Resource Status")
         logger.info("-" * 30)
         logger.info(f"Selected Device: {self._device.upper()}")
-        
+
         # CPU Info
         cpu_percent = psutil.cpu_percent(interval=0.1)
         memory = psutil.virtual_memory()
         logger.info(f"CPU Usage: {cpu_percent}%")
-        logger.info(f"RAM Usage: {memory.percent}% ({memory.used / (1024**3):.2f}GB / {memory.total / (1024**3):.2f}GB)")
+        logger.info(
+            f"RAM Usage: {memory.percent}% ({memory.used / (1024**3):.2f}GB / {memory.total / (1024**3):.2f}GB)"
+        )
 
         # GPU Info
         if self._device == "cuda" and TORCH_AVAILABLE:
@@ -109,7 +118,7 @@ class DeviceManager:
                 logger.info(f"GPU Memory Reserved: {gpu_mem_res:.2f}MB")
             except Exception as e:
                 logger.error(f"Failed to get GPU details: {e}")
-        
+
         logger.info("=" * 30)
 
     @property
@@ -138,6 +147,7 @@ class DeviceManager:
 
     def is_gpu_available(self) -> bool:
         return self._device in ["cuda", "mps"]
+
 
 # Global instance
 device_manager = DeviceManager()

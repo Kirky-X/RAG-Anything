@@ -6,7 +6,6 @@ import pytest_asyncio
 
 from raganything.storage.backends.minio_backend import MinIOStorageBackend
 
-
 # Since we are using 'moto' to mock S3, and 'minio' client connects to S3 compatible APIs.
 # We need to trick minio client to connect to moto's server.
 # Moto usually mocks boto3.
@@ -36,7 +35,10 @@ def mock_minio_client():
 async def minio_backend(mock_minio_client):
     # We patch the Minio constructor to return our mock
     with pytest.MonkeyPatch.context() as m:
-        m.setattr("raganything.storage.backends.minio_backend.Minio", lambda *args, **kwargs: mock_minio_client)
+        m.setattr(
+            "raganything.storage.backends.minio_backend.Minio",
+            lambda *args, **kwargs: mock_minio_client,
+        )
         backend = MinIOStorageBackend("endpoint", "key", "secret", "bucket")
         return backend
 
@@ -74,6 +76,7 @@ async def test_minio_get_metadata(minio_backend, mock_minio_client):
     mock_stat = MagicMock()
     # Simulate returned metadata (base64 encoded json)
     import base64
+
     meta = {"key": "value"}
     b64 = base64.b64encode(json.dumps(meta).encode()).decode()
     mock_stat.metadata = {"x-amz-meta-custom-data-b64": b64}

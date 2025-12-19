@@ -11,17 +11,11 @@ import subprocess
 import tempfile
 import threading
 from pathlib import Path
-from queue import Queue, Empty
-from typing import (
-    Dict,
-    List,
-    Optional,
-    Union,
-    Tuple,
-    Any,
-)
+from queue import Empty, Queue
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from raganything.logger import logger
+
 from .base_parser import Parser
 
 

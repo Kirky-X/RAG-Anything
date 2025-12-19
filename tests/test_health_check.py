@@ -6,13 +6,9 @@ import sys
 # Add project root to path
 sys.path.append(os.getcwd())
 
-from raganything.health import (
-    HealthMonitor,
-    OllamaHealthCheck,
-    SystemResourceCheck,
-    ConsoleNotifier,
-    ComponentStatus
-)
+from raganything.health import (ComponentStatus, ConsoleNotifier,
+                                HealthMonitor, OllamaHealthCheck,
+                                SystemResourceCheck)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

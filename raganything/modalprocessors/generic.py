@@ -6,12 +6,9 @@ Generic modal processor
 """
 
 import json
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
-from lightrag.utils import (
-    logger,
-    compute_mdhash_id,
-)
+from lightrag.utils import compute_mdhash_id, logger
 
 # Import prompt templates
 from raganything.prompt import PROMPTS
@@ -57,17 +54,21 @@ class GenericModalProcessor(BaseModalProcessor):
                 ).format(
                     context=context,
                     content_type=content_type,
-                    entity_name=entity_name
-                    if entity_name
-                    else f"descriptive name for this {content_type}",
+                    entity_name=(
+                        entity_name
+                        if entity_name
+                        else f"descriptive name for this {content_type}"
+                    ),
                     content=str(modal_content),
                 )
             else:
                 generic_prompt = PROMPTS["generic_prompt"].format(
                     content_type=content_type,
-                    entity_name=entity_name
-                    if entity_name
-                    else f"descriptive name for this {content_type}",
+                    entity_name=(
+                        entity_name
+                        if entity_name
+                        else f"descriptive name for this {content_type}"
+                    ),
                     content=str(modal_content),
                 )
 
@@ -77,10 +78,8 @@ class GenericModalProcessor(BaseModalProcessor):
             )
             # Prepend system prompt to the main prompt
             full_prompt = f"{system_prompt}\n\n{generic_prompt}"
-            
-            response = await self.modal_caption_func(
-                full_prompt
-            )
+
+            response = await self.modal_caption_func(full_prompt)
 
             # Parse response (reuse existing logic)
             enhanced_caption, entity_info = self._parse_generic_response(
@@ -93,9 +92,11 @@ class GenericModalProcessor(BaseModalProcessor):
             logger.error(f"Error generating {content_type} description: {e}")
             # Fallback processing
             fallback_entity = {
-                "entity_name": entity_name
-                if entity_name
-                else f"{content_type}_{compute_mdhash_id(str(modal_content))}",
+                "entity_name": (
+                    entity_name
+                    if entity_name
+                    else f"{content_type}_{compute_mdhash_id(str(modal_content))}"
+                ),
                 "entity_type": content_type,
                 "summary": f"{content_type} content: {str(modal_content)[:100]}",
             }
@@ -139,9 +140,11 @@ class GenericModalProcessor(BaseModalProcessor):
             logger.error(f"Error processing {content_type} content: {e}")
             # Fallback processing
             fallback_entity = {
-                "entity_name": entity_name
-                if entity_name
-                else f"{content_type}_{compute_mdhash_id(str(modal_content))}",
+                "entity_name": (
+                    entity_name
+                    if entity_name
+                    else f"{content_type}_{compute_mdhash_id(str(modal_content))}"
+                ),
                 "entity_type": content_type,
                 "summary": f"{content_type} content: {str(modal_content)[:100]}",
             }
@@ -177,9 +180,11 @@ class GenericModalProcessor(BaseModalProcessor):
             logger.error(f"Error parsing {content_type} analysis response: {e}")
             logger.debug(f"Raw response: {response}")
             fallback_entity = {
-                "entity_name": entity_name
-                if entity_name
-                else f"{content_type}_{compute_mdhash_id(response)}",
+                "entity_name": (
+                    entity_name
+                    if entity_name
+                    else f"{content_type}_{compute_mdhash_id(response)}"
+                ),
                 "entity_type": content_type,
                 "summary": response[:100] + "..." if len(response) > 100 else response,
             }

@@ -1,5 +1,6 @@
-import os
 import asyncio
+import os
+
 from raganything.llm import LLMProviderConfig, build_llm
 
 
@@ -25,7 +26,10 @@ async def demo_openrouter_messages():
     llm = build_llm(cfg)
     msgs = [
         {"role": "system", "content": "You are helpful."},
-        {"role": "user", "content": [{"type": "text", "text": "Briefly introduce yourself."}]},
+        {
+            "role": "user",
+            "content": [{"type": "text", "text": "Briefly introduce yourself."}],
+        },
     ]
     out = await llm("", messages=msgs)
     print("[openrouter]", out[:120])

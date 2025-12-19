@@ -1,11 +1,11 @@
 import pickle
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from raganything.llm.embedding import build_embedding_func
-from raganything.llm.llm import build_llm, LLMProviderConfig
+from raganything.llm.llm import LLMProviderConfig, build_llm
 
 
 class MockEmbeddings:
@@ -36,7 +36,7 @@ def test_pickle_embedding_func():
         embed_func_wrapper = build_embedding_func(
             provider="ollama",
             model="nomic-embed-text:latest",
-            api_base="http://localhost:11434"
+            api_base="http://localhost:11434",
         )
 
         # Try pickling the wrapper
@@ -51,9 +51,7 @@ def test_pickle_embedding_func():
 async def test_pickle_llm():
     """Test picklability of LLM function."""
     config = LLMProviderConfig(
-        provider="ollama",
-        model="qwen3:1.7b",
-        api_base="http://localhost:11434"
+        provider="ollama", model="qwen3:1.7b", api_base="http://localhost:11434"
     )
 
     # Mock dependencies that might be missing or problematic during test
@@ -68,11 +66,14 @@ async def test_pickle_llm():
     mock_lc_ollama = MagicMock()
     mock_lc_ollama.ChatOllama = MagicMock
 
-    with patch.dict(sys.modules, {
-        "langchain_core.messages": mock_lc_messages,
-        "langchain_core.outputs": mock_lc_outputs,
-        "langchain_ollama": mock_lc_ollama
-    }):
+    with patch.dict(
+        sys.modules,
+        {
+            "langchain_core.messages": mock_lc_messages,
+            "langchain_core.outputs": mock_lc_outputs,
+            "langchain_ollama": mock_lc_ollama,
+        },
+    ):
         # Now we can import the module that was failing
 
         # Now patch the class in that module

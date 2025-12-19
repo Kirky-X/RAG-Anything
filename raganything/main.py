@@ -13,25 +13,29 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-# Use Ollama for LLM instead of OpenAI
-from lightrag.llm.ollama import _ollama_model_if_cache as ollama_complete_if_cache
-from lightrag.utils import set_verbose_debug
 import lightrag.operate
+# Use Ollama for LLM instead of OpenAI
+from lightrag.llm.ollama import \
+    _ollama_model_if_cache as ollama_complete_if_cache
+from lightrag.utils import set_verbose_debug
 
 # Monkey patch handle_cache in lightrag.operate to fix argument error
-if hasattr(lightrag.operate, 'handle_cache'):
+if hasattr(lightrag.operate, "handle_cache"):
     original_handle_cache = lightrag.operate.handle_cache
 
-
-    async def patched_handle_cache(hashing_kv, args_hash, prompt, mode="default", cache_type="unknown"):
+    async def patched_handle_cache(
+        hashing_kv, args_hash, prompt, mode="default", cache_type="unknown"
+    ):
         # Call the original function with the correct signature
-        return await original_handle_cache(hashing_kv, args_hash, prompt, mode, cache_type)
-
+        return await original_handle_cache(
+            hashing_kv, args_hash, prompt, mode, cache_type
+        )
 
     lightrag.operate.handle_cache = patched_handle_cache
 
 # Monkey patch fix_tuple_delimiter_corruption in lightrag.operate
-if hasattr(lightrag.operate, 'fix_tuple_delimiter_corruption'):
+if hasattr(lightrag.operate, "fix_tuple_delimiter_corruption"):
+
     def patched_fix_tuple_delimiter_corruption(record, delimiter_core, tuple_delimiter):
         if not record or not delimiter_core or not tuple_delimiter:
             return record
@@ -48,14 +52,15 @@ if hasattr(lightrag.operate, 'fix_tuple_delimiter_corruption'):
         )
         return record
 
-
-    lightrag.operate.fix_tuple_delimiter_corruption = patched_fix_tuple_delimiter_corruption
-
-from raganything import RAGAnything, RAGAnythingConfig
-from raganything.config import DirectoryConfig, ParsingConfig, MultimodalConfig
-from raganything.logger import logger
+    lightrag.operate.fix_tuple_delimiter_corruption = (
+        patched_fix_tuple_delimiter_corruption
+    )
 
 from dotenv import load_dotenv
+
+from raganything import RAGAnything, RAGAnythingConfig
+from raganything.config import DirectoryConfig, MultimodalConfig, ParsingConfig
+from raganything.logger import logger
 
 load_dotenv(dotenv_path=".env", override=False)
 
@@ -65,7 +70,7 @@ def configure_logging():
     # Use the local logger that's already configured in raganything.logger
     # The logger is automatically initialized when imported
     logger.info("RAGAnything CLI logging initialized")
-    
+
     # Enable verbose debug if needed
     set_verbose_debug(os.getenv("VERBOSE", "false").lower() == "true")
 
@@ -111,10 +116,14 @@ async def process_with_rag(
             # Debug logging to trace parameter types
             print(f"=== DEBUG llm_model_func called ===")
             print(f"prompt type: {type(prompt)}, value: {repr(prompt)[:200]}")
-            print(f"system_prompt type: {type(system_prompt)}, value: {repr(system_prompt)[:200]}")
-            print(f"history_messages type: {type(history_messages)}, length: {len(history_messages)}")
+            print(
+                f"system_prompt type: {type(system_prompt)}, value: {repr(system_prompt)[:200]}"
+            )
+            print(
+                f"history_messages type: {type(history_messages)}, length: {len(history_messages)}"
+            )
             print(f"kwargs keys: {list(kwargs.keys())}")
-            
+
             # Check if prompt is a dict (which would cause the encode error)
             if isinstance(prompt, dict):
                 print(f"ERROR: prompt is a dict instead of string!")
@@ -130,7 +139,7 @@ async def process_with_rag(
                     # Convert dict to string as fallback
                     prompt = str(prompt)
                     print(f"Converted dict to string: {prompt}")
-            
+
             # Handle keyword_extraction for Ollama
             keyword_extraction = kwargs.pop("keyword_extraction", None)
             if keyword_extraction:
@@ -170,13 +179,16 @@ async def process_with_rag(
                             if isinstance(content, list):
                                 # Handle multimodal content
                                 for item in content:
-                                    if isinstance(item, dict) and item.get("type") == "text":
+                                    if (
+                                        isinstance(item, dict)
+                                        and item.get("type") == "text"
+                                    ):
                                         prompt = item.get("text", "")
                                         break
                             else:
                                 prompt = content
                             break
-                
+
                 return ollama_complete_if_cache(
                     model=os.getenv("LLM_MODEL", "qwen3-vl:2b"),
                     prompt=prompt,
@@ -193,23 +205,27 @@ async def process_with_rag(
                     system_prompt=None,
                     history_messages=[],
                     messages=[
-                        {"role": "system", "content": system_prompt}
-                        if system_prompt
-                        else None,
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": prompt},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{image_data}"
+                        (
+                            {"role": "system", "content": system_prompt}
+                            if system_prompt
+                            else None
+                        ),
+                        (
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": prompt},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/jpeg;base64,{image_data}"
+                                        },
                                     },
-                                },
-                            ],
-                        }
-                        if image_data
-                        else {"role": "user", "content": prompt},
+                                ],
+                            }
+                            if image_data
+                            else {"role": "user", "content": prompt}
+                        ),
                     ],
                     host=os.getenv("OLLAMA_BASE_URL", "http://172.24.160.1:11434"),
                     **kwargs,
@@ -244,7 +260,10 @@ async def process_with_rag(
 
         # Process document
         await rag.process_document_complete(
-            file_path=file_path, output_dir=output_dir, parse_method="auto", video_fps=0.05
+            file_path=file_path,
+            output_dir=output_dir,
+            parse_method="auto",
+            video_fps=0.05,
         )
 
         # Example queries - demonstrating different query approaches

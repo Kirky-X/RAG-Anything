@@ -6,16 +6,17 @@ with progress reporting and error handling.
 """
 
 import asyncio
-from raganything.logger import logger
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
-import time
 
 from tqdm import tqdm
 
-from .parser import MineruParser, DoclingParser
+from raganything.logger import logger
+
+from .parser import DoclingParser, MineruParser
 
 
 @dataclass
@@ -390,7 +391,7 @@ def main():
     args = parser.parse_args()
 
     # Configure logging
-        # 使用统一的 loguru logger，移除本地 basicConfig
+    # 使用统一的 loguru logger，移除本地 basicConfig
 
     try:
         # Create batch parser

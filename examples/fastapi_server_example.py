@@ -1,9 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from raganything.server_config import load_server_configs, uvicorn_run_params
-
 
 app = FastAPI()
 
@@ -11,9 +10,11 @@ app = FastAPI()
 def get_auth():
     _, api = load_server_configs()
     api_key = api.lightrag_api_key
+
     def _ensure(key: str | None):
         if api_key and key != api_key:
             raise HTTPException(status_code=401, detail="Invalid API key")
+
     return _ensure
 
 

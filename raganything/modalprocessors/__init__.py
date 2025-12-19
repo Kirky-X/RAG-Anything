@@ -1,11 +1,11 @@
 # Copyright (c) 2025 Kirky.X
 # All rights reserved.
 
-from .base import ContextConfig, ContextExtractor, BaseModalProcessor
-from .image import ImageModalProcessor
-from .table import TableModalProcessor
+from .base import BaseModalProcessor, ContextConfig, ContextExtractor
 from .equation import EquationModalProcessor
 from .generic import GenericModalProcessor
+from .image import ImageModalProcessor
+from .table import TableModalProcessor
 
 __all__ = [
     "ContextConfig",

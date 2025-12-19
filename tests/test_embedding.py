@@ -2,7 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from raganything.llm.embedding import build_embedding_func, LazyLangChainEmbeddingWrapper
+from raganything.llm.embedding import (LazyLangChainEmbeddingWrapper,
+                                       build_embedding_func)
 
 
 class MockEmbeddings:
@@ -19,13 +20,12 @@ class MockEmbeddings:
 @pytest.mark.asyncio
 async def test_lazy_wrapper_initialization():
     """Test LazyLangChainEmbeddingWrapper initialization and call."""
-    init_kwargs = {
-        "model": "test-model",
-        "base_url": "http://localhost:11434"
-    }
+    init_kwargs = {"model": "test-model", "base_url": "http://localhost:11434"}
 
     # Mock the underlying embedding class
-    with patch("langchain_community.embeddings.OllamaEmbeddings", side_effect=MockEmbeddings) as MockClass:
+    with patch(
+        "langchain_community.embeddings.OllamaEmbeddings", side_effect=MockEmbeddings
+    ) as MockClass:
         wrapper = LazyLangChainEmbeddingWrapper(MockClass, init_kwargs)
 
         # Test calling the wrapper
@@ -57,7 +57,7 @@ async def test_build_embedding_func_ollama():
             provider="ollama",
             model="bge-m3:567m",
             api_base="http://localhost:11434",
-            embedding_dim=1024
+            embedding_dim=1024,
         )
 
         assert embedding_func is not None

@@ -6,7 +6,7 @@ Contains configuration dataclasses with environment variable support and optiona
 
 import os
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from raganything.utils import get_env_value
 
@@ -14,10 +14,12 @@ from raganything.utils import get_env_value
 def _import_toml_loader():
     try:
         import tomllib as _tl
+
         return _tl
     except Exception:
         try:
             import tomli as _tl  # type: ignore
+
             return _tl
         except Exception:
             return None
@@ -98,8 +100,12 @@ class VisionConfig:
 class RAGAnythingConfig:
     directory: DirectoryConfig = field(
         default_factory=lambda: DirectoryConfig(
-            working_dir=get_env_value("WORKING_DIR", os.path.abspath("./rag_storage"), str),
-            parser_output_dir=get_env_value("OUTPUT_DIR", os.path.abspath("./output"), str),
+            working_dir=get_env_value(
+                "WORKING_DIR", os.path.abspath("./rag_storage"), str
+            ),
+            parser_output_dir=get_env_value(
+                "OUTPUT_DIR", os.path.abspath("./output"), str
+            ),
         )
     )
     parsing: ParsingConfig = field(
@@ -111,11 +117,21 @@ class RAGAnythingConfig:
     )
     multimodal: MultimodalConfig = field(
         default_factory=lambda: MultimodalConfig(
-            enable_image_processing=get_env_value("ENABLE_IMAGE_PROCESSING", True, bool),
-            enable_table_processing=get_env_value("ENABLE_TABLE_PROCESSING", True, bool),
-            enable_equation_processing=get_env_value("ENABLE_EQUATION_PROCESSING", True, bool),
-            enable_audio_processing=get_env_value("ENABLE_AUDIO_PROCESSING", True, bool),
-            enable_video_processing=get_env_value("ENABLE_VIDEO_PROCESSING", True, bool),
+            enable_image_processing=get_env_value(
+                "ENABLE_IMAGE_PROCESSING", True, bool
+            ),
+            enable_table_processing=get_env_value(
+                "ENABLE_TABLE_PROCESSING", True, bool
+            ),
+            enable_equation_processing=get_env_value(
+                "ENABLE_EQUATION_PROCESSING", True, bool
+            ),
+            enable_audio_processing=get_env_value(
+                "ENABLE_AUDIO_PROCESSING", True, bool
+            ),
+            enable_video_processing=get_env_value(
+                "ENABLE_VIDEO_PROCESSING", True, bool
+            ),
         )
     )
     batch: BatchConfig = field(
@@ -126,7 +142,9 @@ class RAGAnythingConfig:
                 ".pdf,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.gif,.webp,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md",
                 str,
             ).split(","),
-            recursive_folder_processing=get_env_value("RECURSIVE_FOLDER_PROCESSING", True, bool),
+            recursive_folder_processing=get_env_value(
+                "RECURSIVE_FOLDER_PROCESSING", True, bool
+            ),
         )
     )
     context: ContextSettings = field(
@@ -136,7 +154,9 @@ class RAGAnythingConfig:
             max_context_tokens=get_env_value("MAX_CONTEXT_TOKENS", 2000, int),
             include_headers=get_env_value("INCLUDE_HEADERS", True, bool),
             include_captions=get_env_value("INCLUDE_CAPTIONS", True, bool),
-            context_filter_content_types=get_env_value("CONTEXT_FILTER_CONTENT_TYPES", "text", str).split(","),
+            context_filter_content_types=get_env_value(
+                "CONTEXT_FILTER_CONTENT_TYPES", "text", str
+            ).split(","),
             content_format=get_env_value("CONTENT_FORMAT", "minerU", str),
         )
     )
@@ -180,7 +200,9 @@ class RAGAnythingConfig:
         backup_count: int = field(default=get_env_value("LOG_BACKUP_COUNT", 0, int))
         dir: str = field(default=get_env_value("LOG_DIR", "", str))
         rotation: str = field(default="00:00")
-        retention: str = field(default=get_env_value("RAG_LOG_RETENTION", "7 days", str))
+        retention: str = field(
+            default=get_env_value("RAG_LOG_RETENTION", "7 days", str)
+        )
 
     @dataclass
     class TiktokenConfig:
@@ -212,7 +234,9 @@ class RAGAnythingConfig:
         host: str = field(default="0.0.0.0")
         port: int = field(default=9621)
         workers: int = field(default=2)
-        cors_origins: List[str] = field(default_factory=lambda: ["http://localhost:3000", "http://localhost:8080"])
+        cors_origins: List[str] = field(
+            default_factory=lambda: ["http://localhost:3000", "http://localhost:8080"]
+        )
         webui_title: str = field(default="My Graph KB")
         webui_description: str = field(default="Simple and Fast Graph Based RAG System")
 
@@ -237,7 +261,9 @@ class RAGAnythingConfig:
     @dataclass
     class APIConfig:
         lightrag_api_key: str = field(default="")
-        whitelist_paths: List[str] = field(default_factory=lambda: ["/health", "/api/*"])
+        whitelist_paths: List[str] = field(
+            default_factory=lambda: ["/health", "/api/*"]
+        )
 
     @dataclass
     class RuntimeLLMConfig:
@@ -321,6 +347,7 @@ class RAGAnythingConfig:
         if legacy_parse_method and not get_env_value("PARSE_METHOD", None, str):
             self.parsing.parse_method = legacy_parse_method
             import warnings
+
             warnings.warn(
                 "MINERU_PARSE_METHOD is deprecated. Use PARSE_METHOD instead.",
                 DeprecationWarning,
@@ -328,7 +355,9 @@ class RAGAnythingConfig:
             )
         cfg_path_env = get_env_value("CONFIG_TOML", None, str)
         default_cfg_path = "config.toml"
-        path = cfg_path_env or (default_cfg_path if _file_exists(default_cfg_path) else None)
+        path = cfg_path_env or (
+            default_cfg_path if _file_exists(default_cfg_path) else None
+        )
         if path:
             self._load_from_toml(path)
         self._validate()
@@ -336,13 +365,16 @@ class RAGAnythingConfig:
     def _load_from_toml(self, path: str):
         loader = _import_toml_loader()
         if loader is None:
-            raise RuntimeError("TOML parsing requires Python 3.11+ or 'tomli' installed")
+            raise RuntimeError(
+                "TOML parsing requires Python 3.11+ or 'tomli' installed"
+            )
         try:
             with open(path, "rb") as f:
                 data = loader.load(f)  # type: ignore
             self._merge_dict(data)
         except Exception as e:
             from raganything.logger import logger
+
             logger.error(f"Failed to load TOML config from {path}: {e}")
             raise
 
@@ -357,21 +389,23 @@ class RAGAnythingConfig:
                     # Allow int for float fields (e.g. timeout=60)
                     if attr_type is float and isinstance(v, int):
                         v = float(v)
-                    
+
                     if attr_type is not type(None) and not isinstance(v, attr_type):
                         # Special handling for list conversion if needed, or just warn
                         if attr_type is list and isinstance(v, (list, tuple)):
-                             pass # acceptable
+                            pass  # acceptable
                         else:
                             from raganything.logger import logger
+
                             logger.warning(
                                 f"Type mismatch in config '{section_name}.{k}': expected {attr_type.__name__}, got {type(v).__name__}. Using provided value."
                             )
                     setattr(dc_obj, k, v)
                 else:
                     from raganything.logger import logger
+
                     logger.warning(
-                         f"Unknown config key '{section_name}.{k}' in TOML. Ignoring."
+                        f"Unknown config key '{section_name}.{k}' in TOML. Ignoring."
                     )
 
         def normalize_context(values: Dict[str, Any]) -> Dict[str, Any]:
@@ -399,15 +433,25 @@ class RAGAnythingConfig:
         if "parsing" in nested:
             merge_dc(self.parsing, nested.get("parsing"), "raganything.parsing")
         if "multimodal" in nested:
-            merge_dc(self.multimodal, nested.get("multimodal"), "raganything.multimodal")
+            merge_dc(
+                self.multimodal, nested.get("multimodal"), "raganything.multimodal"
+            )
         if "batch" in nested:
             merge_dc(self.batch, nested.get("batch"), "raganything.batch")
         if "context" in nested:
-            merge_dc(self.context, normalize_context(nested.get("context")), "raganything.context")
+            merge_dc(
+                self.context,
+                normalize_context(nested.get("context")),
+                "raganything.context",
+            )
         if "llm" in nested:
             merge_dc(self.llm, nested.get("llm"), "raganything.llm")
         if "embedding" in nested:
-            merge_dc(self.embedding, normalize_embedding(nested.get("embedding")), "raganything.embedding")
+            merge_dc(
+                self.embedding,
+                normalize_embedding(nested.get("embedding")),
+                "raganything.embedding",
+            )
         if "vision" in nested:
             merge_dc(self.vision, nested.get("vision"), "raganything.vision")
 
@@ -423,7 +467,9 @@ class RAGAnythingConfig:
         if "llm" in cfg:
             merge_dc(self.llm, cfg.get("llm"), "llm")
         if "embedding" in cfg:
-            merge_dc(self.embedding, normalize_embedding(cfg.get("embedding")), "embedding")
+            merge_dc(
+                self.embedding, normalize_embedding(cfg.get("embedding")), "embedding"
+            )
         if "vision" in cfg:
             merge_dc(self.vision, cfg.get("vision"), "vision")
         if "logging" in cfg:
@@ -789,6 +835,7 @@ class RAGAnythingConfig:
     @property
     def mineru_parse_method(self) -> str:
         import warnings
+
         warnings.warn(
             "mineru_parse_method is deprecated. Use parse_method instead.",
             DeprecationWarning,
@@ -799,6 +846,7 @@ class RAGAnythingConfig:
     @mineru_parse_method.setter
     def mineru_parse_method(self, value: str):
         import warnings
+
         warnings.warn(
             "mineru_parse_method is deprecated. Use parse_method instead.",
             DeprecationWarning,
@@ -810,6 +858,7 @@ class RAGAnythingConfig:
 def _file_exists(path: str) -> bool:
     try:
         import os
+
         return os.path.exists(path)
     except Exception:
         return False

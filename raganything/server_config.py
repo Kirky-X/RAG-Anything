@@ -1,14 +1,16 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def _import_toml_loader():
     try:
         import tomllib as _tl
+
         return _tl
     except Exception:
         try:
             import tomli as _tl  # type: ignore
+
             return _tl
         except Exception:
             return None
@@ -17,6 +19,7 @@ def _import_toml_loader():
 def _file_exists(path: str) -> bool:
     try:
         import os
+
         return os.path.exists(path)
     except Exception:
         return False
@@ -48,6 +51,7 @@ class APIAuthConfig:
 
 def _env(name: str, default: Optional[str] = None) -> Optional[str]:
     import os
+
     return os.getenv(name, default)
 
 
@@ -64,7 +68,9 @@ def _split_csv(v: Optional[str]) -> List[str]:
     return [s.strip() for s in v.split(",") if s.strip()]
 
 
-def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerConfig, APIAuthConfig]:
+def load_server_configs(
+    config_toml_path: Optional[str] = None,
+) -> Tuple[ServerConfig, APIAuthConfig]:
     loader = _import_toml_loader()
     data: Dict[str, Any] = {}
     if config_toml_path is None:
@@ -79,12 +85,15 @@ def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerC
                 config_toml_path = "config.toml"
     if config_toml_path:
         if loader is None:
-            raise RuntimeError("TOML parsing requires Python 3.11+ or 'tomli' installed")
+            raise RuntimeError(
+                "TOML parsing requires Python 3.11+ or 'tomli' installed"
+            )
         try:
             with open(config_toml_path, "rb") as f:
                 data = loader.load(f)  # type: ignore
         except Exception as e:
             from raganything.logger import logger
+
             logger.error(f"Failed to load TOML config from {config_toml_path}: {e}")
             raise
 
@@ -122,7 +131,7 @@ def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerC
     # Server overrides
     # If TOML is present, only honor SERVER_* variables to avoid ambient HOST/PORT interference
     toml_present = bool(config_toml_path)
-    
+
     # 1. Determine HOST
     # Priority: SERVER_HOST > TOML > HOST (if TOML missing)
     env_server_host = _env("SERVER_HOST")
@@ -130,13 +139,13 @@ def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerC
         srv.host = str(env_server_host)
     elif toml_present:
         # If TOML is present, use its value (loaded above)
-        # However, if TOML did not specify a host (using default "0.0.0.0"), 
-        # AND HOST env var IS set, we should probably respect HOST env var as a fallback 
+        # However, if TOML did not specify a host (using default "0.0.0.0"),
+        # AND HOST env var IS set, we should probably respect HOST env var as a fallback
         # because the user might expect standard env vars to work if they didn't explicitly set it in TOML.
         # BUT the requirement is to avoid "ambient HOST interference".
         # So we ONLY use HOST if TOML didn't provide a value.
         # How do we know if TOML provided a value? We checked data.get("server", {}) above.
-        
+
         # Let's check if 'host' was actually in the TOML data
         server_section_data = data.get("server", {})
         # Note: in config.toml, [server] host="0.0.0.0" IS present.
@@ -154,7 +163,7 @@ def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerC
         # So `if "host" not in server_section_data:` should be False.
         # So we should NOT enter the block to read _env("HOST").
         # So srv.host should remain "0.0.0.0" (loaded from TOML).
-        
+
         # WAIT. I might have misread the logs or the logic.
         # Let's look at the previous run log failure:
         # AssertionError: '127.0.0.1' != '0.0.0.0'
@@ -173,17 +182,17 @@ def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerC
         # The test assumes `config.toml` value "0.0.0.0" will be used.
         # But environment variable `SERVER_HOST` correctly overrides it.
         # So the CODE is correct (respecting precedence), but the TEST is wrong (ignoring env vars).
-        
+
         # To fix the test, we should update the test expectation to match the environment,
         # OR unset the environment variable in the test.
         # Since I cannot easily change the environment of the running agent process permanently,
         # I should update the test case to be aware of the environment override.
-        
+
         if "host" not in server_section_data:
-             # TOML didn't specify host, so we can fallback to HOST env var
-             env_host = _env("HOST")
-             if env_host:
-                 srv.host = str(env_host)
+            # TOML didn't specify host, so we can fallback to HOST env var
+            env_host = _env("HOST")
+            if env_host:
+                srv.host = str(env_host)
     else:
         # Fallback to HOST only if TOML is not present
         env_host = _env("HOST")
@@ -200,13 +209,13 @@ def load_server_configs(config_toml_path: Optional[str] = None) -> Tuple[ServerC
         # Check if TOML specified port
         server_section_data = data.get("server", {})
         if "port" not in server_section_data:
-             env_port = _env("PORT")
-             if env_port:
-                 srv.port = _as_int(env_port, srv.port)
+            env_port = _env("PORT")
+            if env_port:
+                srv.port = _as_int(env_port, srv.port)
     else:
-         env_port = _env("PORT")
-         if env_port:
-             srv.port = _as_int(env_port, srv.port)
+        env_port = _env("PORT")
+        if env_port:
+            srv.port = _as_int(env_port, srv.port)
 
     # 3. Determine WORKERS
     # Priority: SERVER_WORKERS > TOML > WORKERS (if TOML missing)
@@ -251,8 +260,10 @@ def uvicorn_run_params(server: ServerConfig) -> Dict[str, Any]:
         "reload": False,  # Disable reload to avoid port conflicts
     }
     if server.ssl.enabled and server.ssl.certfile and server.ssl.keyfile:
-        params.update({
-            "ssl_certfile": server.ssl.certfile,
-            "ssl_keyfile": server.ssl.keyfile,
-        })
+        params.update(
+            {
+                "ssl_certfile": server.ssl.certfile,
+                "ssl_keyfile": server.ssl.keyfile,
+            }
+        )
     return params

@@ -1,14 +1,15 @@
 # Copyright (c) 2025 Kirky.X
 # All rights reserved.
 
-from typing import Any, Dict, List, Optional, Union
-import os
 import base64
+import os
 from io import BytesIO
+from typing import Any, Dict, List, Optional, Union
 
 
 class LLMProviderConfig:
     """Configuration class for LLM providers."""
+
     def __init__(
         self,
         provider: str,
@@ -41,6 +42,7 @@ class LLMProviderConfig:
 
 class LLM:
     """Lightweight LLM wrapper for various providers."""
+
     def __init__(
         self,
         chat_model: Any,
@@ -95,6 +97,7 @@ class LLM:
                 text = prompt or ""
                 text = (text + "\n[IMAGE]").strip()
                 from langchain_core.messages import HumanMessage, SystemMessage
+
                 msgs = []
                 if system_prompt:
                     msgs.append(SystemMessage(content=system_prompt))
@@ -108,7 +111,8 @@ class LLM:
                 result = await self._invoke_messages(msgs)
             return getattr(result, "content", str(result))
 
-        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+        from langchain_core.messages import (AIMessage, HumanMessage,
+                                             SystemMessage)
 
         lc_messages: List[Union[AIMessage, HumanMessage, SystemMessage]] = []
         if system_prompt:
@@ -119,7 +123,8 @@ class LLM:
         return getattr(result, "content", str(result))
 
     async def _invoke_messages(self, messages: List[Dict]):
-        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+        from langchain_core.messages import (AIMessage, HumanMessage,
+                                             SystemMessage)
 
         lc_messages: List[Union[AIMessage, HumanMessage, SystemMessage]] = []
         for m in messages:
@@ -166,8 +171,8 @@ class LLM:
 
     async def _invoke_direct_v2(self, messages: List[Dict[str, str]]) -> str:
         import json
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         url = self.direct_base_url.rstrip("/") + "/chat"
         payload = {
@@ -262,15 +267,19 @@ class OfflineChatModel:
             if image_b64:
                 try:
                     from PIL import Image
+
                     img = Image.open(BytesIO(base64.b64decode(image_b64)))
                     w, h = img.size
                     mode = img.mode
                     # Compute simple statistics
                     try:
                         import numpy as np
-                        arr = np.array(img.convert('L'))
+
+                        arr = np.array(img.convert("L"))
                         brightness = float(arr.mean())
-                        desc_parts.append(f"Image size: {w}x{h}, mode: {mode}, avg_brightness: {brightness:.1f}")
+                        desc_parts.append(
+                            f"Image size: {w}x{h}, mode: {mode}, avg_brightness: {brightness:.1f}"
+                        )
                     except Exception:
                         desc_parts.append(f"Image size: {w}x{h}, mode: {mode}")
                 except Exception as e:
@@ -290,7 +299,9 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
     if provider == "openai" or provider == "azure-openai" or provider == "openrouter":
         # Fail fast if API key is missing to allow fallback logic to work
         if not cfg.api_key and not os.environ.get("OPENAI_API_KEY"):
-             raise ValueError("OpenAI API key is required but not provided in arguments or environment variables.")
+            raise ValueError(
+                "OpenAI API key is required but not provided in arguments or environment variables."
+            )
 
         try:
             from langchain_openai import ChatOpenAI
@@ -316,7 +327,10 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
             if api_key:
                 os.environ.setdefault("OPENAI_API_KEY", api_key)
                 init_kwargs["api_key"] = api_key
-            os.environ.setdefault("OPENAI_BASE_URL", init_kwargs.get("base_url", "https://openrouter.ai/api/v1"))
+            os.environ.setdefault(
+                "OPENAI_BASE_URL",
+                init_kwargs.get("base_url", "https://openrouter.ai/api/v1"),
+            )
         else:
             if cfg.api_base:
                 init_kwargs["base_url"] = cfg.api_base
@@ -348,11 +362,13 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
         try:
             # Use our robust wrapper instead of direct ChatOllama
             from raganything.llm.ollama_client import RobustOllamaClient
+
             provider_cls = RobustOllamaClient
         except ImportError:
             # Fallback or raise error if module missing (should be there)
             try:
                 from langchain_ollama import ChatOllama
+
                 provider_cls = ChatOllama
             except ImportError as e:
                 raise ValueError(f"Ollama integration unavailable: {e}")
@@ -364,12 +380,12 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
             init_kwargs["timeout"] = cfg.timeout
         if cfg.max_retries is not None:
             init_kwargs["max_retries"] = cfg.max_retries
-            
+
         init_kwargs.update(cfg.extra or {})
-        
+
         # Use LazyChatModelWrapper for picklability
         chat = LazyChatModelWrapper(provider_cls, init_kwargs)
-            
+
         return LLM(chat)
 
     if provider == "mock":

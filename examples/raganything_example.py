@@ -9,23 +9,22 @@ This example shows how to:
 4. Handle different types of multimodal content (tables, equations) in queries
 """
 
-import os
 import argparse
 import asyncio
 import logging
 import logging.config
-from pathlib import Path
-
+import os
 # Add project root directory to Python path
 import sys
+from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
+from dotenv import load_dotenv
 from lightrag.llm.openai import openai_complete_if_cache, openai_embed
 from lightrag.utils import EmbeddingFunc, logger, set_verbose_debug
-from raganything import RAGAnything, RAGAnythingConfig
 
-from dotenv import load_dotenv
+from raganything import RAGAnything, RAGAnythingConfig
 
 load_dotenv(dotenv_path=".env", override=False)
 
@@ -118,13 +117,14 @@ async def process_with_rag(
         ollama_host = os.getenv("OLLAMA_BASE_URL", "http://172.24.160.1:11434")
 
         def llm_model_func(prompt, system_prompt=None, history_messages=[], **kwargs):
-            from lightrag.llm.ollama import _ollama_model_if_cache as ollama_complete_if_cache
-            
+            from lightrag.llm.ollama import \
+                _ollama_model_if_cache as ollama_complete_if_cache
+
             # Handle keyword_extraction for Ollama
             keyword_extraction = kwargs.pop("keyword_extraction", None)
             if keyword_extraction:
                 kwargs["format"] = "json"
-                
+
             return ollama_complete_if_cache(
                 model=llm_model,
                 prompt=prompt,
@@ -143,13 +143,14 @@ async def process_with_rag(
             messages=None,
             **kwargs,
         ):
-            from lightrag.llm.ollama import _ollama_model_if_cache as ollama_complete_if_cache
-            
+            from lightrag.llm.ollama import \
+                _ollama_model_if_cache as ollama_complete_if_cache
+
             # Handle keyword_extraction for Ollama
             keyword_extraction = kwargs.pop("keyword_extraction", None)
             if keyword_extraction:
                 kwargs["format"] = "json"
-                
+
             # If messages format is provided (for multimodal VLM enhanced query), use it directly
             if messages:
                 return ollama_complete_if_cache(
@@ -169,23 +170,27 @@ async def process_with_rag(
                     system_prompt=None,
                     history_messages=[],
                     messages=[
-                        {"role": "system", "content": system_prompt}
-                        if system_prompt
-                        else None,
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": prompt},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{image_data}"
+                        (
+                            {"role": "system", "content": system_prompt}
+                            if system_prompt
+                            else None
+                        ),
+                        (
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": prompt},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/jpeg;base64,{image_data}"
+                                        },
                                     },
-                                },
-                            ],
-                        }
-                        if image_data
-                        else {"role": "user", "content": prompt},
+                                ],
+                            }
+                            if image_data
+                            else {"role": "user", "content": prompt}
+                        ),
                     ],
                     host=ollama_host,
                     **kwargs,
@@ -197,7 +202,7 @@ async def process_with_rag(
         # Define embedding function - using environment variables for configuration
         embedding_dim = int(os.getenv("EMBEDDING_DIM", "1024"))
         embedding_model = os.getenv("EMBEDDING_MODEL", "bge-m3:latest")
-        
+
         from lightrag.llm.ollama import ollama_embed
 
         embedding_func = EmbeddingFunc(

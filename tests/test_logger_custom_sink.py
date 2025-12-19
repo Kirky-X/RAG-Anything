@@ -3,7 +3,8 @@
 import sqlite3
 from pathlib import Path
 
-from raganything.logger import register_sink, unregister_sink, SQLiteSink, init_logger, logger
+from raganything.logger import (SQLiteSink, init_logger, logger, register_sink,
+                                unregister_sink)
 
 
 def test_sqlite_sink_write(tmp_path: Path):

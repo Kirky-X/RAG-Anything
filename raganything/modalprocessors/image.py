@@ -5,17 +5,14 @@
 Image modal processor
 """
 
-import json
-import base64
 import asyncio
-from typing import Dict, Any, Tuple
+import base64
+import json
 from pathlib import Path
+from typing import Any, Dict, Tuple
 
-from lightrag.utils import (
-    logger,
-    compute_mdhash_id,
-)
 from lightrag.lightrag import LightRAG
+from lightrag.utils import compute_mdhash_id, logger
 
 # Import prompt templates
 from raganything.prompt import PROMPTS
@@ -111,18 +108,22 @@ class ImageModalProcessor(BaseModalProcessor):
                     "vision_prompt_with_context", PROMPTS["vision_prompt"]
                 ).format(
                     context=context,
-                    entity_name=entity_name
-                    if entity_name
-                    else "unique descriptive name for this image",
+                    entity_name=(
+                        entity_name
+                        if entity_name
+                        else "unique descriptive name for this image"
+                    ),
                     image_path=image_path,
                     captions=captions if captions else "None",
                     footnotes=footnotes if footnotes else "None",
                 )
             else:
                 vision_prompt = PROMPTS["vision_prompt"].format(
-                    entity_name=entity_name
-                    if entity_name
-                    else "unique descriptive name for this image",
+                    entity_name=(
+                        entity_name
+                        if entity_name
+                        else "unique descriptive name for this image"
+                    ),
                     image_path=image_path,
                     captions=captions if captions else "None",
                     footnotes=footnotes if footnotes else "None",
@@ -140,7 +141,7 @@ class ImageModalProcessor(BaseModalProcessor):
                 # Some LLM functions (like those using use_llm_func_with_cache) don't accept system_prompt
                 # We prepend it to the prompt instead
                 full_prompt = f"{PROMPTS['IMAGE_ANALYSIS_SYSTEM']}\n\n{vision_prompt}"
-                
+
                 # Use a simpler invocation method if the wrapped function is a LangChainLLM
                 # to avoid potential issues with argument handling in async contexts
                 response = await asyncio.wait_for(
@@ -153,26 +154,46 @@ class ImageModalProcessor(BaseModalProcessor):
                 logger.info(f"VLM response received for image: {image_path}")
             except (asyncio.TimeoutError, Exception) as call_err:
                 error_msg = str(call_err)
-                logger.error(f"VLM call failed or timed out for image {image_path}: {error_msg}")
-                
+                logger.error(
+                    f"VLM call failed or timed out for image {image_path}: {error_msg}"
+                )
+
                 # Handle OpenAI APIConnectionError specifically
-                if "APIConnectionError" in error_msg and "missing 1 required keyword-only argument: 'request'" in error_msg:
-                    logger.warning("OpenAI APIConnectionError compatibility issue detected. Using fallback response.")
+                if (
+                    "APIConnectionError" in error_msg
+                    and "missing 1 required keyword-only argument: 'request'"
+                    in error_msg
+                ):
+                    logger.warning(
+                        "OpenAI APIConnectionError compatibility issue detected. Using fallback response."
+                    )
                     error_msg = "OpenAI API connection error - compatibility issue with image processing"
-                
+
                 # Check if it's a connection error
-                if "Connection" in error_msg or "connect" in error_msg or "ClientConnectorError" in error_msg:
-                     logger.warning("Connection error detected. Returning fallback response.")
-                
+                if (
+                    "Connection" in error_msg
+                    or "connect" in error_msg
+                    or "ClientConnectorError" in error_msg
+                ):
+                    logger.warning(
+                        "Connection error detected. Returning fallback response."
+                    )
+
                 # Return a fallback response instead of raising to allow pipeline to continue
-                response = json.dumps({
-                    "detailed_description": f"Image analysis failed or timed out for {image_path}. Error: {error_msg}",
-                    "entity_info": {
-                        "entity_name": entity_name if entity_name else f"image_{compute_mdhash_id(str(modal_content))}",
-                        "entity_type": "image",
-                        "summary": "Analysis failed or timed out"
+                response = json.dumps(
+                    {
+                        "detailed_description": f"Image analysis failed or timed out for {image_path}. Error: {error_msg}",
+                        "entity_info": {
+                            "entity_name": (
+                                entity_name
+                                if entity_name
+                                else f"image_{compute_mdhash_id(str(modal_content))}"
+                            ),
+                            "entity_type": "image",
+                            "summary": "Analysis failed or timed out",
+                        },
                     }
-                })
+                )
 
             # Parse response (reuse existing logic)
             enhanced_caption, entity_info = self._parse_response(response, entity_name)
@@ -183,9 +204,11 @@ class ImageModalProcessor(BaseModalProcessor):
             logger.error(f"Error generating image description: {e}")
             # Fallback processing
             fallback_entity = {
-                "entity_name": entity_name
-                if entity_name
-                else f"image_{compute_mdhash_id(str(modal_content))}",
+                "entity_name": (
+                    entity_name
+                    if entity_name
+                    else f"image_{compute_mdhash_id(str(modal_content))}"
+                ),
                 "entity_type": "image",
                 "summary": f"Image content: {str(modal_content)[:100]}",
             }
@@ -246,9 +269,11 @@ class ImageModalProcessor(BaseModalProcessor):
             logger.error(f"Error processing image content: {e}")
             # Fallback processing
             fallback_entity = {
-                "entity_name": entity_name
-                if entity_name
-                else f"image_{compute_mdhash_id(str(modal_content))}",
+                "entity_name": (
+                    entity_name
+                    if entity_name
+                    else f"image_{compute_mdhash_id(str(modal_content))}"
+                ),
                 "entity_type": "image",
                 "summary": f"Image content: {str(modal_content)[:100]}",
             }
@@ -272,38 +297,66 @@ class ImageModalProcessor(BaseModalProcessor):
             if description and not entity_data:
                 # If we have a description but no entity info, try to construct a basic entity info
                 # This often happens when models forget the JSON structure but provide good text
-                
+
                 # Try to extract a name from the description (first few words)
-                name_candidate = description.split('.')[0][:50]
-                
+                name_candidate = description.split(".")[0][:50]
+
                 entity_data = {
-                    "entity_name": entity_name if entity_name else f"entity_{compute_mdhash_id(description)}",
-                    "entity_type": "image" if isinstance(self, ImageModalProcessor) else "content",
-                    "summary": description[:200]
+                    "entity_name": (
+                        entity_name
+                        if entity_name
+                        else f"entity_{compute_mdhash_id(description)}"
+                    ),
+                    "entity_type": (
+                        "image" if isinstance(self, ImageModalProcessor) else "content"
+                    ),
+                    "summary": description[:200],
                 }
                 logger.warning("Recovered from missing entity_info using description")
 
             if not description or not entity_data:
                 # If robust parsing returned empty or malformed data
                 # Check if the raw response itself is the description (common with some models)
-                if isinstance(response, str) and len(response) > 0 and not response.strip().startswith('{'):
+                if (
+                    isinstance(response, str)
+                    and len(response) > 0
+                    and not response.strip().startswith("{")
+                ):
                     description = response
                     entity_data = {
-                        "entity_name": entity_name if entity_name else f"entity_{compute_mdhash_id(description)}",
-                        "entity_type": "image" if isinstance(self, ImageModalProcessor) else "content",
-                        "summary": description[:200]
+                        "entity_name": (
+                            entity_name
+                            if entity_name
+                            else f"entity_{compute_mdhash_id(description)}"
+                        ),
+                        "entity_type": (
+                            "image"
+                            if isinstance(self, ImageModalProcessor)
+                            else "content"
+                        ),
+                        "summary": description[:200],
                     }
-                    logger.warning("Used raw response as description (model failed to output JSON)")
+                    logger.warning(
+                        "Used raw response as description (model failed to output JSON)"
+                    )
                 else:
-                    raise ValueError("Missing required fields in response and could not recover")
+                    raise ValueError(
+                        "Missing required fields in response and could not recover"
+                    )
 
             # Validate entity data fields and fill defaults if missing
             if "entity_name" not in entity_data:
-                entity_data["entity_name"] = entity_name if entity_name else f"entity_{compute_mdhash_id(description)}"
-            
+                entity_data["entity_name"] = (
+                    entity_name
+                    if entity_name
+                    else f"entity_{compute_mdhash_id(description)}"
+                )
+
             if "entity_type" not in entity_data:
-                entity_data["entity_type"] = "image" if isinstance(self, ImageModalProcessor) else "content"
-                
+                entity_data["entity_type"] = (
+                    "image" if isinstance(self, ImageModalProcessor) else "content"
+                )
+
             if "summary" not in entity_data:
                 entity_data["summary"] = description[:200]
 
@@ -319,9 +372,11 @@ class ImageModalProcessor(BaseModalProcessor):
             logger.error(f"Error parsing image analysis response: {e}")
             logger.debug(f"Raw response: {response}")
             fallback_entity = {
-                "entity_name": entity_name
-                if entity_name
-                else f"image_{compute_mdhash_id(response)}",
+                "entity_name": (
+                    entity_name
+                    if entity_name
+                    else f"image_{compute_mdhash_id(response)}"
+                ),
                 "entity_type": "image",
                 "summary": response[:100] + "..." if len(response) > 100 else response,
             }

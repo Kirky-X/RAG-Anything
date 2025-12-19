@@ -65,7 +65,7 @@ async def test_analyze_frames_offline_vlm(tmp_path):
 
     frames = parser._extract_frames(
         video_path=VIDEO_FILE,
-        fps=max(0.5, min(1.0, fps and fps / max(fps, 1))),
+        fps=0.2,  # Use lower FPS for testing to avoid excessive frames
         output_dir=tmp_path,
     )
     assert isinstance(frames, list)
@@ -80,12 +80,14 @@ def test_extract_frames_basics(tmp_path):
     if not VIDEO_FILE.exists():
         pytest.skip(f"Test video file not found: {VIDEO_FILE}")
     parser = VideoParser()
+    # Use lower FPS for faster testing on long videos
     frames = parser._extract_frames(
         video_path=VIDEO_FILE,
-        fps=0.5,
+        fps=0.2,  # 1 frame every 5 seconds for faster testing
         output_dir=tmp_path,
     )
     assert len(frames) > 0
+    assert len(frames) <= 200  # Reasonable limit for testing
     assert Path(frames[0]["path"]).exists()
 
 
@@ -120,13 +122,14 @@ def test_integration_slice_and_parse():
 
     logger.info(f"Slicing video: Start {start_time}s, Duration {slice_duration}s")
 
-    # Use ffmpeg via os.system or similar for robust slicing? 
+    # Use ffmpeg via os.system or similar for robust slicing?
     # Or OpenCV. OpenCV is slower for writing. Let's try ffmpeg if available, else OpenCV.
     # Given environment restrictions, let's stick to OpenCV or just process the file directly but limit the parser?
     # The parser doesn't have start/end args.
     # So we must create a sliced file.
 
     import time
+
     sliced_filename = f"test_slice_{int(time.time())}.mp4"
     sliced_path = OUTPUT_DIR / sliced_filename
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -135,7 +138,7 @@ def test_integration_slice_and_parse():
     cap = cv2.VideoCapture(str(VIDEO_FILE))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(str(sliced_path), fourcc, fps, (width, height))
 
     start_frame = int(start_time * fps)
@@ -146,7 +149,7 @@ def test_integration_slice_and_parse():
     count = 0
     # Limit to 10 seconds for the automated test to be fast, unless user strictly requires 2 mins for verification.
     # User said: "verify VideoParser results. The intercepted fragments need to be saved... and the analysis results"
-    # I will do a shorter slice (10s) for this unit test file to keep it quick, 
+    # I will do a shorter slice (10s) for this unit test file to keep it quick,
     # but I will create a separate script for the user's manual verification task.
 
     # Wait, I should just write the script for the user's request.

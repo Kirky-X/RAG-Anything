@@ -5,10 +5,11 @@ Contains methods for processing multiple documents in batch mode
 """
 
 import asyncio
-from raganything.logger import logger as rag_logger
-from pathlib import Path
-from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import time
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from raganything.logger import logger as rag_logger
 
 from .batch_parser import BatchParser, BatchProcessingResult
 

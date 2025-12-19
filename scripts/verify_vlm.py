@@ -16,12 +16,12 @@ from raganything.parser.vlm_parser import VlmParser
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler("/tmp/vlm_verification.log"),
-        logging.StreamHandler(sys.stdout)
+        logging.StreamHandler(sys.stdout),
     ],
-    force=True
+    force=True,
 )
 logger = logging.getLogger(__name__)
 
@@ -36,16 +36,26 @@ def extract_frames(video_path: Path, output_dir: Path, count: int = 5) -> List[P
     duration = 60.0  # Default fallback
     try:
         cmd = [
-            "ffprobe", "-v", "error", "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(video_path),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         try:
             duration = float(result.stdout.strip())
         except ValueError:
-            logger.warning("Could not parse duration from ffprobe output. Using default.")
+            logger.warning(
+                "Could not parse duration from ffprobe output. Using default."
+            )
     except (subprocess.CalledProcessError, FileNotFoundError):
-        logger.warning("ffprobe failed or not found. Using default duration/random sampling strategy.")
+        logger.warning(
+            "ffprobe failed or not found. Using default duration/random sampling strategy."
+        )
         # If we know the file is project_1.mp4, we know it's ~3412s long from previous context
         if "project_1.mp4" in str(video_path):
             duration = 3400.0
@@ -62,14 +72,25 @@ def extract_frames(video_path: Path, output_dir: Path, count: int = 5) -> List[P
         output_file = output_dir / f"frame_{ts_str}.jpg"
 
         cmd = [
-            "ffmpeg", "-y", "-ss", str(timestamp), "-i", str(video_path),
-            "-frames:v", "1", "-q:v", "2", str(output_file)
+            "ffmpeg",
+            "-y",
+            "-ss",
+            str(timestamp),
+            "-i",
+            str(video_path),
+            "-frames:v",
+            "1",
+            "-q:v",
+            "2",
+            str(output_file),
         ]
 
         try:
             subprocess.run(cmd, capture_output=True, check=True)
             frames.append(output_file)
-            logger.info(f"[{i + 1}/{count}] Extracted frame: {output_file.name} at {timestamp:.2f}s")
+            logger.info(
+                f"[{i + 1}/{count}] Extracted frame: {output_file.name} at {timestamp:.2f}s"
+            )
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to extract frame at {timestamp}s: {e}")
 
@@ -98,6 +119,7 @@ async def run_verification():
     except Exception as e:
         logger.error(f"Failed to init parser: {e}")
         import traceback
+
         logger.error(traceback.format_exc())
         return
 
@@ -115,9 +137,9 @@ async def run_verification():
                 parser.parse_image_async(
                     frame,
                     prompt="Describe this image in detail.",
-                    max_size=800  # Optimize for speed
+                    max_size=800,  # Optimize for speed
                 ),
-                timeout=120.0  # Allow slightly more than internal timeout
+                timeout=120.0,  # Allow slightly more than internal timeout
             )
         except asyncio.TimeoutError:
             logger.error(f"Timeout processing {frame.name}")
@@ -127,12 +149,14 @@ async def run_verification():
                 "description": "",
                 "error": "Timeout",
                 "latency_seconds": 120.0,
-                "confidence": 0.0
+                "confidence": 0.0,
             }
 
         results.append(result)
-        desc_preview = result.get('description', '')[:50].replace('\n', ' ')
-        logger.info(f"Completed {frame.name}. Latency: {result.get('latency_seconds')}s. Desc: {desc_preview}...")
+        desc_preview = result.get("description", "")[:50].replace("\n", " ")
+        logger.info(
+            f"Completed {frame.name}. Latency: {result.get('latency_seconds')}s. Desc: {desc_preview}..."
+        )
 
     # 4. Generate Report
     logger.info("=== Step 4: Generating Report ===")

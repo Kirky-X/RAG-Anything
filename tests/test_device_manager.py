@@ -40,35 +40,44 @@ class TestDeviceManager(unittest.TestCase):
         """Test CUDA selection when available."""
 
         class FakeTensor:
-            def cuda(self): return self
+            def cuda(self):
+                return self
 
-            def to(self, *_args, **_kwargs): return self
+            def to(self, *_args, **_kwargs):
+                return self
 
         class FakeCuda:
             @staticmethod
-            def is_available(): return True
+            def is_available():
+                return True
 
             @staticmethod
-            def get_device_name(_idx): return "FakeGPU"
+            def get_device_name(_idx):
+                return "FakeGPU"
 
             @staticmethod
-            def memory_allocated(_idx): return 0
+            def memory_allocated(_idx):
+                return 0
 
             @staticmethod
-            def memory_reserved(_idx): return 0
+            def memory_reserved(_idx):
+                return 0
 
         class FakeBackends:
             class mps:
                 @staticmethod
-                def is_available(): return False
+                def is_available():
+                    return False
 
         class FakeTorch:
             cuda = FakeCuda()
             backends = FakeBackends()
 
-            def tensor(self, _arr): return FakeTensor()
+            def tensor(self, _arr):
+                return FakeTensor()
 
-            def device(self, d): return d
+            def device(self, d):
+                return d
 
         with patch.object(dev, "TORCH_AVAILABLE", True):
             with patch.object(dev, "torch", FakeTorch()):
@@ -81,26 +90,32 @@ class TestDeviceManager(unittest.TestCase):
         """Test MPS selection when available (macOS)."""
 
         class FakeTensor:
-            def cuda(self): return self
+            def cuda(self):
+                return self
 
-            def to(self, *_args, **_kwargs): return self
+            def to(self, *_args, **_kwargs):
+                return self
 
         class FakeCuda:
             @staticmethod
-            def is_available(): return False
+            def is_available():
+                return False
 
         class FakeBackends:
             class mps:
                 @staticmethod
-                def is_available(): return True
+                def is_available():
+                    return True
 
         class FakeTorch:
             cuda = FakeCuda()
             backends = FakeBackends()
 
-            def tensor(self, _arr): return FakeTensor()
+            def tensor(self, _arr):
+                return FakeTensor()
 
-            def device(self, d): return d
+            def device(self, d):
+                return d
 
         with patch.object(dev, "TORCH_AVAILABLE", True):
             with patch.object(dev, "torch", FakeTorch()):
@@ -113,24 +128,29 @@ class TestDeviceManager(unittest.TestCase):
         """Test fallback to CPU if GPU init fails."""
 
         class FailingTensor:
-            def cuda(self): raise RuntimeError("cuda fail")
+            def cuda(self):
+                raise RuntimeError("cuda fail")
 
         class FakeCuda:
             @staticmethod
-            def is_available(): return True
+            def is_available():
+                return True
 
         class FakeBackends:
             class mps:
                 @staticmethod
-                def is_available(): return False
+                def is_available():
+                    return False
 
         class FakeTorch:
             cuda = FakeCuda()
             backends = FakeBackends()
 
-            def tensor(self, _arr): return FailingTensor()
+            def tensor(self, _arr):
+                return FailingTensor()
 
-            def device(self, d): return d
+            def device(self, d):
+                return d
 
         with patch.object(dev, "TORCH_AVAILABLE", True):
             with patch.object(dev, "torch", FakeTorch()):

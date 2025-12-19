@@ -3,8 +3,11 @@
 
 import os
 from typing import Any, Dict, List, Optional
+
 import numpy as np
+
 from raganything.logger import logger
+
 
 def build_embedding_func(
     provider: str,
@@ -55,7 +58,10 @@ def build_embedding_func(
         current_key = api_key or os.environ.get("OPENAI_API_KEY")
         if current_key == "DUMMY_KEY":
             from raganything.logger import logger
-            logger.warning("Using LocalEmbeddingWrapper because OPENAI_API_KEY is DUMMY_KEY")
+
+            logger.warning(
+                "Using LocalEmbeddingWrapper because OPENAI_API_KEY is DUMMY_KEY"
+            )
             return EmbeddingFunc(
                 embedding_dim=embedding_dim,
                 max_token_size=max_token_size,
@@ -64,7 +70,9 @@ def build_embedding_func(
 
         # Fail fast if API key is missing to allow fallback logic to work
         if not current_key:
-             raise ValueError("OpenAI API key is required but not provided in arguments or environment variables.")
+            raise ValueError(
+                "OpenAI API key is required but not provided in arguments or environment variables."
+            )
 
         init_kwargs: Dict[str, Any] = {"model": model}
         if api_base:
@@ -101,9 +109,12 @@ def build_embedding_func(
             from langchain_huggingface import HuggingFaceEmbeddings
         except Exception as e:
             try:
-                from langchain_community.embeddings import HuggingFaceEmbeddings
+                from langchain_community.embeddings import \
+                    HuggingFaceEmbeddings
             except Exception as e2:
-                raise ValueError(f"LangChain HuggingFace embeddings unavailable: {e}, {e2}")
+                raise ValueError(
+                    f"LangChain HuggingFace embeddings unavailable: {e}, {e2}"
+                )
 
         init_kwargs: Dict[str, Any] = {"model_name": model}
         init_kwargs.update(extra)
@@ -158,18 +169,19 @@ class LazyLangChainEmbeddingWrapper:
     async def __call__(self, texts: List[str], **kwargs) -> List[List[float]]:
         # Run sync method in a thread to avoid blocking event loop
         import asyncio
-        from raganything.logger import logger
         import sys
-        
+
+        from raganything.logger import logger
+
         # If texts is empty, return empty list
         if not texts:
             return np.array([])
-            
+
         # logger = logging.getLogger("LazyLangChainEmbeddingWrapper")
         # msg = f"Embedding request for {len(texts)} texts. First text len: {len(texts[0]) if texts else 0}"
         # logger.debug(msg)
         # print(f"[EmbeddingWrapper] {msg}", file=sys.stderr, flush=True)
-        
+
         try:
             # Check client initialization
             if self._client is None:
@@ -177,7 +189,7 @@ class LazyLangChainEmbeddingWrapper:
                 # print(f"[EmbeddingWrapper] Initializing client...", file=sys.stderr, flush=True)
                 # Initialize client immediately (this is sync but fast usually)
                 self._client = self.provider_cls(**self.init_kwargs)
-            
+
             # Use asyncio.to_thread to run the sync embed_documents call in a separate thread
             # This is crucial for avoiding event loop blocking
             result = await asyncio.to_thread(self.client.embed_documents, texts)
@@ -186,9 +198,14 @@ class LazyLangChainEmbeddingWrapper:
         except Exception as e:
             # Capture full traceback for better debugging
             import traceback
+
             tb = traceback.format_exc()
             logger.error(f"Embedding generation failed: {e}\n{tb}")
-            print(f"[EmbeddingWrapper] Embedding generation failed: {e}\n{tb}", file=sys.stderr, flush=True)
+            print(
+                f"[EmbeddingWrapper] Embedding generation failed: {e}\n{tb}",
+                file=sys.stderr,
+                flush=True,
+            )
             raise
 
 
@@ -198,12 +215,18 @@ class LocalEmbeddingWrapper:
 
     async def __call__(self, texts: List[str], **kwargs) -> Any:
         import sys
+
         # Local mock implementation
-        print(f"[LocalEmbeddingWrapper] Called with {len(texts)} texts (ASYNC)", file=sys.stderr, flush=True)
-        import numpy as np
-        
+        print(
+            f"[LocalEmbeddingWrapper] Called with {len(texts)} texts (ASYNC)",
+            file=sys.stderr,
+            flush=True,
+        )
         # Deterministic but fast "embedding" based on SHA256
         import hashlib
+
+        import numpy as np
+
         embeddings = []
         for t in texts:
             # Create a seed from text
@@ -212,6 +235,10 @@ class LocalEmbeddingWrapper:
             np.random.seed(int(h[:8], 16))
             vec = np.random.rand(self.embedding_dim).tolist()
             embeddings.append(vec)
-            
-        print(f"[LocalEmbeddingWrapper] Generated {len(embeddings)} vectors", file=sys.stderr, flush=True)
+
+        print(
+            f"[LocalEmbeddingWrapper] Generated {len(embeddings)} vectors",
+            file=sys.stderr,
+            flush=True,
+        )
         return np.array(embeddings)

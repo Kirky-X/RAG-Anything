@@ -15,12 +15,11 @@ Features demonstrated:
 
 import asyncio
 import logging
-from pathlib import Path
-import tempfile
-import time
-
 # Add project root directory to Python path
 import sys
+import tempfile
+import time
+from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 

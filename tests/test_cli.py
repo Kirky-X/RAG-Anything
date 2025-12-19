@@ -16,7 +16,7 @@ def test_cli_help():
     result = subprocess.run(
         [sys.executable, "-m", "raganything.main", "--help"],
         capture_output=True,
-        text=True
+        text=True,
     )
     assert result.returncode == 0
     assert "RAGAnything CLI" in result.stdout

@@ -22,17 +22,23 @@ class TestStorageBackendInterface:
         """Test that a compliant subclass can be instantiated."""
 
         class CompliantBackend(StorageBackend):
-            async def store_file(self, file_path, content, metadata): return "id"
+            async def store_file(self, file_path, content, metadata):
+                return "id"
 
-            async def retrieve_file(self, file_id): return b""
+            async def retrieve_file(self, file_id):
+                return b""
 
-            async def delete_file(self, file_id): return True
+            async def delete_file(self, file_id):
+                return True
 
-            async def list_files(self, prefix=""): return []
+            async def list_files(self, prefix=""):
+                return []
 
-            async def get_metadata(self, file_id): return {}
+            async def get_metadata(self, file_id):
+                return {}
 
-            async def update_metadata(self, file_id, metadata): return True
+            async def update_metadata(self, file_id, metadata):
+                return True
 
         backend = CompliantBackend()
         assert isinstance(backend, StorageBackend)

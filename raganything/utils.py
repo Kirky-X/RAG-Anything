@@ -4,40 +4,44 @@ Utility functions for RAGAnything
 Contains helper functions for content separation, text insertion, and other utilities
 """
 
-import os
 import base64
 import hashlib
-from typing import Dict, List, Any, Tuple, Optional, Type, TypeVar
+import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
+
 from raganything.logger import logger
 
 T = TypeVar("T")
+
 
 def get_env_value(key: str, default: T, expected_type: Type[T]) -> T:
     """Get environment variable with type conversion"""
     value = os.getenv(key)
     if value is None:
         return default
-    
+
     try:
         if expected_type is bool:
-            return value.lower() in ("true", "1", "yes", "on") # type: ignore
-        return expected_type(value) # type: ignore
+            return value.lower() in ("true", "1", "yes", "on")  # type: ignore
+        return expected_type(value)  # type: ignore
     except Exception:
         return default
+
 
 def compute_mdhash_id(content: str, prefix: str = "") -> str:
     """
     Compute MD5 hash ID for content
-    
+
     Args:
         content: The content to hash
         prefix: Optional prefix for the ID
-        
+
     Returns:
         str: MD5 hash ID with prefix
     """
     return prefix + hashlib.md5(content.encode("utf-8")).hexdigest()
+
 
 def separate_content(
     content_list: List[Dict[str, Any]],
@@ -198,17 +202,18 @@ async def insert_text_content(
     # Use LightRAG's insert method with all parameters
     import asyncio
     import time
+
     from raganything.base import DocStatus
-    
+
     insert_func = getattr(lightrag, "ainsert", None)
     if insert_func is None:
         return None
-    
+
     # Determine document IDs for tracking
     doc_ids = ids if ids else []
     if isinstance(doc_ids, str):
         doc_ids = [doc_ids]
-    
+
     kwargs = {
         "input": input,
         "file_paths": file_paths,
@@ -216,19 +221,19 @@ async def insert_text_content(
         "split_by_character_only": split_by_character_only,
         "ids": ids,
     }
-    
+
     if asyncio.iscoroutinefunction(insert_func):
         track_id = await insert_func(**kwargs)
     else:
         loop = asyncio.get_running_loop()
         track_id = await loop.run_in_executor(None, lambda: insert_func(**kwargs))
-    
+
     logger.info(f"Text content insertion initiated with track_id: {track_id}")
-    
+
     if wait_for_processing and doc_ids:
         logger.info(f"Waiting for document processing to complete for IDs: {doc_ids}")
         start_time = time.time()
-        
+
         while time.time() - start_time < max_wait_time:
             # Check if all documents are processed
             all_processed = True
@@ -238,7 +243,7 @@ async def insert_text_content(
                     if not doc_status:
                         all_processed = False
                         break
-                    
+
                     status = doc_status.get("status", DocStatus.PENDING)
                     if status in [DocStatus.PENDING, DocStatus.PROCESSING]:
                         all_processed = False
@@ -249,21 +254,21 @@ async def insert_text_content(
                         # Don't break here, check other documents
                     elif status == DocStatus.PROCESSED:
                         logger.info(f"Document {doc_id} processing completed")
-                        
+
                 except Exception as e:
                     logger.warning(f"Error checking status for document {doc_id}: {e}")
                     all_processed = False
                     break
-            
+
             if all_processed:
                 logger.info("All documents processed successfully")
                 break
-                
+
             # Wait before checking again
             await asyncio.sleep(2.0)
         else:
             logger.warning(f"Processing wait timeout after {max_wait_time} seconds")
-    
+
     logger.info("Text content insertion complete")
     return track_id
 
@@ -307,7 +312,9 @@ async def insert_text_content_with_multimodal_content(
             # scheme_name=scheme_name, # LightRAG's insert method might not support this yet
         )
         if multimodal_content:
-             logger.warning("Multimodal content passed to insert_text_content_with_multimodal_content but currently ignored in fallback insert call.")
+            logger.warning(
+                "Multimodal content passed to insert_text_content_with_multimodal_content but currently ignored in fallback insert call."
+            )
 
     except Exception as e:
         logger.info(f"Error: {e}")

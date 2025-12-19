@@ -1,9 +1,9 @@
 # Copyright (c) 2025 Kirky.X
 # All rights reserved.
 
-from .manager import model_manager, ModelManager
-from .device import device_manager, DeviceManager
-from .config import default_models_config, ModelsConfig, ModelInfo
+from .config import ModelInfo, ModelsConfig, default_models_config
+from .device import DeviceManager, device_manager
+from .manager import ModelManager, model_manager
 
 __all__ = [
     "model_manager",

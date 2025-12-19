@@ -7,13 +7,14 @@ This script integrates:
 3. Specialized processing for multimodal content (using different processors)
 """
 
-import os
-from typing import Dict, Any, Optional, Callable
-import sys
 import asyncio
 import atexit
+import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Callable, Dict, Optional
+
 from dotenv import load_dotenv
 
 # Add project root directory to Python path
@@ -35,30 +36,22 @@ except Exception:
     pass
 
 from lightrag.lightrag import LightRAG
-from raganything.logger import logger, init_logger
-from raganything.config import RAGAnythingConfig
-from raganything.query import QueryMixin
-from raganything.processor import ProcessorMixin
-from raganything.batch import BatchMixin
-from raganything.utils import get_processor_supports
-from raganything.parser import MineruParser, DoclingParser
-from raganything.llm import (
-    LLMProviderConfig,
-    build_llm,
-    build_embedding_func,
-    validate_provider,
-    ensure_non_empty,
-)
 
+from raganything.batch import BatchMixin
+from raganything.config import RAGAnythingConfig
+from raganything.llm import (LLMProviderConfig, build_embedding_func,
+                             build_llm, ensure_non_empty, validate_provider)
+from raganything.logger import init_logger, logger
 # Import specialized processors
-from raganything.modalprocessors import (
-    ImageModalProcessor,
-    TableModalProcessor,
-    EquationModalProcessor,
-    GenericModalProcessor,
-    ContextExtractor,
-    ContextConfig,
-)
+from raganything.modalprocessors import (ContextConfig, ContextExtractor,
+                                         EquationModalProcessor,
+                                         GenericModalProcessor,
+                                         ImageModalProcessor,
+                                         TableModalProcessor)
+from raganything.parser import DoclingParser, MineruParser
+from raganything.processor import ProcessorMixin
+from raganything.query import QueryMixin
+from raganything.utils import get_processor_supports
 
 
 @dataclass
@@ -137,9 +130,9 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 else:
                     rotation_arg = f"{self.config.logging.max_bytes} B"
             if (
-                    not retention_arg
-                    or retention_arg.strip() == ""
-                    or retention_arg == "7 days"
+                not retention_arg
+                or retention_arg.strip() == ""
+                or retention_arg == "7 days"
             ) and self.config.logging.backup_count > 0:
                 retention_arg = f"{self.config.logging.backup_count} files"
             init_logger(
@@ -252,7 +245,9 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
         if self.config.enable_image_processing:
             if self.vision_model_func is None:
-                self.logger.error("Vision model function is not available. Image processing will be disabled.")
+                self.logger.error(
+                    "Vision model function is not available. Image processing will be disabled."
+                )
                 # Don't create image processor if vision model is not available
             else:
                 self.modal_processors["image"] = ImageModalProcessor(
@@ -290,7 +285,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         """Build LangChain-backed llm/vision functions when not provided, based on config."""
         # Import here to ensure it's available in this scope
         from raganything.llm import LLMProviderConfig, build_llm
-        
+
         # LLM text function
         if self.llm_model_func is None:
             if not validate_provider(self.config.llm_provider):
@@ -365,7 +360,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         provider="ollama",
                         model="qwen3:8b",
                         api_base=self.config.vision_api_base
-                                 or "http://172.24.160.1:11434",
+                        or "http://172.24.160.1:11434",
                         timeout=self.config.llm_timeout,
                         max_retries=self.config.llm_max_retries,
                     )
@@ -438,9 +433,8 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
                     # Ensure pipeline status is initialized (required for multimodal processing status tracking)
                     try:
-                        from lightrag.kg.shared_storage import (
-                            initialize_pipeline_status,
-                        )
+                        from lightrag.kg.shared_storage import \
+                            initialize_pipeline_status
 
                         await initialize_pipeline_status()
                         self.logger.info("Pipeline status initialized.")
@@ -528,7 +522,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                             provider="ollama",
                             model="mxbai-embed-large",
                             api_base=self.config.embedding_api_base
-                                     or "http://172.24.160.1:11434",
+                            or "http://172.24.160.1:11434",
                             max_token_size=8192,
                         )
                         self.logger.info(
@@ -560,6 +554,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
             # Initialize pipeline status
             self.logger.info("Initializing pipeline status...")
             from lightrag.kg.shared_storage import initialize_pipeline_status
+
             await initialize_pipeline_status()
             self.logger.info("Pipeline status initialized.")
 
@@ -625,7 +620,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     if asyncio.iscoroutinefunction(original_ef):
                         return await original_ef(texts)
                     elif hasattr(
-                            original_ef, "__call__"
+                        original_ef, "__call__"
                     ) and asyncio.iscoroutinefunction(original_ef.__call__):
                         res = original_ef(texts)
                         if asyncio.iscoroutine(res):
@@ -656,7 +651,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     )
                     # Try to see if we can get it from the instance if it's a method
                     if hasattr(original_ef, "__self__") and hasattr(
-                            original_ef.__self__, "embedding_dim"
+                        original_ef.__self__, "embedding_dim"
                     ):
                         clean_async_embedding_wrapper.embedding_dim = (
                             original_ef.__self__.embedding_dim
@@ -666,7 +661,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         )
                     # Try to see if it's a LazyLangChainEmbeddingWrapper
                     elif hasattr(original_ef, "func") and hasattr(
-                            original_ef.func, "embedding_dim"
+                        original_ef.func, "embedding_dim"
                     ):
                         clean_async_embedding_wrapper.embedding_dim = (
                             original_ef.func.embedding_dim
@@ -736,7 +731,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
                 # Ensure embedding_func does not have RLock if it was attached during initialization
                 if hasattr(self.lightrag, "embedding_func") and hasattr(
-                        self.lightrag.embedding_func, "lock"
+                    self.lightrag.embedding_func, "lock"
                 ):
                     self.logger.warning(
                         "Removing 'lock' attribute from LightRAG embedding_func to prevent pickle issues"
@@ -777,7 +772,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 # Let's verify and force update if needed to ensure async compatibility.
                 for vdb_name in ["chunks_vdb", "entities_vdb", "relationships_vdb"]:
                     if hasattr(self.lightrag, vdb_name) and hasattr(
-                            getattr(self.lightrag, vdb_name), "embedding_func"
+                        getattr(self.lightrag, vdb_name), "embedding_func"
                     ):
                         vdb = getattr(self.lightrag, vdb_name)
                         current_func = vdb.embedding_func
@@ -809,12 +804,12 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         if not asyncio.iscoroutinefunction(current_func):
                             # Case 1: Class instance with async __call__ (like LazyLangChainEmbeddingWrapper)
                             if hasattr(
-                                    current_func, "__call__"
+                                current_func, "__call__"
                             ) and asyncio.iscoroutinefunction(current_func.__call__):
                                 original_func = current_func
 
                                 async def async_embedding_wrapper(
-                                        texts: list[str],
+                                    texts: list[str],
                                 ) -> Any:
                                     # Ensure the result is awaited if it's a coroutine
                                     res = original_func(texts)
@@ -832,9 +827,9 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                             # If it's already wrapped, we might need to leave it, BUT we need to ensure the underlying
                             # function is correctly handled.
                             elif (
-                                    hasattr(current_func, "__name__")
-                                    and current_func.__name__ == "wrapper"
-                                    and "priority_limit" in repr(current_func)
+                                hasattr(current_func, "__name__")
+                                and current_func.__name__ == "wrapper"
+                                and "priority_limit" in repr(current_func)
                             ):
                                 # It's likely already LightRAG's wrapper.
                                 # If LightRAG wrapped a sync-looking function that returns a coroutine, it might be broken.
@@ -881,7 +876,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
                         # Diagnostic check for chunks_vdb (representative)
                         if hasattr(self.lightrag, "chunks_vdb") and hasattr(
-                                self.lightrag.chunks_vdb, "embedding_func"
+                            self.lightrag.chunks_vdb, "embedding_func"
                         ):
                             current_func = self.lightrag.chunks_vdb.embedding_func
 
@@ -1202,6 +1197,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         # Ensure pipeline status is initialized before deletion
         try:
             from lightrag.kg.shared_storage import initialize_pipeline_status
+
             await initialize_pipeline_status()
             self.logger.debug("Pipeline status initialized for deletion")
         except Exception as e:
@@ -1211,11 +1207,15 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         try:
             result = await self.lightrag.adelete_by_doc_id(doc_id)
             if result.status == "success":
-                self.logger.info(f"Successfully deleted document {doc_id}: {result.message}")
+                self.logger.info(
+                    f"Successfully deleted document {doc_id}: {result.message}"
+                )
             elif result.status == "not_found":
                 self.logger.warning(f"Document {doc_id} not found for deletion")
             else:
-                self.logger.error(f"Failed to delete document {doc_id}: {result.message}")
+                self.logger.error(
+                    f"Failed to delete document {doc_id}: {result.message}"
+                )
             return result
         except Exception as e:
             self.logger.error(f"Error deleting document {doc_id}: {e}")

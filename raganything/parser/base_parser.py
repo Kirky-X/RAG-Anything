@@ -13,13 +13,7 @@ from __future__ import annotations
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import (
-    Dict,
-    List,
-    Optional,
-    Union,
-    Any,
-)
+from typing import Any, Dict, List, Optional, Union
 
 from raganything.logger import logger
 
@@ -79,9 +73,7 @@ class Parser:
                 temp_path = Path(temp_dir)
 
                 # Convert to PDF using LibreOffice
-                logger.info(
-                    f"Converting {doc_path.name} to PDF using LibreOffice..."
-                )
+                logger.info(f"Converting {doc_path.name} to PDF using LibreOffice...")
 
                 # Prepare subprocess parameters to hide console window on Windows
                 import platform
@@ -228,6 +220,7 @@ class Parser:
 
             # Remove all HTML tags to avoid reportlab parsing errors
             import re
+
             text_content = re.sub(r"<[^>]+>", "", text_content)
 
             # Prepare output directory
@@ -244,11 +237,13 @@ class Parser:
 
             try:
                 from reportlab.lib.pagesizes import A4
-                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                from reportlab.lib.styles import (ParagraphStyle,
+                                                  getSampleStyleSheet)
                 from reportlab.lib.units import inch
                 from reportlab.pdfbase import pdfmetrics
                 from reportlab.pdfbase.ttfonts import TTFont
+                from reportlab.platypus import (Paragraph, SimpleDocTemplate,
+                                                Spacer)
 
                 support_chinese = True
                 try:
@@ -301,9 +296,8 @@ class Parser:
                         # Try common Windows fonts
                         for font_name in ["SimSun", "SimHei", "Microsoft YaHei"]:
                             try:
-                                from reportlab.pdfbase.cidfonts import (
-                                    UnicodeCIDFont,
-                                )
+                                from reportlab.pdfbase.cidfonts import \
+                                    UnicodeCIDFont
 
                                 pdfmetrics.registerFont(UnicodeCIDFont(font_name))
                                 normal_style.fontName = font_name
@@ -314,9 +308,8 @@ class Parser:
                     elif system == "Darwin":  # macOS
                         for font_name in ["STSong-Light", "STHeiti"]:
                             try:
-                                from reportlab.pdfbase.cidfonts import (
-                                    UnicodeCIDFont,
-                                )
+                                from reportlab.pdfbase.cidfonts import \
+                                    UnicodeCIDFont
 
                                 pdfmetrics.registerFont(UnicodeCIDFont(font_name))
                                 normal_style.fontName = font_name

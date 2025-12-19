@@ -21,20 +21,22 @@ EMBEDDING_BINDING_HOST=http://localhost:1234/v1
 EMBEDDING_BINDING_API_KEY=lm-studio
 """
 
+import asyncio
 import os
 import uuid
-import asyncio
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
 # Load environment variables
 load_dotenv()
 
+from lightrag.llm.openai import openai_complete_if_cache
+from lightrag.utils import EmbeddingFunc
+
 # RAG-Anything imports
 from raganything import RAGAnything, RAGAnythingConfig
-from lightrag.utils import EmbeddingFunc
-from lightrag.llm.openai import openai_complete_if_cache
 
 LM_BASE_URL = os.getenv("LLM_BINDING_HOST", "http://localhost:1234/v1")
 LM_API_KEY = os.getenv("LLM_BINDING_API_KEY", "lm-studio")

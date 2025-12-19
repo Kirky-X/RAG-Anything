@@ -11,9 +11,7 @@ def client():
 
 def test_insert_content_list_empty(client):
     body = {
-        "content_list": [
-            {"type": "text", "text": "hello", "page_idx": 0}
-        ],
+        "content_list": [{"type": "text", "text": "hello", "page_idx": 0}],
         "file_path": "doc.md",
     }
     # This calls LightRAG insert; depending on environment it may fail. We only check validation chain.

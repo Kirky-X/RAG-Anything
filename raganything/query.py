@@ -4,19 +4,18 @@ Query functionality for RAGAnything
 Contains all query-related methods for both text and multimodal queries
 """
 
-import json
 import hashlib
+import json
 import re
-from typing import Dict, List, Any
 from pathlib import Path
+from typing import Any, Dict, List
+
 from lightrag import QueryParam
 from lightrag.utils import always_get_an_event_loop
+
 from raganything.prompt import PROMPTS
-from raganything.utils import (
-    get_processor_for_type,
-    encode_image_to_base64,
-    validate_image_file,
-)
+from raganything.utils import (encode_image_to_base64, get_processor_for_type,
+                               validate_image_file)
 
 
 class QueryMixin:
@@ -120,22 +119,23 @@ class QueryMixin:
         # Handle bypass mode
         if (mode or "").lower() == "bypass":
             return await self.llm_model_func(query, system_prompt=system_prompt)
-        
+
         # Get wait parameters
         wait_for_processing = kwargs.pop("wait_for_processing", False)
         max_wait_time = kwargs.pop("max_wait_time", 30)
-        
+
         await self._ensure_lightrag_initialized()
         if self.lightrag is None:
             raise ValueError(
                 "No LightRAG instance available. Please process documents first or provide a pre-initialized LightRAG instance."
             )
-        
+
         # Check if we should wait for documents to be processed
-        if wait_for_processing and hasattr(self, 'get_document_processing_status'):
+        if wait_for_processing and hasattr(self, "get_document_processing_status"):
             import asyncio
+
             start_time = asyncio.get_event_loop().time()
-            
+
             while (asyncio.get_event_loop().time() - start_time) < max_wait_time:
                 # Get all documents that are not fully processed
                 unprocessed_docs = []
@@ -146,20 +146,26 @@ class QueryMixin:
                         doc_id = doc.get("id") or doc.get("doc_id")
                         if doc_id:
                             status = await self.get_document_processing_status(doc_id)
-                            if status.get("exists") and not status.get("fully_processed"):
+                            if status.get("exists") and not status.get(
+                                "fully_processed"
+                            ):
                                 unprocessed_docs.append(doc_id)
                 except Exception as e:
                     self.logger.warning(f"Error checking document status: {e}")
                     break
-                
+
                 if not unprocessed_docs:
                     self.logger.info("All documents are fully processed")
                     break
-                
-                self.logger.info(f"Waiting for documents to be processed: {unprocessed_docs}")
+
+                self.logger.info(
+                    f"Waiting for documents to be processed: {unprocessed_docs}"
+                )
                 await asyncio.sleep(2)  # Wait 2 seconds before checking again
             else:
-                self.logger.warning(f"Timeout waiting for document processing after {max_wait_time} seconds")
+                self.logger.warning(
+                    f"Timeout waiting for document processing after {max_wait_time} seconds"
+                )
 
         # Check if VLM enhanced query should be used
         vlm_enhanced = kwargs.pop("vlm_enhanced", None)
@@ -200,9 +206,7 @@ class QueryMixin:
             )
         except Exception as e:
             try:
-                result = await self.llm_model_func(
-                    query, system_prompt=system_prompt
-                )
+                result = await self.llm_model_func(query, system_prompt=system_prompt)
             except Exception:
                 raise e
 
@@ -264,13 +268,19 @@ class QueryMixin:
                         cap = item.get("table_caption") or []
                         parts.append("\n[Table]\n" + str(td))
                         if isinstance(cap, list) and cap:
-                            parts.append("[TableCaption] " + " ".join([str(c) for c in cap]))
+                            parts.append(
+                                "[TableCaption] " + " ".join([str(c) for c in cap])
+                            )
                     elif t == "equation":
                         lx = item.get("latex") or ""
                         parts.append("\n[Equation]\n" + str(lx))
                     elif t == "image":
                         cap = item.get("image_caption") or []
-                        txt = " ".join([str(c) for c in cap]) if isinstance(cap, list) else ""
+                        txt = (
+                            " ".join([str(c) for c in cap])
+                            if isinstance(cap, list)
+                            else ""
+                        )
                         parts.append("\n[Image] " + txt)
                     else:
                         txt = item.get("text") or ""
@@ -338,7 +348,8 @@ class QueryMixin:
         except Exception as e:
             try:
                 result = await self.llm_model_func(
-                    enhanced_query, system_prompt=PROMPTS.get("QUERY_IMAGE_ANALYST_SYSTEM")
+                    enhanced_query,
+                    system_prompt=PROMPTS.get("QUERY_IMAGE_ANALYST_SYSTEM"),
                 )
             except Exception:
                 raise e

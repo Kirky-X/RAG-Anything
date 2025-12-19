@@ -6,12 +6,9 @@ Table modal processor
 """
 
 import json
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
-from lightrag.utils import (
-    logger,
-    compute_mdhash_id,
-)
+from lightrag.utils import compute_mdhash_id, logger
 
 # Import prompt templates
 from raganything.prompt import PROMPTS
@@ -68,9 +65,11 @@ class TableModalProcessor(BaseModalProcessor):
                     "table_prompt_with_context", PROMPTS["table_prompt"]
                 ).format(
                     context=context,
-                    entity_name=entity_name
-                    if entity_name
-                    else "descriptive name for this table",
+                    entity_name=(
+                        entity_name
+                        if entity_name
+                        else "descriptive name for this table"
+                    ),
                     table_img_path=table_img_path,
                     table_caption=table_caption if table_caption else "None",
                     table_body=table_body,
@@ -78,9 +77,11 @@ class TableModalProcessor(BaseModalProcessor):
                 )
             else:
                 table_prompt = PROMPTS["table_prompt"].format(
-                    entity_name=entity_name
-                    if entity_name
-                    else "descriptive name for this table",
+                    entity_name=(
+                        entity_name
+                        if entity_name
+                        else "descriptive name for this table"
+                    ),
                     table_img_path=table_img_path,
                     table_caption=table_caption if table_caption else "None",
                     table_body=table_body,
@@ -90,10 +91,8 @@ class TableModalProcessor(BaseModalProcessor):
             # Call LLM for table analysis
             # Prepend system prompt to the main prompt
             full_prompt = f"{PROMPTS['TABLE_ANALYSIS_SYSTEM']}\n\n{table_prompt}"
-            
-            response = await self.modal_caption_func(
-                full_prompt
-            )
+
+            response = await self.modal_caption_func(full_prompt)
 
             # Parse response (reuse existing logic)
             enhanced_caption, entity_info = self._parse_table_response(
@@ -106,9 +105,11 @@ class TableModalProcessor(BaseModalProcessor):
             logger.error(f"Error generating table description: {e}")
             # Fallback processing
             fallback_entity = {
-                "entity_name": entity_name
-                if entity_name
-                else f"table_{compute_mdhash_id(str(modal_content))}",
+                "entity_name": (
+                    entity_name
+                    if entity_name
+                    else f"table_{compute_mdhash_id(str(modal_content))}"
+                ),
                 "entity_type": "table",
                 "summary": f"Table content: {str(modal_content)[:100]}",
             }
@@ -168,9 +169,11 @@ class TableModalProcessor(BaseModalProcessor):
             logger.error(f"Error processing table content: {e}")
             # Fallback processing
             fallback_entity = {
-                "entity_name": entity_name
-                if entity_name
-                else f"table_{compute_mdhash_id(str(modal_content))}",
+                "entity_name": (
+                    entity_name
+                    if entity_name
+                    else f"table_{compute_mdhash_id(str(modal_content))}"
+                ),
                 "entity_type": "table",
                 "summary": f"Table content: {str(modal_content)[:100]}",
             }
@@ -206,9 +209,11 @@ class TableModalProcessor(BaseModalProcessor):
             logger.error(f"Error parsing table analysis response: {e}")
             logger.debug(f"Raw response: {response}")
             fallback_entity = {
-                "entity_name": entity_name
-                if entity_name
-                else f"table_{compute_mdhash_id(response)}",
+                "entity_name": (
+                    entity_name
+                    if entity_name
+                    else f"table_{compute_mdhash_id(response)}"
+                ),
                 "entity_type": "table",
                 "summary": response[:100] + "..." if len(response) > 100 else response,
             }

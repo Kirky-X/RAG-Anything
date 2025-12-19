@@ -15,8 +15,8 @@ def build_simple_agent(chat_model: Any, tools: List[Any] | None = None) -> Any:
         Any: A LangChain chain representing the simple agent.
     """
     try:
-        from langchain_core.prompts import ChatPromptTemplate
         from langchain_core.output_parsers import StrOutputParser
+        from langchain_core.prompts import ChatPromptTemplate
     except Exception as e:
         raise ValueError(f"LangChain core unavailable: {e}")
 
@@ -35,4 +35,3 @@ def build_simple_agent(chat_model: Any, tools: List[Any] | None = None) -> Any:
 
     chain = prompt | chat_model | StrOutputParser()
     return chain
-

@@ -6,8 +6,8 @@ different types of content (images, tables, equations, etc.)
 """
 
 from __future__ import annotations
-from typing import Any
 
+from typing import Any
 
 PROMPTS: dict[str, Any] = {}
 
@@ -89,7 +89,9 @@ Image details:
 Focus on providing accurate, detailed visual analysis that incorporates the context and would be useful for knowledge retrieval."""
 
 # Image analysis prompt with text fallback
-PROMPTS["text_prompt"] = """Based on the following image information, provide analysis:
+PROMPTS[
+    "text_prompt"
+] = """Based on the following image information, provide analysis:
 
 Image Path: {image_path}
 Captions: {captions}
@@ -272,7 +274,9 @@ Content: {content}
 Focus on extracting meaningful information that would be useful for knowledge retrieval and understanding the content's role in the broader context."""
 
 # Modal chunk templates
-PROMPTS["image_chunk"] = """
+PROMPTS[
+    "image_chunk"
+] = """
 Image Content Analysis:
 Image Path: {image_path}
 Captions: {captions}
@@ -280,7 +284,9 @@ Footnotes: {footnotes}
 
 Visual Analysis: {enhanced_caption}"""
 
-PROMPTS["table_chunk"] = """Table Analysis:
+PROMPTS[
+    "table_chunk"
+] = """Table Analysis:
 Image Path: {table_img_path}
 Caption: {table_caption}
 Structure: {table_body}
@@ -288,13 +294,17 @@ Footnotes: {table_footnote}
 
 Analysis: {enhanced_caption}"""
 
-PROMPTS["equation_chunk"] = """Mathematical Equation Analysis:
+PROMPTS[
+    "equation_chunk"
+] = """Mathematical Equation Analysis:
 Equation: {equation_text}
 Format: {equation_format}
 
 Mathematical Analysis: {enhanced_caption}"""
 
-PROMPTS["generic_chunk"] = """{content_type} Content Analysis:
+PROMPTS[
+    "generic_chunk"
+] = """{content_type} Content Analysis:
 Content: {content}
 
 Analysis: {enhanced_caption}"""

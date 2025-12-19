@@ -4,13 +4,13 @@ from dataclasses import dataclass
 import numpy as np
 import pytest
 
-
 # --- Patching lightrag.utils START ---
 # The installed lightrag-hku package has a structure conflict (utils.py vs utils/ dir).
 # We define the missing components here and inject them into lightrag.utils.
 
+
 def get_env_value(
-        env_key: str, default: any, value_type: type = str, special_none: bool = False
+    env_key: str, default: any, value_type: type = str, special_none: bool = False
 ) -> any:
     """
     Get value from environment variable with type conversion
@@ -75,6 +75,7 @@ except ImportError:
 
 
 # --- Patching lightrag.utils END ---
+
 
 @pytest.fixture
 def temp_storage_dir(tmp_path):

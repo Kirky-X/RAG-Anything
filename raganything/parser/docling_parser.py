@@ -6,20 +6,14 @@ Implements the DoclingParser class for parsing documents using Docling.
 
 from __future__ import annotations
 
-import json
 import base64
+import json
 import subprocess
 from pathlib import Path
-from typing import (
-    Dict,
-    List,
-    Optional,
-    Union,
-    Tuple,
-    Any,
-)
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from raganything.logger import logger
+
 from .base_parser import Parser
 
 

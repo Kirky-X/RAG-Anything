@@ -64,28 +64,37 @@ def test_build_openai_and_call_text():
     cfg = LLMProviderConfig(provider="openai", model="gpt-4o-mini", api_key="k")
     llm = build_llm(cfg)
     import asyncio
+
     out = asyncio.run(llm("hello"))
     assert "ok-openai" in out
 
 
 def test_build_openrouter_and_call_messages():
     _install_fake_langchain_openai()
-    cfg = LLMProviderConfig(provider="openrouter", model="openrouter/model", api_base="https://openrouter.ai/api/v1",
-                            api_key="rk")
+    cfg = LLMProviderConfig(
+        provider="openrouter",
+        model="openrouter/model",
+        api_base="https://openrouter.ai/api/v1",
+        api_key="rk",
+    )
     llm = build_llm(cfg)
     msgs = [
         {"role": "system", "content": "s"},
         {"role": "user", "content": [{"type": "text", "text": "t"}]},
     ]
     import asyncio
+
     out = asyncio.run(llm("", messages=msgs))
     assert "ok-openai" in out
 
 
 def test_build_ollama_and_call_text():
     _install_fake_langchain_ollama()
-    cfg = LLMProviderConfig(provider="ollama", model="qwen3:1.7b", api_base="http://localhost:11434")
+    cfg = LLMProviderConfig(
+        provider="ollama", model="qwen3:1.7b", api_base="http://localhost:11434"
+    )
     llm = build_llm(cfg)
     import asyncio
+
     out = asyncio.run(llm("hello"))
     assert "ok-ollama" in out
