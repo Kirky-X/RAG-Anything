@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.i18n import _
 
 
@@ -191,10 +191,15 @@ class LazyLangChainEmbeddingWrapper:
                 # Initialize client immediately (this is sync but fast usually)
                 self._client = self.provider_cls(**self.init_kwargs)
 
-            # Use asyncio.to_thread to run the sync embed_documents call in a separate thread
-            # This is crucial for avoiding event loop blocking
-            result = await asyncio.to_thread(self.client.embed_documents, texts)
-            return np.array(result)
+            # Run the sync embed_documents call in a way that doesn't create persistent event loops
+            # Use run_in_executor with a custom thread pool that we can clean up
+            import concurrent.futures
+            
+            # Create a thread pool for this operation
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(executor, self.client.embed_documents, texts)
+                return np.array(result)
 
         except Exception as e:
             # Capture full traceback for better debugging
@@ -208,6 +213,28 @@ class LazyLangChainEmbeddingWrapper:
                 flush=True,
             )
             raise
+
+    def close(self):
+        """Clean up any resources including potential event loops."""
+        if hasattr(self, '_client') and self._client is not None:
+            # Try to close the client if it has a close method
+            if hasattr(self._client, 'close'):
+                try:
+                    self._client.close()
+                except Exception:
+                    pass  # Ignore cleanup errors
+            self._client = None
+
+    def close(self):
+        """Clean up any resources including potential event loops."""
+        if hasattr(self, '_client') and self._client is not None:
+            # Try to close the client if it has a close method
+            if hasattr(self._client, 'close'):
+                try:
+                    self._client.close()
+                except Exception:
+                    pass  # Ignore cleanup errors
+            self._client = None
 
 
 class LocalEmbeddingWrapper:
