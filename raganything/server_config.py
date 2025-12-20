@@ -93,7 +93,7 @@ def load_server_configs(
             with open(config_toml_path, "rb") as f:
                 data = loader.load(f)  # type: ignore
         except Exception as e:
-            from raganything.i18n_logger import get_i18n_logger
+            from raganything.logger import get_i18n_logger
 
             logger = get_i18n_logger(__name__)
             logger.error(_("Failed to load TOML config from {}: {}").format(config_toml_path, e))

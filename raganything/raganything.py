@@ -35,6 +35,13 @@ try:
 except Exception:
     pass
 
+# Apply lightrag patch before importing to fix missing functions
+try:
+    from raganything.patches.lightrag_patch import patch_lightrag
+    patch_lightrag()
+except Exception:
+    pass
+
 from lightrag.lightrag import LightRAG
 
 from raganything.batch import BatchMixin
@@ -42,7 +49,7 @@ from raganything.config import RAGAnythingConfig
 from raganything.llm import (LLMProviderConfig, build_embedding_func,
                              build_llm, ensure_non_empty, validate_provider)
 from raganything.logger import init_logger, logger
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 # Import specialized processors
 from raganything.modalprocessors import (ContextConfig, ContextExtractor,
                                          EquationModalProcessor,

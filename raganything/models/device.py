@@ -14,7 +14,7 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.i18n import _
 
 logger = get_i18n_logger()

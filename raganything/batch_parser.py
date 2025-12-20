@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Tuple
 
 from tqdm import tqdm
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 
 from .parser import DoclingParser, MineruParser
 from raganything.i18n import _

@@ -60,7 +60,7 @@ from dotenv import load_dotenv
 
 from raganything import RAGAnything, RAGAnythingConfig
 from raganything.config import DirectoryConfig, MultimodalConfig, ParsingConfig
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.i18n import init_i18n
 from raganything.i18n import _
 

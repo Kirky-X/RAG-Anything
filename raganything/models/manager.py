@@ -15,7 +15,7 @@ except ImportError:
     MODELSCOPE_AVAILABLE = False
 
 from raganything.config import RAGAnythingConfig
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.models.config import ModelInfo, default_models_config
 from raganything.i18n import _
 

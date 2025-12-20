@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 def rag_logger(): return get_i18n_logger()
 
 from .batch_parser import BatchParser, BatchProcessingResult
