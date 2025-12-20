@@ -31,7 +31,7 @@ from raganything.i18n import (
     init_i18n,
     switch_language,
 )
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 
 
 class TestI18N(unittest.TestCase):

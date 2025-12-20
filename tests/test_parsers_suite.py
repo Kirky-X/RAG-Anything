@@ -164,7 +164,7 @@ class TestVlmParser(unittest.IsolatedAsyncioTestCase):
 # ==================== 视频解析器测试 ====================
 
 import logging
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.i18n import _
 
 import cv2

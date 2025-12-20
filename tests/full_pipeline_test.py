@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 
 import psutil
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.i18n import _
 
 # 配置日志

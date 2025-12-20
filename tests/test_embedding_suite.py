@@ -242,11 +242,11 @@ class TestLLMLangChainBuilder:
         """测试构建OpenAI LLM并调用文本接口"""
         _install_fake_langchain_openai()
         cfg = LLMProviderConfig(provider="openai", model="gpt-4o-mini", api_key="k")
-        llm = build_llm(cfg)
-        import asyncio
-
-        out = asyncio.run(llm("hello"))
-        assert "ok-openai" in out
+        
+        with build_llm(cfg) as llm:
+            import asyncio
+            out = asyncio.run(llm("hello"))
+            assert "ok-openai" in out
 
     def test_build_openrouter_and_call_messages(self):
         """测试构建OpenRouter LLM并调用消息接口"""
@@ -257,15 +257,15 @@ class TestLLMLangChainBuilder:
             api_base="https://openrouter.ai/api/v1",
             api_key="rk",
         )
-        llm = build_llm(cfg)
-        msgs = [
-            {"role": "system", "content": "s"},
-            {"role": "user", "content": [{"type": "text", "text": "t"}]},
-        ]
-        import asyncio
+        with build_llm(cfg) as llm:
+            msgs = [
+                {"role": "system", "content": "s"},
+                {"role": "user", "content": [{"type": "text", "text": "t"}]},
+            ]
+            import asyncio
 
-        out = asyncio.run(llm("", messages=msgs))
-        assert "ok-openai" in out
+            out = asyncio.run(llm("", messages=msgs))
+            assert "ok-openai" in out
 
     def test_build_ollama_and_call_text(self):
         """测试构建Ollama LLM并调用文本接口"""
@@ -273,11 +273,11 @@ class TestLLMLangChainBuilder:
         cfg = LLMProviderConfig(
             provider="ollama", model="qwen3:1.7b", api_base="http://localhost:11434"
         )
-        llm = build_llm(cfg)
-        import asyncio
+        with build_llm(cfg) as llm:
+            import asyncio
 
-        out = asyncio.run(llm("hello"))
-        assert "ok-ollama" in out
+            out = asyncio.run(llm("hello"))
+            assert "ok-ollama" in out
 
 
 class TestDeviceManager(unittest.TestCase):

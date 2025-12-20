@@ -18,7 +18,7 @@ import pytest
 from raganything.logger import (SQLiteSink, init_logger, logger, register_sink,
                                 unregister_sink)
 from raganything.raganything import RAGAnything
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.i18n import _
 
 
