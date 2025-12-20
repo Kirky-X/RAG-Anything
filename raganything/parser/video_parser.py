@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 
 try:
     from skimage.metrics import structural_similarity as ssim

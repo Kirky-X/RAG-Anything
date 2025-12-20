@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.i18n import _
 
 

@@ -14,7 +14,7 @@ from pathlib import Path
 from queue import Empty, Queue
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 
 from .base_parser import Parser
 from raganything.i18n import _

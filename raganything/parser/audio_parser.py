@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.models import (default_models_config, device_manager,
                                 model_manager)
 
