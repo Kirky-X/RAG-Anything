@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 from raganything.i18n import _
 
 # --- Re-implementation of missing utils functions ---
