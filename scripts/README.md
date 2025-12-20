@@ -68,6 +68,70 @@ python scripts/dev_tools.py help
 - **测试运行**: 运行项目的单元测试和集成测试
 - **项目清理**: 清理__pycache__、缓存文件等临时文件
 
+### 3. media_tools.py - 媒体处理工具集
+
+提供音频、视频和图像处理功能，整合了之前的独立脚本。
+
+#### 使用方法
+
+```bash
+# 从视频中提取音频
+python scripts/media_tools.py extract-audio <视频文件> [输出文件] [格式] [质量]
+
+# 从视频中提取帧
+python scripts/media_tools.py extract-frames <视频文件> <输出目录> [数量] [格式]
+
+# 基准测试音频解析性能
+python scripts/media_tools.py benchmark-audio [音频文件] [迭代次数] [时长]
+
+# 验证VLM（视觉语言模型）解析功能
+python scripts/media_tools.py verify-vlm <视频文件> [帧数]
+
+# 显示帮助信息
+python scripts/media_tools.py help
+```
+
+#### 功能说明
+
+- **音频提取**: 从视频中提取音频，支持WAV、MP3、M4A格式
+- **帧提取**: 从视频中提取随机帧，支持JPG、PNG格式
+- **性能基准**: 测试音频解析性能，提供详细统计信息
+- **VLM验证**: 验证视觉语言模型对视频帧的解析能力
+
+### 4. config_tools.py - 配置管理工具集
+
+提供项目配置管理、依赖检查、环境设置等功能。
+
+#### 使用方法
+
+```bash
+# 检查项目依赖（详细模式）
+python scripts/config_tools.py check-deps detailed
+
+# 设置TikToken缓存
+python scripts/config_tools.py setup-tiktoken [缓存目录]
+
+# 合并配置文件
+python scripts/config_tools.py merge-config [基础文件] [覆盖文件] [输出文件]
+
+# 检查项目设置
+python scripts/config_tools.py check-setup
+
+# 生成环境设置脚本
+python scripts/config_tools.py generate-setup [输出文件]
+
+# 显示帮助信息
+python scripts/config_tools.py help
+```
+
+#### 功能说明
+
+- **依赖检查**: 详细检查Python包和RAG-Anything模块的安装状态
+- **TikToken缓存**: 设置和管理TikToken模型的缓存
+- **配置合并**: 合并多个TOML配置文件
+- **项目检查**: 全面检查项目设置和环境配置
+- **环境脚本**: 自动生成环境设置脚本，简化项目初始化
+
 ## 安装依赖
 
 在使用这些工具之前，请确保安装了所需的依赖：
