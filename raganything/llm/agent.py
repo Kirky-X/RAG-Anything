@@ -2,6 +2,7 @@
 # All rights reserved.
 
 from typing import Any, List
+from raganything.i18n import _
 
 
 def build_simple_agent(chat_model: Any, tools: List[Any] | None = None) -> Any:
@@ -18,7 +19,7 @@ def build_simple_agent(chat_model: Any, tools: List[Any] | None = None) -> Any:
         from langchain_core.output_parsers import StrOutputParser
         from langchain_core.prompts import ChatPromptTemplate
     except Exception as e:
-        raise ValueError(f"LangChain core unavailable: {e}")
+        raise ValueError(_("LangChain core unavailable: {}").format(e))
 
     if tools:
         try:

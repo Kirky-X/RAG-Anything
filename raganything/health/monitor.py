@@ -4,32 +4,36 @@
 import asyncio
 from typing import Dict, List
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
 
 from .core import ComponentStatus, HealthCheck, HealthCheckResult, Notifier
+from raganything.i18n import _
 
 
 class ConsoleNotifier(Notifier):
     """Simple notifier that logs to console/logger."""
 
+    def __init__(self):
+        self.logger = get_i18n_logger()
+
     async def notify(self, result: HealthCheckResult) -> None:
         if result.status == ComponentStatus.UNHEALTHY:
-            logger.error(
-                f"🚨 HEALTH CHECK FAILED [{result.component_name}]: {result.message}"
+            self.logger.error(
+                _("🚨 HEALTH CHECK FAILED [{}]: {}").format(result.component_name, result.message)
             )
             if result.error:
-                logger.error(f"   Details: {result.error}")
+                self.logger.error(_("   Details: {}").format(result.error))
         elif result.status == ComponentStatus.WARNING:
-            logger.warning(
-                f"⚠️ HEALTH CHECK WARNING [{result.component_name}]: {result.message}"
+            self.logger.warning(
+                _("⚠️ HEALTH CHECK WARNING [{}]: {}").format(result.component_name, result.message)
             )
         elif result.status == ComponentStatus.HEALTHY:
-            logger.info(
-                f"✅ Health Check Passed [{result.component_name}]: {result.message}"
+            self.logger.info(
+                _("✅ Health Check Passed [{}]: {}").format(result.component_name, result.message)
             )
         else:
-            logger.info(
-                f"❓ Health Check Unknown [{result.component_name}]: {result.message}"
+            self.logger.info(
+                _("❓ Health Check Unknown [{}]: {}").format(result.component_name, result.message)
             )
 
 
@@ -37,6 +41,7 @@ class HealthMonitor:
     """Orchestrates health checks and notifications."""
 
     def __init__(self):
+        self.logger = get_i18n_logger()
         self._checks: List[HealthCheck] = []
         self._notifiers: List[Notifier] = []
         self._results: Dict[str, HealthCheckResult] = {}
@@ -74,11 +79,11 @@ class HealthMonitor:
 
     async def start_monitoring(self, interval_seconds: int = 60):
         """Run checks periodically in an infinite loop."""
-        logger.info(f"Starting health monitoring (interval: {interval_seconds}s)")
+        self.logger.info(_("Starting health monitoring (interval: {}s)").format(interval_seconds))
         while True:
             try:
                 await self.run_checks()
             except Exception as e:
-                logger.error(f"Error during health monitoring cycle: {e}")
+                self.logger.error(_("Error during health monitoring cycle: {}").format(e))
 
             await asyncio.sleep(interval_seconds)

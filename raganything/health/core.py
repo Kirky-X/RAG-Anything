@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from typing import List, Optional, Protocol
+from raganything.i18n import _
 
 
 class ComponentStatus(Enum):

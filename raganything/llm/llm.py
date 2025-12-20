@@ -5,6 +5,7 @@ import base64
 import os
 from io import BytesIO
 from typing import Any, Dict, List, Optional, Union
+from raganything.i18n import _
 
 
 class LLMProviderConfig:
@@ -62,6 +63,38 @@ class LLM:
         self.force_text_messages = force_text_messages
         self.direct_base_url = direct_base_url
         self.direct_model = direct_model
+
+    def close(self):
+        """Close the LLM client and clean up resources."""
+        if hasattr(self.chat_model, 'client') and hasattr(self.chat_model.client, 'close'):
+            try:
+                self.chat_model.client.close()
+            except Exception:
+                pass  # Ignore cleanup errors
+        elif hasattr(self.chat_model, 'aclose'):
+            try:
+                import asyncio
+                if asyncio.iscoroutinefunction(self.chat_model.aclose):
+                    # For async close methods, we can't call them synchronously
+                    # but we can try to call them directly
+                    self.chat_model.aclose()
+                else:
+                    self.chat_model.aclose()
+            except Exception:
+                pass  # Ignore cleanup errors
+        elif hasattr(self.chat_model, 'close'):
+            try:
+                self.chat_model.close()
+            except Exception:
+                pass  # Ignore cleanup errors
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - clean up resources."""
+        self.close()
 
     async def __call__(
         self,
@@ -306,7 +339,7 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
         try:
             from langchain_openai import ChatOpenAI
         except Exception as e:
-            raise ValueError(f"OpenAI integration unavailable: {e}")
+            raise ValueError(_("OpenAI integration unavailable: {}").format(e))
 
         init_kwargs: Dict[str, Any] = {"model": cfg.model}
         if cfg.api_key:
@@ -371,7 +404,7 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
 
                 provider_cls = ChatOllama
             except ImportError as e:
-                raise ValueError(f"Ollama integration unavailable: {e}")
+                raise ValueError(_("Ollama integration unavailable: {}").format(e))
 
         init_kwargs: Dict[str, Any] = {"model": cfg.model}
         if cfg.api_base:
@@ -396,7 +429,7 @@ def build_llm(cfg: LLMProviderConfig) -> LLM:
         chat = OfflineChatModel()
         return LLM(chat)
 
-    raise ValueError(f"Unsupported provider: {cfg.provider}")
+    raise ValueError(_("Unsupported provider: {}").format(cfg.provider))
 
 
 def build_messages(

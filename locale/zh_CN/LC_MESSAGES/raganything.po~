@@ -1,0 +1,308 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: RAG-Anything 1.0\n"
+"POT-Creation-Date: 2025-12-20 13:03:55\n"
+"PO-Revision-Date: 2025-12-20 13:03:55\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: custom-extractor 1.0\n"
+
+#. 关键翻译 - 自动恢复
+msgid "DEBUG"
+msgstr "调试"
+
+#. 关键翻译 - 自动恢复
+msgid "INFO"
+msgstr "信息"
+
+#. 关键翻译 - 自动恢复
+msgid "WARNING"
+msgstr "警告"
+
+#. 关键翻译 - 自动恢复
+msgid "ERROR"
+msgstr "错误"
+
+#. 关键翻译 - 自动恢复
+msgid "CRITICAL"
+msgstr "严重错误"
+
+#. 关键翻译 - 自动恢复
+msgid "SUCCESS"
+msgstr "成功"
+
+#. 关键翻译 - 自动恢复
+msgid "TRACE"
+msgstr "跟踪"
+
+#. 关键翻译 - 自动恢复
+msgid "RAGAnything CLI logging initialized"
+msgstr "RAGAnything CLI日志已初始化"
+
+#. 关键翻译 - 自动恢复
+msgid "RAGAnything initialized successfully"
+msgstr "RAGAnything初始化成功"
+
+#. 关键翻译 - 自动恢复
+msgid "Processing document"
+msgstr "正在处理文档"
+
+#. 关键翻译 - 自动恢复
+msgid "Document processed successfully"
+msgstr "文档处理成功"
+
+#. 关键翻译 - 自动恢复
+msgid "Query completed"
+msgstr "查询完成"
+
+#. 关键翻译 - 自动恢复
+msgid "Error processing document"
+msgstr "处理文档时出错"
+
+#. 关键翻译 - 自动恢复
+msgid "Initializing RAGAnything"
+msgstr "正在初始化RAGAnything"
+
+#. 关键翻译 - 自动恢复
+msgid "Loading configuration"
+msgstr "正在加载配置"
+
+#. 关键翻译 - 自动恢复
+msgid "Configuration loaded"
+msgstr "配置已加载"
+
+#. 关键翻译 - 自动恢复
+msgid "Starting server"
+msgstr "正在启动服务器"
+
+#. 关键翻译 - 自动恢复
+msgid "Server started"
+msgstr "服务器已启动"
+
+#. 关键翻译 - 自动恢复
+msgid "Shutting down"
+msgstr "正在关闭"
+
+#. 关键翻译 - 自动恢复
+msgid "Shutdown complete"
+msgstr "关闭完成"
+
+#. 关键翻译 - 自动恢复
+msgid "Success"
+msgstr "成功"
+
+#. 关键翻译 - 自动恢复
+msgid "Failed"
+msgstr "失败"
+
+#. 关键翻译 - 自动恢复
+msgid "Error"
+msgstr "错误"
+
+#. 关键翻译 - 自动恢复
+msgid "Warning"
+msgstr "警告"
+
+#. 关键翻译 - 自动恢复
+msgid "Info"
+msgstr "信息"
+
+#. 关键翻译 - 自动恢复
+msgid "Debug"
+msgstr "调试"
+
+#. 关键翻译 - 自动恢复
+msgid "Complete"
+msgstr "完成"
+
+#. 关键翻译 - 自动恢复
+msgid "Processing"
+msgstr "处理中"
+
+#. 关键翻译 - 自动恢复
+msgid "Initializing"
+msgstr "初始化中"
+
+#. 关键翻译 - 自动恢复
+msgid "Loading"
+msgstr "加载中"
+
+#. 关键翻译 - 自动恢复
+msgid "Saving"
+msgstr "保存中"
+
+#. 关键翻译 - 自动恢复
+msgid "Validating"
+msgstr "验证中"
+
+#. 关键翻译 - 自动恢复
+msgid "Completed"
+msgstr "已完成"
+
+#. 关键翻译 - 自动恢复
+msgid "Started"
+msgstr "已开始"
+
+#. 关键翻译 - 自动恢复
+msgid "Finished"
+msgstr "已完成"
+
+#. 关键翻译 - 自动恢复
+msgid "File"
+msgstr "文件"
+
+#. 关键翻译 - 自动恢复
+msgid "Directory"
+msgstr "目录"
+
+#. 关键翻译 - 自动恢复
+msgid "Path"
+msgstr "路径"
+
+#. 关键翻译 - 自动恢复
+msgid "Document"
+msgstr "文档"
+
+#. 关键翻译 - 自动恢复
+msgid "Configuration"
+msgstr "配置"
+
+#. 关键翻译 - 自动恢复
+msgid "Settings"
+msgstr "设置"
+
+#. 关键翻译 - 自动恢复
+msgid "Create"
+msgstr "创建"
+
+#. 关键翻译 - 自动恢复
+msgid "Update"
+msgstr "更新"
+
+#. 关键翻译 - 自动恢复
+msgid "Delete"
+msgstr "删除"
+
+#. 关键翻译 - 自动恢复
+msgid "Insert"
+msgstr "插入"
+
+#. 关键翻译 - 自动恢复
+msgid "Query"
+msgstr "查询"
+
+#. 关键翻译 - 自动恢复
+msgid "Search"
+msgstr "搜索"
+
+#. 关键翻译 - 自动恢复
+msgid "Process"
+msgstr "处理"
+
+#. 关键翻译 - 自动恢复
+msgid "Analyze"
+msgstr "分析"
+
+#. 关键翻译 - 自动恢复
+msgid "Convert"
+msgstr "转换"
+
+#. 关键翻译 - 自动恢复
+msgid "Export"
+msgstr "导出"
+
+#. 关键翻译 - 自动恢复
+msgid "Import"
+msgstr "导入"
+
+#. 关键翻译 - 自动恢复
+msgid "Ready"
+msgstr "就绪"
+
+#. 关键翻译 - 自动恢复
+msgid "Running"
+msgstr "运行中"
+
+#. 关键翻译 - 自动恢复
+msgid "Stopped"
+msgstr "已停止"
+
+#. 关键翻译 - 自动恢复
+msgid "Paused"
+msgstr "已暂停"
+
+#. 关键翻译 - 自动恢复
+msgid "Active"
+msgstr "活动"
+
+#. 关键翻译 - 自动恢复
+msgid "Inactive"
+msgstr "非活动"
+
+#. 关键翻译 - 自动恢复
+msgid "Enabled"
+msgstr "已启用"
+
+#. 关键翻译 - 自动恢复
+msgid "Disabled"
+msgstr "已禁用"
+
+#. 关键翻译 - 自动恢复
+msgid "Invalid"
+msgstr "无效"
+
+#. 关键翻译 - 自动恢复
+msgid "Missing"
+msgstr "缺失"
+
+#. 关键翻译 - 自动恢复
+msgid "Not found"
+msgstr "未找到"
+
+#. 关键翻译 - 自动恢复
+msgid "Access denied"
+msgstr "访问被拒绝"
+
+#. 关键翻译 - 自动恢复
+msgid "Timeout"
+msgstr "超时"
+
+#. 关键翻译 - 自动恢复
+msgid "Connection failed"
+msgstr "连接失败"
+
+#. 关键翻译 - 自动恢复
+msgid "Parse error"
+msgstr "解析错误"
+
+#. 关键翻译 - 自动恢复
+msgid "Validation error"
+msgstr "验证错误"
+
+#. 关键翻译 - 自动恢复
+msgid "Are you sure?"
+msgstr "您确定吗？"
+
+#. 关键翻译 - 自动恢复
+msgid "Confirm"
+msgstr "确认"
+
+#. 关键翻译 - 自动恢复
+msgid "Cancel"
+msgstr "取消"
+
+#. 关键翻译 - 自动恢复
+msgid "OK"
+msgstr "确定"
+
+#. 关键翻译 - 自动恢复
+msgid "Yes"
+msgstr "是"
+
+#. 关键翻译 - 自动恢复
+msgid "No"
+msgstr "否"

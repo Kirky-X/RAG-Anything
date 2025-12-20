@@ -42,6 +42,7 @@ from raganything.config import RAGAnythingConfig
 from raganything.llm import (LLMProviderConfig, build_embedding_func,
                              build_llm, ensure_non_empty, validate_provider)
 from raganything.logger import init_logger, logger
+from raganything.i18n_logger import get_i18n_logger
 # Import specialized processors
 from raganything.modalprocessors import (ContextConfig, ContextExtractor,
                                          EquationModalProcessor,
@@ -52,6 +53,7 @@ from raganything.parser import DoclingParser, MineruParser
 from raganything.processor import ProcessorMixin
 from raganything.query import QueryMixin
 from raganything.utils import get_processor_supports
+from raganything.i18n import _
 
 
 @dataclass
@@ -145,7 +147,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
             )
         except Exception:
             pass
-        self.logger = logger
+        self.logger = get_i18n_logger()
 
         # Set up document parser
         self.doc_parser = (
@@ -158,19 +160,19 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         # Create working directory if needed
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
-            self.logger.info(f"Created working directory: {self.working_dir}")
+            self.logger.info(_("Created working directory: {}").format(self.working_dir))
 
         # Log configuration info
         self.logger.info("RAGAnything initialized with config:")
-        self.logger.info(f"  Working directory: {self.config.working_dir}")
-        self.logger.info(f"  Parser: {self.config.parser}")
-        self.logger.info(f"  Parse method: {self.config.parse_method}")
+        self.logger.info(_("  Working directory: {}").format(self.config.working_dir))
+        self.logger.info(_("  Parser: {}").format(self.config.parser))
+        self.logger.info(_("  Parse method: {}").format(self.config.parse_method))
         self.logger.info(
-            f"  Multimodal processing - Image: {self.config.enable_image_processing}, "
-            f"Table: {self.config.enable_table_processing}, "
-            f"Equation: {self.config.enable_equation_processing}"
+            _("  Multimodal processing - Image: {}, "
+            "Table: {}, "
+            "Equation: {}").format(self.config.enable_image_processing, self.config.enable_table_processing, self.config.enable_equation_processing)
         )
-        self.logger.info(f"  Max concurrent files: {self.config.max_concurrent_files}")
+        self.logger.info(_("  Max concurrent files: {}").format(self.config.max_concurrent_files))
 
     def close(self):
         """Cleanup resources when object is destroyed"""
@@ -191,10 +193,10 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 try:
                     asyncio.run(self.finalize_storages())
                 except Exception as e:
-                    logger.warning(f"Failed to run cleanup with new loop: {e}")
+                    logger.warning(_("Failed to run cleanup with new loop: {}").format(e))
 
         except Exception as e:
-            logger.warning(f"Warning: Failed to finalize RAGAnything storages: {e}")
+            logger.warning(_("Warning: Failed to finalize RAGAnything storages: {}").format(e))
 
     async def initialize(self):
         """Async initialization of LightRAG and related components"""
@@ -278,8 +280,8 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         )
 
         self.logger.info("Multimodal processors initialized with context support")
-        self.logger.info(f"Available processors: {list(self.modal_processors.keys())}")
-        self.logger.info(f"Context configuration: {self._create_context_config()}")
+        self.logger.info(_("Available processors: {}").format(list(self.modal_processors.keys())))
+        self.logger.info(_("Context configuration: {}").format(self._create_context_config()))
 
     def _maybe_build_llm_functions(self):
         """Build LangChain-backed llm/vision functions when not provided, based on config."""
@@ -289,7 +291,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         # LLM text function
         if self.llm_model_func is None:
             if not validate_provider(self.config.llm_provider):
-                self.logger.warning(f"Invalid llm provider: {self.config.llm_provider}")
+                self.logger.warning(_("Invalid llm provider: {}").format(self.config.llm_provider))
                 return
             cfg = LLMProviderConfig(
                 provider=self.config.llm_provider,
@@ -303,16 +305,16 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 lc_llm = build_llm(cfg)
                 self.llm_model_func = lc_llm
                 self.logger.info(
-                    f"LLM function built via LangChain provider: {cfg.provider}"
+                    _("LLM function built via LangChain provider: {}").format(cfg.provider)
                 )
             except Exception as e:
-                self.logger.warning(f"Failed to build LangChain LLM: {e}")
+                self.logger.warning(_("Failed to build LangChain LLM: {}").format(e))
 
         # Vision function
         if self.vision_model_func is None:
             if not validate_provider(self.config.vision_provider):
                 self.logger.warning(
-                    f"Invalid vision provider: {self.config.vision_provider}"
+                    _("Invalid vision provider: {}").format(self.config.vision_provider)
                 )
                 return
             vcfg = LLMProviderConfig(
@@ -327,17 +329,17 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 lc_vlm = build_llm(vcfg)
                 self.vision_model_func = lc_vlm
                 self.logger.info(
-                    f"Vision function built via LangChain provider: {vcfg.provider}"
+                    _("Vision function built via LangChain provider: {}").format(vcfg.provider)
                 )
             except Exception as e:
-                self.logger.error(f"Failed to build LangChain Vision model: {e}")
+                self.logger.error(_("Failed to build LangChain Vision model: {}").format(e))
                 # Don't proceed if vision model fails to build - this prevents fallback to LLM
-                raise RuntimeError(f"Vision model configuration failed: {e}")
+                raise RuntimeError(_("Vision model configuration failed: {}").format(e))
 
         # LLM text function fallback to Ollama when OpenAI not configured
         if self.llm_model_func is None:
             if not validate_provider(self.config.llm_provider):
-                self.logger.warning(f"Invalid llm provider: {self.config.llm_provider}")
+                self.logger.warning(_("Invalid llm provider: {}").format(self.config.llm_provider))
                 return
             cfg = LLMProviderConfig(
                 provider=self.config.llm_provider,
@@ -351,7 +353,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 lc_llm = build_llm(cfg)
                 self.llm_model_func = lc_llm
                 self.logger.info(
-                    f"LLM function built via LangChain provider: {cfg.provider}"
+                    _("LLM function built via LangChain provider: {}").format(cfg.provider)
                 )
             except Exception as e:
                 # Fallback to Ollama locally if configured via env (OLLAMA_HOST)
@@ -369,16 +371,16 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         "LLM function built via Ollama fallback (qwen3:8b)"
                     )
                 except Exception as e2:
-                    self.logger.warning(f"Failed to build LLM via fallback: {e2}")
+                    self.logger.warning(_("Failed to build LLM via fallback: {}").format(e2))
 
     def update_config(self, **kwargs):
         """Update configuration with new values"""
         for key, value in kwargs.items():
             if hasattr(self.config, key):
                 setattr(self.config, key, value)
-                self.logger.debug(f"Updated config: {key} = {value}")
+                self.logger.debug(_("Updated config: {} = {}").format(key, value))
             else:
-                self.logger.warning(f"Unknown config parameter: {key}")
+                self.logger.warning(_("Unknown config parameter: {}").format(key))
 
     async def _ensure_lightrag_initialized(self):
         """Ensure LightRAG instance is initialized, create if necessary"""
@@ -403,7 +405,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     "Pre-provided LightRAG instance found. Verifying initialization..."
                 )
                 self.logger.debug(
-                    f"Checking LightRAG instance: type={type(self.lightrag)}"
+                    _("Checking LightRAG instance: type={}").format(type(self.lightrag))
                 )
 
                 # Ensure RLock is removed from pre-provided LightRAG instance too
@@ -414,7 +416,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     try:
                         delattr(self.lightrag, "lock")
                     except Exception as e:
-                        self.logger.warning(f"Failed to remove 'lock' attribute: {e}")
+                        self.logger.warning(_("Failed to remove 'lock' attribute: {}").format(e))
 
                 # LightRAG was pre-provided, but we need to ensure it's properly initialized
                 try:
@@ -444,7 +446,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         )
                     except Exception as e:
                         self.logger.warning(
-                            f"Failed to initialize pipeline status: {e}"
+                            _("Failed to initialize pipeline status: {}").format(e)
                         )
 
                     # Initialize parse cache if not already done
@@ -476,7 +478,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
                 except Exception as e:
                     error_msg = (
-                        f"Failed to initialize pre-provided LightRAG instance: {str(e)}"
+                        _("Failed to initialize pre-provided LightRAG instance: {}").format(str(e))
                     )
                     self.logger.error(error_msg, exc_info=True)
                     # Don't return error, let the exception propagate
@@ -498,7 +500,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 self.logger.info("Building embedding function...")
                 try:
                     self.logger.info(
-                        f"Attempting to build embedding function with provider: {self.config.embedding_provider}"
+                        _("Attempting to build embedding function with provider: {}").format(self.config.embedding_provider)
                     )
                     self.embedding_func = build_embedding_func(
                         provider=self.config.embedding_provider,
@@ -509,11 +511,11 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         max_token_size=8192,
                     )
                     self.logger.info(
-                        f"Embedding function built successfully via provider: {self.config.embedding_provider}"
+                        _("Embedding function built successfully via provider: {}").format(self.config.embedding_provider)
                     )
                 except Exception as e:
                     self.logger.warning(
-                        f"Failed to build primary embedding function ({self.config.embedding_provider}): {e}"
+                        _("Failed to build primary embedding function ({}): {}").format(self.config.embedding_provider, e)
                     )
                     # Fallback to Ollama embeddings locally
                     try:
@@ -529,7 +531,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                             "Embedding function built successfully via Ollama fallback."
                         )
                     except Exception as e2:
-                        error_msg = f"Failed to build embedding function with all providers: {e2}"
+                        error_msg = _("Failed to build embedding function with all providers: {}").format(e2)
                         self.logger.error(error_msg)
                         return {"success": False, "error": error_msg}
 
@@ -578,7 +580,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
             # Don't return success status, just complete
             return
         except Exception as e:
-            error_msg = f"An unexpected error occurred in _ensure_lightrag_initialized: {str(e)}"
+            error_msg = _("An unexpected error occurred in _ensure_lightrag_initialized: {}").format(str(e))
             self.logger.error(error_msg, exc_info=True)
             # Don't return error, let the exception propagate
             raise RuntimeError(error_msg)
@@ -602,7 +604,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
             # Diagnostic log
             self.logger.debug(
-                f"Pre-init embedding_func type: {type(self.embedding_func)}"
+                _("Pre-init embedding_func type: {}").format(type(self.embedding_func))
             )
 
             if self.embedding_func:
@@ -692,12 +694,12 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
             # Diagnostic log again
             self.logger.debug(
-                f"Pre-init embedding_func type for LightRAG: {type(lightrag_params.get('embedding_func'))}"
+                _("Pre-init embedding_func type for LightRAG: {}").format(type(lightrag_params.get('embedding_func')))
             )
             if lightrag_params.get("embedding_func"):
                 ef = lightrag_params["embedding_func"]
                 self.logger.debug(
-                    f"embedding_func attributes: embedding_dim={getattr(ef, 'embedding_dim', 'MISSING')}"
+                    _("embedding_func attributes: embedding_dim={}").format(getattr(ef, 'embedding_dim', 'MISSING'))
                 )
 
             # Log the parameters being used for initialization (excluding sensitive data)
@@ -707,7 +709,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 if not callable(v)
                 and k not in ["llm_model_kwargs", "vector_db_storage_cls_kwargs"]
             }
-            self.logger.info(f"Initializing LightRAG with parameters: {log_params}")
+            self.logger.info(_("Initializing LightRAG with parameters: {}").format(log_params))
 
             try:
                 # Create LightRAG instance with merged parameters
@@ -727,7 +729,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     try:
                         delattr(self.lightrag, "lock")
                     except Exception as e:
-                        self.logger.warning(f"Failed to remove 'lock' attribute: {e}")
+                        self.logger.warning(_("Failed to remove 'lock' attribute: {}").format(e))
 
                 # Ensure embedding_func does not have RLock if it was attached during initialization
                 if hasattr(self.lightrag, "embedding_func") and hasattr(
@@ -740,7 +742,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         delattr(self.lightrag.embedding_func, "lock")
                     except Exception as e:
                         self.logger.warning(
-                            f"Failed to remove 'lock' attribute from embedding_func: {e}"
+                            _("Failed to remove 'lock' attribute from embedding_func: {}").format(e)
                         )
 
                 # Also check for 'embedding_func' and 'llm_model_func' attached to instance
@@ -795,7 +797,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                         # OR, more likely, we need to make sure what we pass to LightRAG IS a callable function.
 
                         self.logger.debug(
-                            f"LightRAG {vdb_name} embedding_func type: {type(current_func)}"
+                            _("LightRAG {} embedding_func type: {}").format(vdb_name, type(current_func))
                         )
 
                         # Force wrapper to be strictly an async function if it's not already
@@ -890,7 +892,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                                     current_func.func, "__name__", "unknown"
                                 )
                             self.logger.debug(
-                                f"Diagnostics: embedding_func name: {func_name}"
+                                _("Diagnostics: embedding_func name: {}").format(func_name)
                             )
 
                 # Initialize processors after LightRAG is ready
@@ -907,14 +909,14 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 # Let's try to get more info
                 import traceback
 
-                self.logger.error(f"Initialization traceback: {traceback.format_exc()}")
+                self.logger.error(_("Initialization traceback: {}").format(traceback.format_exc()))
 
-                error_msg = f"Failed to initialize LightRAG instance: {str(e)}"
+                error_msg = _("Failed to initialize LightRAG instance: {}").format(str(e))
                 self.logger.error(error_msg, exc_info=True)
                 return {"success": False, "error": error_msg}
 
         except Exception as e:
-            error_msg = f"Unexpected error during LightRAG initialization: {str(e)}"
+            error_msg = _("Unexpected error during LightRAG initialization: {}").format(str(e))
             self.logger.error(error_msg, exc_info=True)
             return {"success": False, "error": error_msg}
 
@@ -959,9 +961,9 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                 pass
                 # self.logger.warning("Event loop closed during storage finalization")
             else:
-                self.logger.error(f"Runtime error during storage finalization: {e}")
+                self.logger.error(_("Runtime error during storage finalization: {}").format(e))
         except Exception as e:
-            self.logger.error(f"Error during storage finalization: {e}")
+            self.logger.error(_("Error during storage finalization: {}").format(e))
 
     def check_parser_installation(self) -> bool:
         """
@@ -980,7 +982,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     "Please install it using pip install or uv pip install."
                 )
             self._parser_installation_checked = True
-            self.logger.info(f"Parser '{self.config.parser}' installation verified")
+            self.logger.info(_("Parser '{}' installation verified").format(self.config.parser))
         return True
 
     def get_config_info(self) -> Dict[str, Any]:
@@ -1057,10 +1059,10 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         for processor_name, processor in self.modal_processors.items():
             try:
                 processor.set_content_source(content_source, content_format)
-                self.logger.debug(f"Set content source for {processor_name} processor")
+                self.logger.debug(_("Set content source for {} processor").format(processor_name))
             except Exception as e:
                 self.logger.error(
-                    f"Failed to set content source for {processor_name}: {e}"
+                    _("Failed to set content source for {}: {}").format(processor_name, e)
                 )
 
         self.logger.info(
@@ -1078,9 +1080,9 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
         for key, value in context_kwargs.items():
             if hasattr(self.config, key):
                 setattr(self.config, key, value)
-                self.logger.debug(f"Updated context config: {key} = {value}")
+                self.logger.debug(_("Updated context config: {} = {}").format(key, value))
             else:
-                self.logger.warning(f"Unknown context config parameter: {key}")
+                self.logger.warning(_("Unknown context config parameter: {}").format(key))
 
         # Recreate context extractor with new config if processors are initialized
         if self.lightrag and self.modal_processors:
@@ -1094,10 +1096,10 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
                     "Context configuration updated and applied to all processors"
                 )
                 self.logger.info(
-                    f"New context configuration: {self._create_context_config()}"
+                    _("New context configuration: {}").format(self._create_context_config())
                 )
             except Exception as e:
-                self.logger.error(f"Failed to update context configuration: {e}")
+                self.logger.error(_("Failed to update context configuration: {}").format(e))
 
     def get_processor_info(self) -> Dict[str, Any]:
         """Get processor information"""
@@ -1170,7 +1172,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
 
             for unit in ["B", "KB", "MB", "GB", "TB"]:
                 if total_size < 1024:
-                    storage_usage = f"{total_size:.2f} {unit}"
+                    storage_usage = _("{:.2f} {}").format(total_size, unit)
                     break
                 total_size /= 1024
         except Exception:
@@ -1192,7 +1194,7 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
     async def delete_document(self, doc_id: str):
         """Delete a document by ID"""
         if not self.lightrag:
-            raise RuntimeError("LightRAG not initialized")
+            raise RuntimeError(_("LightRAG not initialized"))
 
         # Ensure pipeline status is initialized before deletion
         try:
@@ -1201,24 +1203,24 @@ class RAGAnything(QueryMixin, ProcessorMixin, BatchMixin):
             await initialize_pipeline_status()
             self.logger.debug("Pipeline status initialized for deletion")
         except Exception as e:
-            self.logger.warning(f"Failed to initialize pipeline status: {e}")
+            self.logger.warning(_("Failed to initialize pipeline status: {}").format(e))
 
         # Use LightRAG's comprehensive document deletion method
         try:
             result = await self.lightrag.adelete_by_doc_id(doc_id)
             if result.status == "success":
                 self.logger.info(
-                    f"Successfully deleted document {doc_id}: {result.message}"
+                    _("Successfully deleted document {}: {}").format(doc_id, result.message)
                 )
             elif result.status == "not_found":
-                self.logger.warning(f"Document {doc_id} not found for deletion")
+                self.logger.warning(_("Document {} not found for deletion").format(doc_id))
             else:
                 self.logger.error(
-                    f"Failed to delete document {doc_id}: {result.message}"
+                    _("Failed to delete document {}: {}").format(doc_id, result.message)
                 )
             return result
         except Exception as e:
-            self.logger.error(f"Error deleting document {doc_id}: {e}")
+            self.logger.error(_("Error deleting document {}: {}").format(doc_id, e))
             raise
 
     async def cleanup_storage(self):

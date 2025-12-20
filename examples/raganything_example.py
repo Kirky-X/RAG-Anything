@@ -25,6 +25,8 @@ from lightrag.llm.openai import openai_complete_if_cache, openai_embed
 from lightrag.utils import EmbeddingFunc, logger, set_verbose_debug
 
 from raganything import RAGAnything, RAGAnythingConfig
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
 
 load_dotenv(dotenv_path=".env", override=False)
 
@@ -238,9 +240,9 @@ async def process_with_rag(
         ]
 
         for query in text_queries:
-            logger.info(f"\n[Text Query]: {query}")
+            logger.info(_("\n[Text Query]: {}").format(query))
             result = await rag.aquery(query, mode="hybrid")
-            logger.info(f"Answer: {result}")
+            logger.info(_("Answer: {}").format(result))
 
         # 2. Multimodal query with specific multimodal content using aquery_with_multimodal()
         logger.info(
@@ -260,7 +262,7 @@ async def process_with_rag(
             ],
             mode="hybrid",
         )
-        logger.info(f"Answer: {multimodal_result}")
+        logger.info(_("Answer: {}").format(multimodal_result))
 
         # 3. Another multimodal query with equation content
         logger.info("\n[Multimodal Query]: Mathematical formula analysis")
@@ -275,10 +277,10 @@ async def process_with_rag(
             ],
             mode="hybrid",
         )
-        logger.info(f"Answer: {equation_result}")
+        logger.info(_("Answer: {}").format(equation_result))
 
     except Exception as e:
-        logger.error(f"Error processing with RAG: {str(e)}")
+        logger.error(_("Error processing with RAG: {}").format(str(e)))
         import traceback
 
         logger.error(traceback.format_exc())

@@ -4,6 +4,7 @@
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
+from raganything.i18n import _
 
 
 class HealthResp(BaseModel):

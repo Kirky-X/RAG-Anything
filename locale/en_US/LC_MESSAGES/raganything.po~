@@ -1,0 +1,465 @@
+# English translations for RAG-Anything.
+# Copyright (C) 2024 RAG-Anything
+msgid ""
+msgstr ""
+"Project-Id-Version: RAG-Anything 1.0\n"
+"POT-Creation-Date: 2024-12-20 11:30+0800\n"
+"PO-Revision-Date: 2024-12-20 11:30+0800\n"
+"Last-Translator: RAG-Anything Team\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: Log level
+msgid "DEBUG"
+msgstr "DEBUG"
+
+#: Log level
+msgid "INFO"
+msgstr "INFO"
+
+#: Log level
+msgid "WARNING"
+msgstr "WARNING"
+
+#: Log level
+msgid "ERROR"
+msgstr "ERROR"
+
+#: Log level
+msgid "CRITICAL"
+msgstr "CRITICAL"
+
+#: Extracted message
+msgid "Inserting additional content list..."
+msgstr "Inserting additional content list..."
+
+#: Extracted message
+msgid "[Multimodal Query]: Mathematical formula analysis"
+msgstr "[Multimodal Query]: Mathematical formula analysis"
+
+#: Extracted message
+msgid "[Multimodal Query]: Mathematical formula analysis completed"
+msgstr "[Multimodal Query]: Mathematical formula analysis completed"
+
+#: Extracted message
+msgid "[Multimodal Query]: Code analysis"
+msgstr "[Multimodal Query]: Code analysis"
+
+#: Extracted message
+msgid "[Multimodal Query]: Code analysis completed"
+msgstr "[Multimodal Query]: Code analysis completed"
+
+#: Extracted message
+msgid "[Multimodal Query]: Chart analysis"
+msgstr "[Multimodal Query]: Chart analysis"
+
+#: Extracted message
+msgid "[Multimodal Query]: Chart analysis completed"
+msgstr "[Multimodal Query]: Chart analysis completed"
+
+#: Extracted message
+msgid "[Multimodal Query]: Image analysis"
+msgstr "[Multimodal Query]: Image analysis"
+
+#: Extracted message
+msgid "[Multimodal Query]: Image analysis completed"
+msgstr "[Multimodal Query]: Image analysis completed"
+
+#: Extracted message
+msgid "[Multimodal Query]: PDF analysis"
+msgstr "[Multimodal Query]: PDF analysis"
+
+#: Extracted message
+msgid "[Multimodal Query]: PDF analysis completed"
+msgstr "[Multimodal Query]: PDF analysis completed"
+
+#: Extracted message
+msgid "[Multimodal Query]: Audio analysis"
+msgstr "[Multimodal Query]: Audio analysis"
+
+#: Extracted message
+msgid "[Multimodal Query]: Audio analysis completed"
+msgstr "[Multimodal Query]: Audio analysis completed"
+
+#: Extracted message
+msgid "[Multimodal Query]: Video analysis"
+msgstr "[Multimodal Query]: Video analysis"
+
+#: Extracted message
+msgid "[Multimodal Query]: Video analysis completed"
+msgstr "[Multimodal Query]: Video analysis completed"
+
+#: Extracted message
+msgid "Processing multimodal query: {}"
+msgstr "Processing multimodal query: {}"
+
+#: Extracted message
+msgid "Multimodal query processing completed"
+msgstr "Multimodal query processing completed"
+
+#: Extracted message
+msgid "Processing text query: {}"
+msgstr "Processing text query: {}"
+
+#: Extracted message
+msgid "Text query processing completed"
+msgstr "Text query processing completed"
+
+#: Extracted message
+msgid "Initializing RAG system..."
+msgstr "Initializing RAG system..."
+
+#: Extracted message
+msgid "RAG system initialized successfully"
+msgstr "RAG system initialized successfully"
+
+#: Extracted message
+msgid "Loading configuration..."
+msgstr "Loading configuration..."
+
+#: Extracted message
+msgid "Configuration loaded successfully"
+msgstr "Configuration loaded successfully"
+
+#: Extracted message
+msgid "Starting server on port {}"
+msgstr "Starting server on port {}"
+
+#: Extracted message
+msgid "Server started successfully"
+msgstr "Server started successfully"
+
+#: Extracted message
+msgid "Shutting down server..."
+msgstr "Shutting down server..."
+
+#: Extracted message
+msgid "Server shutdown complete"
+msgstr "Server shutdown complete"
+
+#: Extracted message
+msgid "Processing request: {}"
+msgstr "Processing request: {}"
+
+#: Extracted message
+msgid "Request processed successfully"
+msgstr "Request processed successfully"
+
+#: Extracted message
+msgid "Error processing request: {}"
+msgstr "Error processing request: {}"
+
+#: Extracted message
+msgid "Invalid request format"
+msgstr "Invalid request format"
+
+#: Extracted message
+msgid "Missing required parameter: {}"
+msgstr "Missing required parameter: {}"
+
+#: Extracted message
+msgid "Authentication failed"
+msgstr "Authentication failed"
+
+#: Extracted message
+msgid "Authorization denied"
+msgstr "Authorization denied"
+
+#: Extracted message
+msgid "Resource not found: {}"
+msgstr "Resource not found: {}"
+
+#: Extracted message
+msgid "Internal server error"
+msgstr "Internal server error"
+
+#: Extracted message
+msgid "Service unavailable"
+msgstr "Service unavailable"
+
+#: Extracted message
+msgid "Timeout occurred"
+msgstr "Timeout occurred"
+
+#: Extracted message
+msgid "Rate limit exceeded"
+msgstr "Rate limit exceeded"
+
+#: Extracted message
+msgid "Database connection failed"
+msgstr "Database connection failed"
+
+#: Extracted message
+msgid "Database query failed"
+msgstr "Database query failed"
+
+#: Extracted message
+msgid "Cache miss for key: {}"
+msgstr "Cache miss for key: {}"
+
+#: Extracted message
+msgid "Cache hit for key: {}"
+msgstr "Cache hit for key: {}"
+
+#: Extracted message
+msgid "Cache set for key: {}"
+msgstr "Cache set for key: {}"
+
+#: Extracted message
+msgid "Cache deleted for key: {}"
+msgstr "Cache deleted for key: {}"
+
+#: Extracted message
+msgid "File not found: {}"
+msgstr "File not found: {}"
+
+#: Extracted message
+msgid "File uploaded: {}"
+msgstr "File uploaded: {}"
+
+#: Extracted message
+msgid "File deleted: {}"
+msgstr "File deleted: {}"
+
+#: Extracted message
+msgid "Directory created: {}"
+msgstr "Directory created: {}"
+
+#: Extracted message
+msgid "Directory deleted: {}"
+msgstr "Directory deleted: {}"
+
+#: Extracted message
+msgid "API call started: {}"
+msgstr "API call started: {}"
+
+#: Extracted message
+msgid "API call completed: {}"
+msgstr "API call completed: {}"
+
+#: Extracted message
+msgid "API call failed: {}"
+msgstr "API call failed: {}"
+
+#: Extracted message
+msgid "Network request started: {}"
+msgstr "Network request started: {}"
+
+#: Extracted message
+msgid "Network request completed: {}"
+msgstr "Network request completed: {}"
+
+#: Extracted message
+msgid "Network request failed: {}"
+msgstr "Network request failed: {}"
+
+#: Extracted message
+msgid "Parsing started: {}"
+msgstr "Parsing started: {}"
+
+#: Extracted message
+msgid "Parsing completed: {}"
+msgstr "Parsing completed: {}"
+
+#: Extracted message
+msgid "Parsing failed: {}"
+msgstr "Parsing failed: {}"
+
+#: Extracted message
+msgid "Validation started: {}"
+msgstr "Validation started: {}"
+
+#: Extracted message
+msgid "Validation completed: {}"
+msgstr "Validation completed: {}"
+
+#: Extracted message
+msgid "Validation failed: {}"
+msgstr "Validation failed: {}"
+
+#: Extracted message
+msgid "Transformation started: {}"
+msgstr "Transformation started: {}"
+
+#: Extracted message
+msgid "Transformation completed: {}"
+msgstr "Transformation completed: {}"
+
+#: Extracted message
+msgid "Transformation failed: {}"
+msgstr "Transformation failed: {}"
+
+#: Extracted message
+msgid "Export started: {}"
+msgstr "Export started: {}"
+
+#: Extracted message
+msgid "Export completed: {}"
+msgstr "Export completed: {}"
+
+#: Extracted message
+msgid "Export failed: {}"
+msgstr "Export failed: {}"
+
+#: Extracted message
+msgid "Import started: {}"
+msgstr "Import started: {}"
+
+#: Extracted message
+msgid "Import completed: {}"
+msgstr "Import completed: {}"
+
+#: Extracted message
+msgid "Import failed: {}"
+msgstr "Import failed: {}"
+
+#: Extracted message
+msgid "Backup created: {}"
+msgstr "Backup created: {}"
+
+#: Extracted message
+msgid "Backup restored: {}"
+msgstr "Backup restored: {}"
+
+#: Extracted message
+msgid "Backup deleted: {}"
+msgstr "Backup deleted: {}"
+
+#: Extracted message
+msgid "Configuration updated: {}"
+msgstr "Configuration updated: {}"
+
+#: Extracted message
+msgid "Configuration reset: {}"
+msgstr "Configuration reset: {}"
+
+#: Extracted message
+msgid "Plugin loaded: {}"
+msgstr "Plugin loaded: {}"
+
+#: Extracted message
+msgid "Plugin unloaded: {}"
+msgstr "Plugin unloaded: {}"
+
+#: Extracted message
+msgid "Plugin activated: {}"
+msgstr "Plugin activated: {}"
+
+#: Extracted message
+msgid "Plugin deactivated: {}"
+msgstr "Plugin deactivated: {}"
+
+#: Extracted message
+msgid "Task queued: {}"
+msgstr "Task queued: {}"
+
+#: Extracted message
+msgid "Task started: {}"
+msgstr "Task started: {}"
+
+#: Extracted message
+msgid "Task completed: {}"
+msgstr "Task completed: {}"
+
+#: Extracted message
+msgid "Task failed: {}"
+msgstr "Task failed: {}"
+
+#: Extracted message
+msgid "Task cancelled: {}"
+msgstr "Task cancelled: {}"
+
+#: Extracted message
+msgid "Task resumed: {}"
+msgstr "Task resumed: {}"
+
+#: Extracted message
+msgid "Task paused: {}"
+msgstr "Task paused: {}"
+
+#: Extracted message
+msgid "Worker started: {}"
+msgstr "Worker started: {}"
+
+#: Extracted message
+msgid "Worker stopped: {}"
+msgstr "Worker stopped: {}"
+
+#: Extracted message
+msgid "Worker restarted: {}"
+msgstr "Worker restarted: {}"
+
+#: Extracted message
+msgid "Queue size: {}"
+msgstr "Queue size: {}"
+
+#: Extracted message
+msgid "Memory usage: {} MB"
+msgstr "Memory usage: {} MB"
+
+#: Extracted message
+msgid "CPU usage: {}%"
+msgstr "CPU usage: {}%"
+
+#: Extracted message
+msgid "Disk usage: {} GB"
+msgstr "Disk usage: {} GB"
+
+#: Extracted message
+msgid "Network usage: {} MB/s"
+msgstr "Network usage: {} MB/s"
+
+#: Extracted message
+msgid "Response time: {} ms"
+msgstr "Response time: {} ms"
+
+#: Extracted message
+msgid "Throughput: {} req/s"
+msgstr "Throughput: {} req/s"
+
+#: Extracted message
+msgid "Error rate: {}%"
+msgstr "Error rate: {}%"
+
+#: Extracted message
+msgid "Success rate: {}%"
+msgstr "Success rate: {}%"
+
+#: Extracted message
+msgid "Uptime: {} hours"
+msgstr "Uptime: {} hours"
+
+#: Extracted message
+msgid "Downtime: {} minutes"
+msgstr "Downtime: {} minutes"
+
+#: Extracted message
+msgid "Maintenance mode: {}"
+msgstr "Maintenance mode: {}"
+
+#: Extracted message
+msgid "Health check: {}"
+msgstr "Health check: {}"
+
+#: Extracted message
+msgid "Status: {}"
+msgstr "Status: {}"
+
+#: Extracted message
+msgid "Version: {}"
+msgstr "Version: {}"
+
+#: Extracted message
+msgid "Build: {}"
+msgstr "Build: {}"
+
+#: Extracted message
+msgid "Environment: {}"
+msgstr "Environment: {}"
+
+#: Extracted message
+msgid "Region: {}"
+msgstr "Region: {}"

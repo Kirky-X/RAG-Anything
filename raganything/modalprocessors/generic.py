@@ -14,6 +14,7 @@ from lightrag.utils import compute_mdhash_id, logger
 from raganything.prompt import PROMPTS
 
 from .base import BaseModalProcessor
+from raganything.i18n import _
 
 
 class GenericModalProcessor(BaseModalProcessor):
@@ -57,7 +58,7 @@ class GenericModalProcessor(BaseModalProcessor):
                     entity_name=(
                         entity_name
                         if entity_name
-                        else f"descriptive name for this {content_type}"
+                        else _("descriptive name for this {}").format(content_type)
                     ),
                     content=str(modal_content),
                 )
@@ -67,7 +68,7 @@ class GenericModalProcessor(BaseModalProcessor):
                     entity_name=(
                         entity_name
                         if entity_name
-                        else f"descriptive name for this {content_type}"
+                        else _("descriptive name for this {}").format(content_type)
                     ),
                     content=str(modal_content),
                 )
@@ -89,16 +90,16 @@ class GenericModalProcessor(BaseModalProcessor):
             return enhanced_caption, entity_info
 
         except Exception as e:
-            logger.error(f"Error generating {content_type} description: {e}")
+            logger.error(_("Error generating {} description: {}").format(content_type, e))
             # Fallback processing
             fallback_entity = {
                 "entity_name": (
                     entity_name
                     if entity_name
-                    else f"{content_type}_{compute_mdhash_id(str(modal_content))}"
+                    else _("{}_{}").format(content_type, compute_mdhash_id(str(modal_content)))
                 ),
                 "entity_type": content_type,
-                "summary": f"{content_type} content: {str(modal_content)[:100]}",
+                "summary": _("{} content: {}").format(content_type, str(modal_content)[:100]),
             }
             return str(modal_content), fallback_entity
 
@@ -137,16 +138,16 @@ class GenericModalProcessor(BaseModalProcessor):
             )
 
         except Exception as e:
-            logger.error(f"Error processing {content_type} content: {e}")
+            logger.error(_("Error processing {} content: {}").format(content_type, e))
             # Fallback processing
             fallback_entity = {
                 "entity_name": (
                     entity_name
                     if entity_name
-                    else f"{content_type}_{compute_mdhash_id(str(modal_content))}"
+                    else _("{}_{}").format(content_type, compute_mdhash_id(str(modal_content)))
                 ),
                 "entity_type": content_type,
-                "summary": f"{content_type} content: {str(modal_content)[:100]}",
+                "summary": _("{} content: {}").format(content_type, str(modal_content)[:100]),
             }
             return str(modal_content), fallback_entity, [], []
 
@@ -161,12 +162,12 @@ class GenericModalProcessor(BaseModalProcessor):
             entity_data = response_data.get("entity_info", {})
 
             if not description or not entity_data:
-                raise ValueError("Missing required fields in response")
+                raise ValueError(_("Missing required fields in response"))
 
             if not all(
                 key in entity_data for key in ["entity_name", "entity_type", "summary"]
             ):
-                raise ValueError("Missing required fields in entity_info")
+                raise ValueError(_("Missing required fields in entity_info"))
 
             entity_data["entity_name"] = (
                 entity_data["entity_name"] + f" ({entity_data['entity_type']})"
@@ -177,13 +178,13 @@ class GenericModalProcessor(BaseModalProcessor):
             return description, entity_data
 
         except (json.JSONDecodeError, AttributeError, ValueError) as e:
-            logger.error(f"Error parsing {content_type} analysis response: {e}")
-            logger.debug(f"Raw response: {response}")
+            logger.error(_("Error parsing {} analysis response: {}").format(content_type, e))
+            logger.debug(_("Raw response: {}").format(response))
             fallback_entity = {
                 "entity_name": (
                     entity_name
                     if entity_name
-                    else f"{content_type}_{compute_mdhash_id(response)}"
+                    else _("{}_{}").format(content_type, compute_mdhash_id(response))
                 ),
                 "entity_type": content_type,
                 "summary": response[:100] + "..." if len(response) > 100 else response,

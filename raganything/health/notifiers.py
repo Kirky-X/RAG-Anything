@@ -3,32 +3,36 @@
 
 from typing import List, Optional
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
 
 from .core import ComponentStatus, HealthCheckResult, Notifier
+from raganything.i18n import _
 
 
 class ConsoleNotifier(Notifier):
     """Simple notifier that logs to console/logger."""
 
+    def __init__(self):
+        self.logger = get_i18n_logger()
+
     async def notify(self, result: HealthCheckResult) -> None:
         if result.status == ComponentStatus.UNHEALTHY:
-            logger.error(
-                f"🚨 HEALTH CHECK FAILED [{result.component_name}]: {result.message}"
+            self.logger.error(
+                _("🚨 HEALTH CHECK FAILED [{}]: {}").format(result.component_name, result.message)
             )
             if result.error:
-                logger.error(f"   Details: {result.error}")
+                self.logger.error(_("   Details: {}").format(result.error))
         elif result.status == ComponentStatus.WARNING:
-            logger.warning(
-                f"⚠️ HEALTH CHECK WARNING [{result.component_name}]: {result.message}"
+            self.logger.warning(
+                _("⚠️ HEALTH CHECK WARNING [{}]: {}").format(result.component_name, result.message)
             )
         elif result.status == ComponentStatus.HEALTHY:
-            logger.info(
-                f"✅ Health Check Passed [{result.component_name}]: {result.message}"
+            self.logger.info(
+                _("✅ Health Check Passed [{}]: {}").format(result.component_name, result.message)
             )
         else:
-            logger.info(
-                f"❓ Health Check Unknown [{result.component_name}]: {result.message}"
+            self.logger.info(
+                _("❓ Health Check Unknown [{}]: {}").format(result.component_name, result.message)
             )
 
 
@@ -43,6 +47,7 @@ class EmailNotifier(Notifier):
         recipients: List[str],
         password: Optional[str] = None,
     ):
+        self.logger = get_i18n_logger()
         self.smtp_host = smtp_host
         self.smtp_port = smtp_port
         self.sender = sender
@@ -64,6 +69,6 @@ class EmailNotifier(Notifier):
         """
 
         # Placeholder for actual SMTP logic (requires aiosmtplib)
-        logger.info(
+        self.logger.info(
             f"📧 [EmailNotifier] Would send email to {self.recipients}: {subject}"
         )

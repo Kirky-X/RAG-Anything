@@ -5,6 +5,7 @@ from .checks import OllamaHealthCheck, SystemResourceCheck
 from .core import ComponentStatus, HealthCheck, HealthCheckResult, Notifier
 from .monitor import HealthMonitor
 from .notifiers import ConsoleNotifier, EmailNotifier
+from raganything.i18n import _
 
 __all__ = [
     "ComponentStatus",

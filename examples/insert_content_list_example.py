@@ -26,6 +26,8 @@ from lightrag.llm.openai import openai_complete_if_cache, openai_embed
 from lightrag.utils import EmbeddingFunc, logger, set_verbose_debug
 
 from raganything import RAGAnything, RAGAnythingConfig
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
 
 load_dotenv(dotenv_path=".env", override=False)
 
@@ -274,7 +276,7 @@ async def demo_insert_content_list(
         # Create sample content list
         logger.info("Creating sample content list...")
         content_list = create_sample_content_list()
-        logger.info(f"Created content list with {len(content_list)} items")
+        logger.info(_("Created content list with {} items").format(len(content_list)))
 
         # Insert content list directly
         logger.info("\nInserting content list into RAGAnything...")
@@ -299,9 +301,9 @@ async def demo_insert_content_list(
         ]
 
         for query in text_queries:
-            logger.info(f"\n[Text Query]: {query}")
+            logger.info(_("\n[Text Query]: {}").format(query))
             result = await rag.aquery(query, mode="hybrid")
-            logger.info(f"Answer: {result}")
+            logger.info(_("Answer: {}").format(result))
 
         # 2. Multimodal query with specific multimodal content using aquery_with_multimodal()
         logger.info(
@@ -320,7 +322,7 @@ async def demo_insert_content_list(
             ],
             mode="hybrid",
         )
-        logger.info(f"Answer: {multimodal_result}")
+        logger.info(_("Answer: {}").format(multimodal_result))
 
         # 3. Another multimodal query with equation content
         logger.info("\n[Multimodal Query]: Mathematical formula analysis")
@@ -335,7 +337,7 @@ async def demo_insert_content_list(
             ],
             mode="hybrid",
         )
-        logger.info(f"Answer: {equation_result}")
+        logger.info(_("Answer: {}").format(equation_result))
 
         # 4. Insert another content list with different document ID
         logger.info("\nInserting additional content list...")
@@ -369,10 +371,10 @@ async def demo_insert_content_list(
             "What configuration options are available and what are their default values?",
             mode="hybrid",
         )
-        logger.info(f"Answer: {combined_result}")
+        logger.info(_("Answer: {}").format(combined_result))
 
     except Exception as e:
-        logger.error(f"Error in content list insertion demo: {str(e)}")
+        logger.error(_("Error in content list insertion demo: {}").format(str(e)))
         import traceback
 
         logger.error(traceback.format_exc())

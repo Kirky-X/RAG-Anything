@@ -22,6 +22,7 @@ from raganything.parser import (DoclingParser, MineruExecutionError,
 from raganything.utils import (get_processor_for_type, insert_text_content,
                                insert_text_content_with_multimodal_content,
                                separate_content)
+from raganything.i18n import _
 
 
 class ProcessorMixin:
@@ -40,10 +41,10 @@ class ProcessorMixin:
         Returns:
             tuple[str, str]: (file_path, doc_id)
         """
-        self.logger.info(f"Starting to save uploaded file: {file.filename}")
+        self.logger.info(_("Starting to save uploaded file: {}").format(file.filename))
         if doc_id is None:
             doc_id = f"doc-{uuid.uuid4()}"
-            self.logger.info(f"Generated new doc_id: {doc_id}")
+            self.logger.info(_("Generated new doc_id: {}").format(doc_id))
 
         file_name = file.filename
 
@@ -54,7 +55,7 @@ class ProcessorMixin:
             working_dir = "./rag_storage"
 
         working_dir = os.path.abspath(working_dir)
-        self.logger.info(f"Resolved working directory for upload: {working_dir}")
+        self.logger.info(_("Resolved working directory for upload: {}").format(working_dir))
 
         try:
             os.makedirs(working_dir, exist_ok=True)
@@ -68,7 +69,7 @@ class ProcessorMixin:
         self.working_dir = working_dir
 
         file_path = os.path.join(working_dir, file_name)
-        self.logger.info(f"Target file path for upload: {file_path}")
+        self.logger.info(_("Target file path for upload: {}").format(file_path))
 
         # Save file to disk
         try:
@@ -77,9 +78,9 @@ class ProcessorMixin:
                 self.logger.info("Starting to read file chunks...")
                 chunk_index = 0
                 while content := await file.read(1024 * 1024):  # Read in 1MB chunks
-                    self.logger.info(f"Read chunk {chunk_index} of size {len(content)}")
+                    self.logger.info(_("Read chunk {} of size {}").format(chunk_index, len(content)))
                     await out_file.write(content)
-                    self.logger.info(f"Wrote chunk {chunk_index}")
+                    self.logger.info(_("Wrote chunk {}").format(chunk_index))
                     chunk_index += 1
             self.logger.info("Finished writing all file chunks.")
         except FileNotFoundError:
@@ -95,27 +96,20 @@ class ProcessorMixin:
                     self.logger.info("Starting to read file chunks (fallback path)...")
                     chunk_index = 0
                     while content := await file.read(1024 * 1024):
-                        self.logger.info(
-                            f"Read chunk {chunk_index} of size {len(content)}"
-                        )
+                        self.logger.info(_("Read chunk {} of size {}").format(chunk_index, len(content)))
                         await out_file.write(content)
-                        self.logger.info(f"Wrote chunk {chunk_index}")
+                        self.logger.info(_("Wrote chunk {}").format(chunk_index))
                         chunk_index += 1
-                self.logger.info(
-                    f"Successfully saved uploaded file to fallback path: {fallback_path}"
-                )
+                self.logger.info(_("Successfully saved uploaded file to fallback path: {}").format(fallback_path))
                 file_path = fallback_path
             except Exception as e:
-                self.logger.error(
-                    f"Error saving file to fallback path {fallback_dir}: {e}",
-                    exc_info=True,
-                )
+                self.logger.error(_("Error saving file to fallback path {}: {}").format(fallback_dir, e), exc_info=True)
                 raise
         except Exception as e:
-            self.logger.error(f"Error saving file {file_path}: {e}", exc_info=True)
+            self.logger.error(_("Error saving file {}: {}").format(file_path, e), exc_info=True)
             raise
 
-        self.logger.info(f"Successfully saved uploaded file to: {file_path}")
+        self.logger.info(_("Successfully saved uploaded file to: {}").format(file_path))
         return file_path, doc_id
 
     def _generate_cache_key(
@@ -235,7 +229,7 @@ class ProcessorMixin:
             cached_mtime = cached_data.get("mtime", 0)
 
             if current_mtime != cached_mtime:
-                self.logger.debug(f"Cache invalid - file modified: {cache_key}")
+                self.logger.debug(_("Cache invalid - file modified: {}").format(cache_key))
                 return None
 
             # Check parsing configuration
@@ -264,7 +258,7 @@ class ProcessorMixin:
             current_config.update(relevant_kwargs)
 
             if cached_config != current_config:
-                self.logger.debug(f"Cache invalid - config changed: {cache_key}")
+                self.logger.debug(_("Cache invalid - config changed: {}").format(cache_key))
                 return None
 
             content_list = cached_data.get("content_list", [])
@@ -282,7 +276,7 @@ class ProcessorMixin:
                 return None
 
         except Exception as e:
-            self.logger.warning(f"Error accessing parse cache: {e}")
+            self.logger.warning(_("Error accessing parse cache: {}").format(e))
 
         return None
 
@@ -350,9 +344,9 @@ class ProcessorMixin:
             await self.parse_cache.upsert(cache_data)
             # Ensure data is persisted to disk
             await self.parse_cache.index_done_callback()
-            self.logger.info(f"Stored parsing result in cache: {cache_key}")
+            self.logger.info(_("Stored parsing result in cache: {}").format(cache_key))
         except Exception as e:
-            self.logger.warning(f"Error storing to parse cache: {e}")
+            self.logger.warning(_("Error storing to parse cache: {}").format(e))
 
     async def parse_document(
         self,
@@ -383,11 +377,11 @@ class ProcessorMixin:
         if display_stats is None:
             display_stats = self.config.display_content_stats
 
-        self.logger.info(f"Starting document parsing: {file_path}")
+        self.logger.info(_("Starting document parsing: {}").format(file_path))
 
         file_path = Path(file_path)
         if not file_path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
+            raise FileNotFoundError(_("File not found: {}").format(file_path))
 
         # Generate cache key based on file and configuration
         cache_key = self._generate_cache_key(file_path, parse_method, **kwargs)
@@ -399,7 +393,7 @@ class ProcessorMixin:
             )
             if cached_result is not None:
                 content_list, doc_id = cached_result
-                self.logger.info(f"Using cached parsing result for: {file_path}")
+                self.logger.info(_("Using cached parsing result for: {}").format(file_path))
                 if display_stats:
                     self.logger.info(
                         f"* Total blocks in cached content_list: {len(content_list)}"
@@ -476,7 +470,7 @@ class ProcessorMixin:
                     **kwargs,
                 )
             elif ext in [".txt", ".md"]:
-                self.logger.info(f"Detected text/markdown file: {ext}")
+                self.logger.info(_("Detected text/markdown file: {}").format(ext))
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         text_content = f.read()
@@ -484,7 +478,7 @@ class ProcessorMixin:
                         {"type": "text", "text": text_content, "page_idx": 0}
                     ]
                 except Exception as e:
-                    self.logger.error(f"Error reading text file {file_path}: {e}")
+                    self.logger.error(_("Error reading text file {}: {}").format(file_path, e))
                     raise e
             elif ext in [
                 ".mp4",
@@ -594,7 +588,7 @@ class ProcessorMixin:
                             )
 
         except MineruExecutionError as e:
-            self.logger.error(f"Mineru command failed: {e}")
+            self.logger.error(_("Mineru command failed: {}").format(e))
             raise
         except Exception as e:
             self.logger.error(
@@ -606,7 +600,7 @@ class ProcessorMixin:
         self.logger.info(msg)
 
         if len(content_list) == 0:
-            raise ValueError("Parsing failed: No content was extracted")
+            raise ValueError(_("Parsing failed: No content was extracted"))
 
         # Generate doc_id based on content
         doc_id = self._generate_content_based_doc_id(content_list)
@@ -619,7 +613,7 @@ class ProcessorMixin:
         # Display content statistics if requested
         if display_stats:
             self.logger.info("\nContent Information:")
-            self.logger.info(f"* Total blocks in content_list: {len(content_list)}")
+            self.logger.info(_("* Total blocks in content_list: {}").format(len(content_list)))
 
             # Count elements by type
             block_types: Dict[str, int] = {}
@@ -631,7 +625,7 @@ class ProcessorMixin:
 
             self.logger.info("* Content block types:")
             for block_type, count in block_types.items():
-                self.logger.info(f"  - {block_type}: {count}")
+                self.logger.info(_("  - {}: {}").format(block_type, count))
 
         return content_list, doc_id
 
@@ -691,7 +685,7 @@ class ProcessorMixin:
                     return
 
         except Exception as e:
-            self.logger.debug(f"Error checking document status for {doc_id}: {e}")
+            self.logger.debug(_("Error checking document status for {}: {}").format(doc_id, e))
             # Continue with processing if cache check fails
 
         # Use ProcessorMixin's own batch processing that can handle multiple content types
@@ -734,7 +728,7 @@ class ProcessorMixin:
                     pipeline_status["history_messages"].append(log_message)
 
         except Exception as e:
-            self.logger.error(f"Error in multimodal processing: {e}")
+            self.logger.error(_("Error in multimodal processing: {}").format(e))
             import traceback
 
             self.logger.error(traceback.format_exc())
@@ -842,7 +836,7 @@ class ProcessorMixin:
                     )
 
             except Exception as e:
-                self.logger.error(f"Error processing multimodal content: {str(e)}")
+                self.logger.error(_("Error processing multimodal content: {}").format(str(e)))
                 self.logger.debug("Exception details:", exc_info=True)
                 continue
 
@@ -948,14 +942,14 @@ class ProcessorMixin:
             existing_chunks_count = (
                 existing_doc_status.get("chunks_count", 0) if existing_doc_status else 0
             )
-            self.logger.info(f"Existing chunks count: {existing_chunks_count}")
+            self.logger.info(_("Existing chunks count: {}").format(existing_chunks_count))
         except Exception as e:
-            self.logger.warning(f"Error getting existing chunks count: {e}")
+            self.logger.warning(_("Error getting existing chunks count: {}").format(e))
             existing_chunks_count = 0
 
         # Use LightRAG's concurrency control
         semaphore_value = getattr(self.lightrag, "max_parallel_insert", 2)
-        self.logger.info(f"Using semaphore with value: {semaphore_value}")
+        self.logger.info(_("Using semaphore with value: {}").format(semaphore_value))
         semaphore = asyncio.Semaphore(semaphore_value)
 
         # Progress tracking variables
@@ -965,7 +959,7 @@ class ProcessorMixin:
         start_time = time.time()
 
         # Log processing start
-        self.logger.info(f"Starting to process {total_items} multimodal content items")
+        self.logger.info(_("Starting to process {} multimodal content items").format(total_items))
 
         # Update document status to show processing progress
         try:
@@ -985,7 +979,7 @@ class ProcessorMixin:
                 }
             )
         except Exception as e:
-            self.logger.warning(f"Failed to update processing progress status: {e}")
+            self.logger.warning(_("Failed to update processing progress status: {}").format(e))
 
         # Stage 1: Concurrent generation of descriptions using correct processors for each type
         async def process_single_item_with_correct_processor(
@@ -993,11 +987,11 @@ class ProcessorMixin:
         ):
             """Process single item using the correct processor for its type"""
             nonlocal completed_count
-            self.logger.info(f"Waiting for semaphore to process item {index}")
+            self.logger.info(_("Waiting for semaphore to process item {}").format(index))
             async with semaphore:
                 try:
                     content_type = item.get("type", "unknown")
-                    self.logger.info(f"Processing item {index} (type: {content_type})")
+                    self.logger.info(_("Processing item {} (type: {})").format(index, content_type))
 
                     # Select the correct processor based on content type
                     processor = get_processor_for_type(
@@ -1135,7 +1129,7 @@ class ProcessorMixin:
         multimodal_data_list = []
         for result in results:
             if isinstance(result, Exception):
-                self.logger.error(f"Task failed: {result}")
+                self.logger.error(_("Task failed: {}").format(result))
                 continue
             if result is not None:
                 multimodal_data_list.append(result)
@@ -1153,7 +1147,7 @@ class ProcessorMixin:
         lightrag_chunks = self._convert_to_lightrag_chunks_type_aware(
             multimodal_data_list, file_path, doc_id
         )
-        self.logger.info(f"Stage 2 complete. Generated {len(lightrag_chunks)} chunks.")
+        self.logger.info(_("Stage 2 complete. Generated {} chunks.").format(len(lightrag_chunks)))
 
         # Stage 3: Store chunks to LightRAG storage
         self.logger.info("Stage 3: Storing chunks to LightRAG storage...")
@@ -1180,7 +1174,7 @@ class ProcessorMixin:
         self.logger.info(
             f"Stage 4 complete. Extracted results for {len(chunk_results)} chunks."
         )
-        self.logger.debug(f"Chunk results after Stage 4: {chunk_results}")
+        self.logger.debug(_("Chunk results after Stage 4: {}").format(chunk_results))
 
         # Stage 5: Add belongs_to relations (multimodal-specific)
         self.logger.info("Stage 5: Adding belongs_to relations...")
@@ -1333,7 +1327,7 @@ class ProcessorMixin:
             self.logger.info(
                 "DEBUG: Upserting to chunks_vdb (this involves embedding generation)..."
             )
-            self.logger.info(f"DEBUG: Chunks to upsert: {len(chunks)}")
+            self.logger.info(_("DEBUG: Chunks to upsert: {}").format(len(chunks)))
             if len(chunks) > 0:
                 first_chunk_key = next(iter(chunks))
                 self.logger.info(
@@ -1342,9 +1336,9 @@ class ProcessorMixin:
 
                 # Check for unhashable types in values
                 first_val = chunks[first_chunk_key]
-                self.logger.info(f"DEBUG: First chunk keys: {list(first_val.keys())}")
+                self.logger.info(_("DEBUG: First chunk keys: {}").format(list(first_val.keys())))
                 for k, v in first_val.items():
-                    self.logger.info(f"DEBUG: Key '{k}' has type {type(v)}")
+                    self.logger.info(_("DEBUG: Key '{}' has type {}").format(k, type(v)))
                     if isinstance(v, list):
                         self.logger.warning(
                             f"DEBUG: Key '{k}' is a list! Content: {v[:50] if len(v) > 50 else v}"
@@ -1353,8 +1347,8 @@ class ProcessorMixin:
             # Inspect embedding_func before call
             if hasattr(self.lightrag.chunks_vdb, "embedding_func"):
                 ef = self.lightrag.chunks_vdb.embedding_func
-                self.logger.info(f"DEBUG: chunks_vdb.embedding_func type: {type(ef)}")
-                self.logger.info(f"DEBUG: chunks_vdb.embedding_func repr: {repr(ef)}")
+                self.logger.info(_("DEBUG: chunks_vdb.embedding_func type: {}").format(type(ef)))
+                self.logger.info(_("DEBUG: chunks_vdb.embedding_func repr: {}").format(repr(ef)))
                 if hasattr(ef, "func"):
                     self.logger.info(
                         f"DEBUG: chunks_vdb.embedding_func.func type: {type(ef.func)}"
@@ -1365,7 +1359,7 @@ class ProcessorMixin:
 
             # Add timeout to upsert to detect hang
             # Increase timeout to 300s (5 minutes) for embedding generation
-            self.logger.debug(f"Calling upsert for chunks: {list(chunks.keys())}")
+            self.logger.debug(_("Calling upsert for chunks: {}").format(list(chunks.keys())))
             # Ensure embedding_func is called and logged inside LightRAG if possible
             # But we can't easily modify LightRAG internals here.
             # We rely on our wrapper logging.
@@ -1425,10 +1419,10 @@ class ProcessorMixin:
                         )
                 raise
 
-            self.logger.debug(f"Stored {len(chunks)} multimodal chunks to storage")
+            self.logger.debug(_("Stored {} multimodal chunks to storage").format(len(chunks)))
 
         except Exception as e:
-            self.logger.error(f"Error storing chunks to storage: {e}")
+            self.logger.error(_("Error storing chunks to storage: {}").format(e))
             raise
 
     async def _store_multimodal_main_entities(
@@ -1519,7 +1513,7 @@ class ProcessorMixin:
                 )
 
             except Exception as e:
-                self.logger.error(f"Error storing multimodal main entities: {e}")
+                self.logger.error(_("Error storing multimodal main entities: {}").format(e))
                 raise
 
     async def _store_multimodal_entities_to_full_entities(
@@ -1830,7 +1824,7 @@ class ProcessorMixin:
         Returns:
             int: Number of chunks for the document
         """
-        self.logger.info(f"Starting chunk counting for document: {doc_id}")
+        self.logger.info(_("Starting chunk counting for document: {}").format(doc_id))
 
         try:
             # Check if chunks_vdb exists
@@ -1839,7 +1833,7 @@ class ProcessorMixin:
                 return 0
 
             chunks_vdb = self.lightrag.chunks_vdb
-            self.logger.info(f"chunks_vdb type: {type(chunks_vdb)}")
+            self.logger.info(_("chunks_vdb type: {}").format(type(chunks_vdb)))
 
             # Method 1: Try to use get_all if available
             if hasattr(chunks_vdb, "get_all"):
@@ -1865,7 +1859,7 @@ class ProcessorMixin:
                     if chunk_count > 0:
                         return chunk_count
                 except Exception as e:
-                    self.logger.warning(f"Method 1 failed: {e}")
+                    self.logger.warning(_("Method 1 failed: {}").format(e))
 
             # Method 2: Try to access internal data structure directly (similar to fix_doc_status.py)
             if hasattr(chunks_vdb, "_data"):
@@ -1891,7 +1885,7 @@ class ProcessorMixin:
                     if chunk_count > 0:
                         return chunk_count
                 except Exception as e:
-                    self.logger.warning(f"Method 2 failed: {e}")
+                    self.logger.warning(_("Method 2 failed: {}").format(e))
 
             # Method 3: Try to use filter or search methods if available
             if hasattr(chunks_vdb, "filter"):
@@ -1905,7 +1899,7 @@ class ProcessorMixin:
                     if chunk_count > 0:
                         return chunk_count
                 except Exception as e:
-                    self.logger.warning(f"Method 3 failed: {e}")
+                    self.logger.warning(_("Method 3 failed: {}").format(e))
 
             # Method 4: Check available attributes on chunks_vdb
             self.logger.info(
@@ -1936,7 +1930,7 @@ class ProcessorMixin:
                             if chunk_count > 0:
                                 return chunk_count
                     except Exception as query_e:
-                        self.logger.warning(f"Method 5a query failed: {query_e}")
+                        self.logger.warning(_("Method 5a query failed: {}").format(query_e))
 
                     # Try alternative query approach
                     try:
@@ -1957,7 +1951,7 @@ class ProcessorMixin:
                         )
 
                 except Exception as e:
-                    self.logger.warning(f"Method 5 failed: {e}")
+                    self.logger.warning(_("Method 5 failed: {}").format(e))
 
             # Method 6: Try using get_by_id with pattern matching for chunk IDs
             if hasattr(chunks_vdb, "get_by_id"):
@@ -1996,17 +1990,17 @@ class ProcessorMixin:
                         return chunk_count
 
                 except Exception as e:
-                    self.logger.warning(f"Method 6 failed: {e}")
+                    self.logger.warning(_("Method 6 failed: {}").format(e))
 
             self.logger.warning(
                 f"No suitable method found to count chunks for document {doc_id}"
             )
             return 0
         except Exception as e:
-            self.logger.error(f"Error counting chunks for document {doc_id}: {e}")
+            self.logger.error(_("Error counting chunks for document {}: {}").format(doc_id, e))
             import traceback
 
-            self.logger.error(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(_("Full traceback: {}").format(traceback.format_exc()))
             return 0
 
     async def get_document_processing_status(self, doc_id: str) -> Dict[str, Any]:
@@ -2086,7 +2080,7 @@ class ProcessorMixin:
         file_name: str | None = None,
         **kwargs,
     ):
-        self.logger.info(f"Starting process_document_complete for doc_id: {doc_id}")
+        self.logger.info(_("Starting process_document_complete for doc_id: {}").format(doc_id))
         """
         Complete document processing workflow
 
@@ -2103,7 +2097,7 @@ class ProcessorMixin:
         # Ensure LightRAG is initialized
         result = await self._ensure_lightrag_initialized()
         if not result["success"]:
-            self.logger.error(f"LightRAG initialization failed: {result.get('error')}")
+            self.logger.error(_("LightRAG initialization failed: {}").format(result.get('error')))
             return
 
         # Use config defaults if not provided
@@ -2114,7 +2108,7 @@ class ProcessorMixin:
         if display_stats is None:
             display_stats = self.config.display_content_stats
 
-        self.logger.info(f"Starting complete document processing: {file_path}")
+        self.logger.info(_("Starting complete document processing: {}").format(file_path))
 
         # Step 1: Parse document
         self.logger.info(
@@ -2155,7 +2149,7 @@ class ProcessorMixin:
                     f"Existing doc_status found for {doc_id}: {current_doc_status}"
                 )
         except Exception as e:
-            self.logger.error(f"Error creating initial doc_status for {doc_id}: {e}")
+            self.logger.error(_("Error creating initial doc_status for {}: {}").format(doc_id, e))
 
         # Step 2: Separate text and multimodal content
         self.logger.info("Step 2: Separating text and multimodal content")
@@ -2185,7 +2179,7 @@ class ProcessorMixin:
 
         # Step 3: Insert pure text content with all parameters
         if text_content.strip():
-            self.logger.info(f"Step 3: Inserting text content for {doc_id}")
+            self.logger.info(_("Step 3: Inserting text content for {}").format(doc_id))
             if file_name is None:
                 file_name = os.path.basename(file_path)
 
@@ -2213,7 +2207,7 @@ class ProcessorMixin:
                     )
                     await self.lightrag.doc_status.delete([doc_id])
             except Exception as e:
-                self.logger.warning(f"Failed to clear status for {doc_id}: {e}")
+                self.logger.warning(_("Failed to clear status for {}: {}").format(doc_id, e))
 
             try:
                 if asyncio.iscoroutinefunction(insert_func):
@@ -2224,9 +2218,9 @@ class ProcessorMixin:
                     await loop.run_in_executor(
                         None, lambda: insert_func(**insert_kwargs)
                     )
-                self.logger.info(f"Step 3: Text insertion complete for {doc_id}")
+                self.logger.info(_("Step 3: Text insertion complete for {}").format(doc_id))
             except Exception as e:
-                self.logger.error(f"Step 3: Error during text insertion: {e}")
+                self.logger.error(_("Step 3: Error during text insertion: {}").format(e))
                 import traceback
 
                 self.logger.error(traceback.format_exc())
@@ -2249,7 +2243,7 @@ class ProcessorMixin:
                         }
                     )
                     await self.lightrag.doc_status.index_done_callback()
-                self.logger.info(f"Step 3.5: doc_status updated successfully")
+                self.logger.info(_("Step 3.5: doc_status updated successfully"))
             except Exception as e:
                 self.logger.error(
                     f"Error updating doc_status after text insert for {doc_id}: {e}"
@@ -2271,7 +2265,7 @@ class ProcessorMixin:
                     )
                     await self.lightrag.doc_status.index_done_callback()
             except Exception as e:
-                self.logger.error(f"Error marking empty text as processed: {e}")
+                self.logger.error(_("Error marking empty text as processed: {}").format(e))
 
         # Step 4: Process multimodal content (using specialized processors)
         self.logger.info(
@@ -2287,7 +2281,7 @@ class ProcessorMixin:
                 f"No multimodal content found in document {doc_id}, marked multimodal processing as complete"
             )
 
-        self.logger.info(f"Document {file_path} processing complete!")
+        self.logger.info(_("Document {} processing complete!").format(file_path))
         return {
             "doc_id": doc_id,
             "content_based_doc_id": content_based_doc_id,
@@ -2352,7 +2346,7 @@ class ProcessorMixin:
             if display_stats is None:
                 display_stats = self.config.display_content_stats
 
-            self.logger.info(f"Starting complete document processing: {file_path}")
+            self.logger.info(_("Starting complete document processing: {}").format(file_path))
 
             # Initialize doc status
             current_doc_status = await self.lightrag.doc_status.get_by_id(doc_pre_id)
@@ -2433,7 +2427,7 @@ class ProcessorMixin:
                         }
                     }
                 )
-                self.logger.info(f"Error processing document {file_path}: {str(e)}")
+                self.logger.info(_("Error processing document {}: {}").format(file_path, str(e)))
                 return False
 
             # Use provided doc_id or fall back to content-based doc_id
@@ -2497,11 +2491,11 @@ class ProcessorMixin:
                         None, lambda: insert_func(**insert_kwargs)
                     )
 
-            self.logger.info(f"Document {file_path} processing completed successfully")
+            self.logger.info(_("Document {} processing completed successfully").format(file_path))
             return True
 
         except Exception as e:
-            self.logger.error(f"Error processing document {file_path}: {str(e)}")
+            self.logger.error(_("Error processing document {}: {}").format(file_path, str(e)))
             self.logger.debug("Exception details:", exc_info=True)
 
             # Update doc status to Failed
@@ -2599,7 +2593,7 @@ class ProcessorMixin:
         # Display content statistics if requested
         if display_stats:
             self.logger.info("\nContent Information:")
-            self.logger.info(f"* Total blocks in content_list: {len(content_list)}")
+            self.logger.info(_("* Total blocks in content_list: {}").format(len(content_list)))
 
             # Count elements by type
             block_types: Dict[str, int] = {}
@@ -2611,7 +2605,7 @@ class ProcessorMixin:
 
             self.logger.info("* Content block types:")
             for block_type, count in block_types.items():
-                self.logger.info(f"  - {block_type}: {count}")
+                self.logger.info(_("  - {}: {}").format(block_type, count))
 
         # Step 1: Separate text and multimodal content
         text_content, multimodal_items = separate_content(content_list)
@@ -2633,7 +2627,7 @@ class ProcessorMixin:
                 )
                 await self.lightrag.doc_status.index_done_callback()
         except Exception as e:
-            self.logger.error(f"Error creating initial doc_status for {doc_id}: {e}")
+            self.logger.error(_("Error creating initial doc_status for {}: {}").format(doc_id, e))
 
         try:
             # Step 1.5: Set content source for context extraction in multimodal processing
@@ -2645,7 +2639,7 @@ class ProcessorMixin:
                     content_list, self.config.content_format
                 )
 
-            self.logger.info(f"Step 2: Inserting text content for doc_id: {doc_id}")
+            self.logger.info(_("Step 2: Inserting text content for doc_id: {}").format(doc_id))
             # Step 2: Insert pure text content with all parameters
             if text_content.strip():
                 file_name = os.path.basename(file_path)
@@ -2749,10 +2743,10 @@ class ProcessorMixin:
             )
 
         except Exception as e:
-            self.logger.error(f"Error processing content list for {doc_id}: {e}")
+            self.logger.error(_("Error processing content list for {}: {}").format(doc_id, e))
             import traceback
 
-            self.logger.error(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(_("Full traceback: {}").format(traceback.format_exc()))
             # Mark as FAILED
             try:
                 current_doc_status = await self.lightrag.doc_status.get_by_id(doc_id)
@@ -2772,7 +2766,7 @@ class ProcessorMixin:
                 self.logger.error(
                     f"Failed to update doc_status to FAILED: {update_err}"
                 )
-                self.logger.error(f"Update error traceback: {traceback.format_exc()}")
+                self.logger.error(_("Update error traceback: {}").format(traceback.format_exc()))
             raise e
 
-        self.logger.info(f"Content list insertion complete for: {file_path}")
+        self.logger.info(_("Content list insertion complete for: {}").format(file_path))

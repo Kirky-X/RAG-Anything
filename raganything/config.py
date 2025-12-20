@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
 from raganything.utils import get_env_value
+from raganything.i18n import _
 
 
 def _import_toml_loader():
@@ -375,7 +376,7 @@ class RAGAnythingConfig:
         except Exception as e:
             from raganything.logger import logger
 
-            logger.error(f"Failed to load TOML config from {path}: {e}")
+            logger.error(_("Failed to load TOML config from {}: {}").format(path, e))
             raise
 
     def _merge_dict(self, cfg: Dict[str, Any]):
@@ -512,29 +513,29 @@ class RAGAnythingConfig:
     def _validate(self):
         valid_parsers = {"mineru", "docling"}
         if self.parsing.parser not in valid_parsers:
-            raise ValueError("Invalid parser")
+            raise ValueError(_("Invalid parser"))
         valid_parse_methods = {"auto", "ocr", "txt"}
         if self.parsing.parse_method not in valid_parse_methods:
-            raise ValueError("Invalid parse_method")
+            raise ValueError(_("Invalid parse_method"))
         valid_context_modes = {"page", "chunk"}
         if self.context.context_mode not in valid_context_modes:
-            raise ValueError("Invalid context_mode")
+            raise ValueError(_("Invalid context_mode"))
         if self.batch.max_concurrent_files < 1:
-            raise ValueError("max_concurrent_files must be >= 1")
+            raise ValueError(_("max_concurrent_files must be >= 1"))
         if self.context.context_window < 0:
-            raise ValueError("context_window must be >= 0")
+            raise ValueError(_("context_window must be >= 0"))
         if self.context.max_context_tokens <= 0:
-            raise ValueError("max_context_tokens must be > 0")
+            raise ValueError(_("max_context_tokens must be > 0"))
         for t in [self.llm.timeout, self.vision.timeout]:
             if t <= 0:
-                raise ValueError("timeout must be > 0")
+                raise ValueError(_("timeout must be > 0"))
         for r in [self.llm.max_retries, self.vision.max_retries]:
             if r < 0:
-                raise ValueError("max_retries must be >= 0")
+                raise ValueError(_("max_retries must be >= 0"))
         if self.logging.max_bytes < 0:
-            raise ValueError("logging.max_bytes must be >= 0")
+            raise ValueError(_("logging.max_bytes must be >= 0"))
         if self.logging.backup_count < 0:
-            raise ValueError("logging.backup_count must be >= 0")
+            raise ValueError(_("logging.backup_count must be >= 0"))
 
     @property
     def working_dir(self) -> str:

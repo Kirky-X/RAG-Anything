@@ -14,6 +14,7 @@ from .docling_parser import DoclingParser
 from .mineru_parser import MineruExecutionError, MineruParser
 from .video_parser import VideoParser
 from .vlm_parser import VlmParser
+from raganything.i18n import _
 
 __all__ = [
     "Parser",

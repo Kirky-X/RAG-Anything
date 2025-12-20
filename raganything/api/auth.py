@@ -7,6 +7,7 @@ from typing import Callable, Optional
 from fastapi import Header, HTTPException, Request
 
 from raganything.server_config import load_server_configs
+from raganything.i18n import _
 
 
 def _path_whitelisted(path: str, whitelist: list[str]) -> bool:
@@ -28,5 +29,5 @@ def get_auth(
     if _path_whitelisted(req_path, whitelist):
         return None
     if api_key and x_api_key != api_key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+        raise HTTPException(status_code=401, detail=_("Invalid API key"))
     return None

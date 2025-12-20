@@ -1,0 +1,1145 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: RAG-Anything 1.0\n"
+"POT-Creation-Date: 2025-01-01 00:00+0000\n"
+"PO-Revision-Date: 2025-12-20 13:03:55\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: custom-extractor 1.0\n"
+
+#: Multiple files
+msgid "* Content block types:"
+msgstr ""
+
+#: Multiple files
+msgid "-"
+msgstr ""
+
+#: Multiple files
+msgid "1. 检查并完善翻译内容"
+msgstr ""
+
+#: Multiple files
+msgid "2. 提交更改到版本控制"
+msgstr ""
+
+#: Multiple files
+msgid "3. 运行完整测试套件"
+msgstr ""
+
+#: Multiple files
+msgid "="
+msgstr ""
+
+#: Multiple files
+msgid "All documents are fully processed"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "All documents processed successfully"
+msgstr "文档处理成功"
+
+#: Multiple files
+msgid "All required functions are ready. Creating LightRAG instance..."
+msgstr ""
+
+#: Multiple files
+msgid "Attempting Method 1: Using get_all()"
+msgstr ""
+
+#: Multiple files
+msgid "Attempting Method 2: Accessing _data attribute"
+msgstr ""
+
+#: Multiple files
+msgid "Attempting Method 3: Using filter()"
+msgstr ""
+
+#: Multiple files
+msgid "Attempting Method 5: Using query() for NanoVectorDBStorage"
+msgstr ""
+
+#: Multiple files
+msgid "Attempting Method 6: Using get_by_id() with pattern matching"
+msgstr ""
+
+#: Multiple files
+msgid "Attempting fallback to Ollama embeddings..."
+msgstr ""
+
+#: Multiple files
+msgid "Audio conversion timed out"
+msgstr ""
+
+#: Multiple files
+msgid "Audio dependencies (funasr, pydub) are not installed."
+msgstr ""
+
+#: Multiple files
+msgid "Backend Information:"
+msgstr ""
+
+#: Multiple files
+msgid "Building LLM and Vision functions if not provided..."
+msgstr ""
+
+#: Multiple files
+msgid "Building embedding function..."
+msgstr ""
+
+#: Multiple files
+msgid "CRITICAL"
+msgstr "严重错误"
+
+#: Multiple files
+msgid "CRITICAL: LightRAG instance is None before insert call!"
+msgstr ""
+
+#: Multiple files
+msgid "CRITICAL: chunks_vdb.upsert timed out after 300s!"
+msgstr ""
+
+#: Multiple files
+msgid ""
+"Calling sync parse() from running event loop is risky. Use "
+"parse_image_async() instead."
+msgstr ""
+
+#: Multiple files
+msgid "Calling video_parser.parse_video"
+msgstr ""
+
+#: Multiple files
+msgid "Checking parser installation..."
+msgstr ""
+
+#: Multiple files
+msgid "Cleaning up temporary frames..."
+msgstr ""
+
+#: Multiple files
+msgid "Compute Resource Status"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Configuration reloaded"
+msgstr "配置已加载"
+
+#: Multiple files
+msgid "Connection error detected. Returning fallback response."
+msgstr ""
+
+#: Multiple files
+msgid "Content separation complete:"
+msgstr ""
+
+#: Multiple files
+msgid "Context configuration updated and applied to all processors"
+msgstr ""
+
+#: Multiple files
+msgid ""
+"Could not find embedding_dim. Using default 1536 (OpenAI). This might be "
+"wrong!"
+msgstr ""
+
+#: Multiple files
+msgid ""
+"Could not import initialize_pipeline_status from lightrag.kg.shared_storage"
+msgstr ""
+
+#: Multiple files
+msgid "Creating LightRAG instance..."
+msgstr ""
+
+#: Multiple files
+msgid "Creating new loop for frame analysis"
+msgstr ""
+
+#: Multiple files
+msgid "DEBUG"
+msgstr "调试"
+
+#: Multiple files
+msgid "DEBUG: Attempting to patch lightrag.utils..."
+msgstr ""
+
+#: Multiple files
+msgid "DEBUG: Injected functions into lightrag.utils"
+msgstr ""
+
+#: Multiple files
+msgid "DEBUG: Manually loaded lightrag.utils"
+msgstr ""
+
+#: Multiple files
+msgid "DEBUG: Removed dummy lightrag module"
+msgstr ""
+
+#: Multiple files
+msgid "DEBUG: Upserting to chunks_vdb (this involves embedding generation)..."
+msgstr ""
+
+#: Multiple files
+msgid "DEBUG: Upserting to text_chunks..."
+msgstr ""
+
+#: Multiple files
+msgid "DEBUG: chunks_vdb upsert complete."
+msgstr ""
+
+#: Multiple files
+msgid "DEBUG: text_chunks upsert complete."
+msgstr ""
+
+#: Multiple files
+msgid "Detected Office or HTML document, using parser for Office/HTML..."
+msgstr ""
+
+#: Multiple files
+msgid "Detected PDF file, using parser for PDF..."
+msgstr ""
+
+#: Multiple files
+msgid "Detected image file, using parser for images..."
+msgstr ""
+
+#: Multiple files
+msgid "Detected video file, using VideoParser for AV + visual timeline..."
+msgstr ""
+
+#: Multiple files
+msgid "Diagnostics: Embedding function timed out during test (30s)"
+msgstr ""
+
+#: Multiple files
+msgid "Diagnostics: Testing embedding function directly..."
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Docling command executed successfully"
+msgstr "文档处理成功"
+
+#: Multiple files
+msgid "Docling is not properly installed."
+msgstr ""
+
+#: Multiple files
+msgid ""
+"Docling is not properly installed. Please ensure it is installed correctly."
+msgstr ""
+
+#: Multiple files
+msgid "ERROR"
+msgstr "错误"
+
+#: Multiple files
+msgid "Embedding function built successfully via Ollama fallback."
+msgstr ""
+
+#: Multiple files
+msgid "Empty WAV file generated, skipping transcription"
+msgstr ""
+
+#: Multiple files
+msgid "Empty response received from model"
+msgstr ""
+
+#: Multiple files
+msgid "Event loop closed during storage finalization"
+msgstr ""
+
+#: Multiple files
+msgid "Exception details:"
+msgstr ""
+
+#: Multiple files
+msgid "Extracting translation strings from project..."
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Failed files:"
+msgstr "失败"
+
+#: Multiple files
+msgid "Failed to encode image to base64: {image_path}"
+msgstr ""
+
+#: Multiple files
+msgid "Failed to encode image {image_path}: {e}"
+msgstr ""
+
+#: Multiple files
+msgid "Falling back to individual multimodal processing"
+msgstr ""
+
+#: Multiple files
+msgid "Finished writing all file chunks."
+msgstr ""
+
+#: Multiple files
+msgid "INFO"
+msgstr "信息"
+
+#: Multiple files
+msgid ""
+"If the error is caused by the insert function not having a multimodal "
+"content parameter, please update the raganything branch of lightrag"
+msgstr ""
+
+#: Multiple files
+msgid "Individual multimodal content processing complete"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Initializing LightRAG storages..."
+msgstr "正在初始化RAGAnything"
+
+#: Multiple files
+msgid "Initializing modal processors..."
+msgstr ""
+
+#: Multiple files
+msgid "Initializing parse cache for pre-provided LightRAG instance"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Initializing parse cache..."
+msgstr "初始化中"
+
+#: Multiple files
+msgid "Initializing pipeline status..."
+msgstr ""
+
+#: Multiple files
+msgid "Initializing storages for pre-provided LightRAG instance"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Invalid API key"
+msgstr "无效"
+
+#: Multiple files
+msgid "Invalid context_mode"
+msgstr ""
+
+#: Multiple files
+msgid "Invalid file path: outside root directory"
+msgstr ""
+
+#: Multiple files
+msgid "Invalid parse_method"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Invalid parser"
+msgstr "无效"
+
+#: Multiple files
+#, fuzzy
+msgid "Invalid prefix"
+msgstr "无效"
+
+#: Multiple files
+msgid "LLM and Vision functions build process complete."
+msgstr ""
+
+#: Multiple files
+msgid "LLM function built via Ollama fallback (qwen3:8b)"
+msgstr ""
+
+#: Multiple files
+msgid "LightRAG instance created."
+msgstr ""
+
+#: Multiple files
+msgid "LightRAG instance created. Initializing storages..."
+msgstr ""
+
+#: Multiple files
+msgid "LightRAG instance has no"
+msgstr ""
+
+#: Multiple files
+msgid "LightRAG not initialized"
+msgstr ""
+
+#: Multiple files
+msgid "LightRAG storages initialized."
+msgstr ""
+
+#: Multiple files
+msgid "LightRAG, parse cache, and multimodal processors initialized"
+msgstr ""
+
+#: Multiple files
+msgid "Loading SenseVoiceSmall model..."
+msgstr ""
+
+#: Multiple files
+msgid "MinerU 2.0 is not properly installed."
+msgstr ""
+
+#: Multiple files
+msgid ""
+"MinerU 2.0 is not properly installed. Please install it using: pip install -"
+"U 'mineru[core]'"
+msgstr ""
+
+#: Multiple files
+msgid "Missing required fields in entity_info"
+msgstr ""
+
+#: Multiple files
+msgid "Missing required fields in response"
+msgstr ""
+
+#: Multiple files
+msgid "Modal processors initialized."
+msgstr ""
+
+#: Multiple files
+msgid ""
+"Modal processors not initialized. Content source will be set when processors "
+"are created."
+msgstr ""
+
+#: Multiple files
+msgid "ModelScope is not installed. Model management features will be limited."
+msgstr ""
+
+#: Multiple files
+msgid ""
+"Multimodal content passed to insert_text_content_with_multimodal_content but "
+"currently ignored in fallback insert call."
+msgstr ""
+
+#: Multiple files
+msgid "Multimodal processors initialized with context support"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Multimodal query completed"
+msgstr "查询完成"
+
+#: Multiple files
+msgid "Multimodal query content processing completed"
+msgstr ""
+
+#: Multiple files
+msgid "No multimodal content provided, executing text query"
+msgstr ""
+
+#: Multiple files
+msgid "No multimodal content to process"
+msgstr ""
+
+#: Multiple files
+msgid "No pre-provided LightRAG instance. Building new one..."
+msgstr ""
+
+#: Multiple files
+msgid "No storages to finalize"
+msgstr ""
+
+#: Multiple files
+msgid "No supported files found to process"
+msgstr ""
+
+#: Multiple files
+msgid "No valid images found, falling back to normal query"
+msgstr ""
+
+#: Multiple files
+msgid "No valid multimodal descriptions generated"
+msgstr ""
+
+#: Multiple files
+msgid "Ollama"
+msgstr ""
+
+#: Multiple files
+msgid ""
+"OpenAI APIConnectionError compatibility issue detected. Using fallback "
+"response."
+msgstr ""
+
+#: Multiple files
+msgid "Opening file for writing..."
+msgstr ""
+
+#: Multiple files
+msgid "Parse cache initialized."
+msgstr ""
+
+#: Multiple files
+msgid "Parsing failed: No content was extracted"
+msgstr ""
+
+#: Multiple files
+msgid "Pipeline status initialized for deletion"
+msgstr ""
+
+#: Multiple files
+msgid "Pipeline status initialized."
+msgstr ""
+
+#: Multiple files
+msgid "Pre-provided LightRAG instance found. Verifying initialization..."
+msgstr ""
+
+#: Multiple files
+msgid "Pre-provided LightRAG instance verification complete."
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Processing complete!"
+msgstr "正在处理文档"
+
+#: Multiple files
+msgid "Processing document with multimodal RAG pipeline"
+msgstr ""
+
+#: Multiple files
+msgid "PyTorch not found. Defaulting to CPU."
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Querying processed document:"
+msgstr "处理文档时出错"
+
+#: Multiple files
+#, fuzzy
+msgid "RAGAnything CLI"
+msgstr "RAGAnything CLI日志已初始化"
+
+#: Multiple files
+msgid "RAGAnything CLI logging initialized"
+msgstr "RAGAnything CLI日志已初始化"
+
+#: Multiple files
+#, fuzzy
+msgid "RAGAnything initialized with config:"
+msgstr "RAGAnything初始化成功"
+
+#: Multiple files
+#, fuzzy
+msgid "RAGAnything not initialized"
+msgstr "RAGAnything CLI日志已初始化"
+
+#: Multiple files
+msgid "Recovered from missing entity_info using description"
+msgstr ""
+
+#: Multiple files
+msgid "Removing"
+msgstr ""
+
+#: Multiple files
+msgid "Retrieved raw prompt from LightRAG"
+msgstr ""
+
+#: Multiple files
+msgid "Running system health pre-checks..."
+msgstr ""
+
+#: Multiple files
+msgid "SUCCESS"
+msgstr "成功"
+
+#: Multiple files
+msgid "Scheduled LightRAG storages finalization"
+msgstr ""
+
+#: Multiple files
+msgid "Scheduled parse cache finalization"
+msgstr ""
+
+#: Multiple files
+msgid "Server has started and RAGAnything is initialized."
+msgstr ""
+
+#: Multiple files
+msgid "Setting content source for context-aware multimodal processing..."
+msgstr ""
+
+#: Multiple files
+msgid "Stage 1: Audio Transcription"
+msgstr ""
+
+#: Multiple files
+msgid "Stage 2: Converting to LightRAG chunks format..."
+msgstr ""
+
+#: Multiple files
+msgid "Stage 2: Frame Extraction"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Stage 3 complete."
+msgstr "关闭完成"
+
+#: Multiple files
+#, fuzzy
+msgid "Stage 3.5 complete."
+msgstr "关闭完成"
+
+#: Multiple files
+msgid "Stage 3.5: Storing multimodal main entities..."
+msgstr ""
+
+#: Multiple files
+msgid "Stage 3: Storing chunks to LightRAG storage..."
+msgstr ""
+
+#: Multiple files
+msgid "Stage 3: Visual Analysis"
+msgstr ""
+
+#: Multiple files
+msgid "Stage 4: Alignment & Merging"
+msgstr ""
+
+#: Multiple files
+msgid "Stage 4: Batch entity relation extraction (LightRAG style)..."
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Stage 5 complete."
+msgstr "关闭完成"
+
+#: Multiple files
+msgid "Stage 5: Adding belongs_to relations..."
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Stage 6 complete."
+msgstr "关闭完成"
+
+#: Multiple files
+msgid "Stage 6: Batch merging LightRAG style..."
+msgstr ""
+
+#: Multiple files
+msgid "Starting _ensure_lightrag_initialized..."
+msgstr ""
+
+#: Multiple files
+msgid "Starting batch processing with RAG integration"
+msgstr ""
+
+#: Multiple files
+msgid "Starting multimodal query content processing..."
+msgstr ""
+
+#: Multiple files
+msgid "Starting text content insertion into LightRAG..."
+msgstr ""
+
+#: Multiple files
+msgid "Starting to read file chunks (fallback path)..."
+msgstr ""
+
+#: Multiple files
+msgid "Starting to read file chunks..."
+msgstr ""
+
+#: Multiple files
+msgid "Starting to save uploaded file: {file.filename}"
+msgstr ""
+
+#: Multiple files
+msgid "Step 2: Separating text and multimodal content"
+msgstr ""
+
+#: Multiple files
+msgid "Step 3: No text content to insert"
+msgstr ""
+
+#: Multiple files
+msgid "Step A3: Resampling to 16kHz mono..."
+msgstr ""
+
+#: Multiple files
+msgid "Storages already finalized, skipping"
+msgstr ""
+
+#: Multiple files
+msgid "Storages initialized for pre-provided LightRAG instance."
+msgstr ""
+
+#: Multiple files
+msgid "Subclasses must implement this method"
+msgstr ""
+
+#: Multiple files
+msgid "Successfully finalized all RAGAnything storages"
+msgstr ""
+
+#: Multiple files
+msgid "SystemResources"
+msgstr ""
+
+#: Multiple files
+msgid "TRACE"
+msgstr "跟踪"
+
+#: Multiple files
+msgid "Text content insertion complete"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "Text query completed"
+msgstr "查询完成"
+
+#: Multiple files
+msgid "Unknown error in RobustOllamaClient"
+msgstr ""
+
+#: Multiple files
+msgid "Used raw response as description (model failed to output JSON)"
+msgstr ""
+
+#: Multiple files
+msgid "Using LocalEmbeddingWrapper because OPENAI_API_KEY is DUMMY_KEY"
+msgstr ""
+
+#: Multiple files
+msgid "Using existing loop with nest_asyncio for frame analysis"
+msgstr ""
+
+#: Multiple files
+msgid "Using regex fallback for JSON parsing"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "VLM enhanced query completed"
+msgstr "查询完成"
+
+#: Multiple files
+msgid ""
+"VLM enhanced query requested but vision_model_func is not available, falling "
+"back to normal query"
+msgstr ""
+
+#: Multiple files
+msgid ""
+"Vision model function is not available. Image processing will be disabled."
+msgstr ""
+
+#: Multiple files
+msgid "WARNING"
+msgstr "警告"
+
+#: Multiple files
+msgid ""
+"WenQuanYi font not found at /usr/share/fonts/wqy-microhei/wqy-microhei.ttc. "
+"Chinese characters may not render correctly."
+msgstr ""
+
+#: Multiple files
+msgid ""
+"Wrapped embedding_func in clean_async_embedding_wrapper for LightRAG "
+"initialization"
+msgstr ""
+
+#: Multiple files
+msgid "You can now create .po files for specific languages:"
+msgstr ""
+
+#: Multiple files
+msgid "[MinerU] Command executed failed"
+msgstr ""
+
+#: Multiple files
+msgid "[MinerU] Command executed successfully"
+msgstr ""
+
+#: Multiple files
+msgid "[Multimodal Query]: Analyzing performance data in context of document"
+msgstr ""
+
+#: Multiple files
+msgid "[Multimodal Query]: Mathematical formula analysis"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "_ensure_lightrag_initialized completed successfully."
+msgstr "RAGAnything初始化成功"
+
+#: Multiple files
+msgid "chunks_vdb not available on LightRAG instance"
+msgstr ""
+
+#: Multiple files
+msgid "context_window must be >= 0"
+msgstr ""
+
+#: Multiple files
+msgid "descriptive name for this {content_type}"
+msgstr ""
+
+#: Multiple files
+msgid "embedding_func IS A COROUTINE OBJECT! This is invalid."
+msgstr ""
+
+#: Multiple files
+msgid "embedding_func missing"
+msgstr ""
+
+#: Multiple files
+msgid "funasr not found. Speech-to-text disabled."
+msgstr ""
+
+#: Multiple files
+msgid ""
+"funasr not found. Speech-to-text disabled. Install with `uv sync --extra "
+"audio` or `pip install raganything[audio]`"
+msgstr ""
+
+#: Multiple files
+msgid ""
+"imagehash not found. Frame deduplication will be disabled. Install with `pip "
+"install imagehash`"
+msgstr ""
+
+#: Multiple files
+msgid "item_info is None, skipping context extraction"
+msgstr ""
+
+#: Multiple files
+msgid "logging.backup_count must be >= 0"
+msgstr ""
+
+#: Multiple files
+msgid "logging.max_bytes must be >= 0"
+msgstr ""
+
+#: Multiple files
+msgid "max_concurrent_files must be >= 1"
+msgstr ""
+
+#: Multiple files
+msgid "max_context_tokens must be > 0"
+msgstr ""
+
+#: Multiple files
+msgid "max_retries must be >= 0"
+msgstr ""
+
+#: Multiple files
+msgid "msgmerge 不可用，使用 Python 替代方案"
+msgstr ""
+
+#: Multiple files
+msgid "msgmerge 未找到，使用 Python 替代方案"
+msgstr ""
+
+#: Multiple files
+msgid "parse_document must be implemented by subclasses"
+msgstr ""
+
+#: Multiple files
+msgid "parse_image must be implemented by subclasses"
+msgstr ""
+
+#: Multiple files
+msgid "parse_pdf must be implemented by subclasses"
+msgstr ""
+
+#: Multiple files
+msgid "pydub is not installed; audio analysis unavailable."
+msgstr ""
+
+#: Multiple files
+msgid "pydub is not installed; audio conversion unavailable."
+msgstr ""
+
+#: Multiple files
+msgid "pydub not found. Audio conversion/analysis disabled."
+msgstr ""
+
+#: Multiple files
+msgid ""
+"pydub not found. Audio conversion/analysis disabled. Install with `uv sync --"
+"extra audio` or `pip install raganything[audio]`"
+msgstr ""
+
+#: Multiple files
+msgid "pydub not found. Install dependencies."
+msgstr ""
+
+#: Multiple files
+msgid ""
+"scikit-image not found. SSIM check will be disabled. Install with `pip "
+"install scikit-image`"
+msgstr ""
+
+#: Multiple files
+msgid "timeout must be > 0"
+msgstr ""
+
+#: Multiple files
+msgid "tomli or tomllib not found. Cannot load config.toml. Using defaults."
+msgstr ""
+
+#: Multiple files
+msgid "video_parser.parse_video returned"
+msgstr ""
+
+#: Multiple files
+msgid "{PROMPTS["
+msgstr ""
+
+#: Multiple files
+msgid "{key}_hash"
+msgstr ""
+
+#: Multiple files
+msgid "⚠️  polib 库未安装，无法进行详细检查"
+msgstr ""
+
+#: Multiple files
+msgid "⚠️ SYSTEM STARTUP WARNING: Some components are unhealthy!"
+msgstr ""
+
+#: Multiple files
+msgid "✅ All system pre-checks passed."
+msgstr ""
+
+#: Multiple files
+msgid "✅ 测试通过"
+msgstr ""
+
+#: Multiple files
+msgid "✅ 翻译更新完成！"
+msgstr ""
+
+#: Multiple files
+#, fuzzy
+msgid "❌ Conversion failed"
+msgstr "连接失败"
+
+#: Multiple files
+msgid "❌ polib 库未安装，无法合并翻译"
+msgstr ""
+
+#: Multiple files
+msgid "❌ 模板文件未生成"
+msgstr ""
+
+#: Multiple files
+msgid "❌ 测试失败"
+msgstr ""
+
+#: Multiple files
+msgid "❌ 翻译更新遇到问题"
+msgstr ""
+
+#: Multiple files
+msgid "系统启动"
+msgstr ""
+
+#: Multiple files
+msgid "请检查错误信息并手动修复"
+msgstr ""
+
+#: Multiple files
+msgid "🌍 RAG-Anything 翻译更新工具"
+msgstr ""
+
+#: Multiple files
+msgid "📊 翻译状态检查..."
+msgstr ""
+
+#: Multiple files
+msgid "📋 提取翻译字符串..."
+msgstr ""
+
+#: Multiple files
+msgid "🧪 运行测试验证..."
+msgstr ""
+
+#~ msgid "Loading configuration"
+#~ msgstr "正在加载配置"
+
+#~ msgid "Starting server"
+#~ msgstr "正在启动服务器"
+
+#~ msgid "Server started"
+#~ msgstr "服务器已启动"
+
+#~ msgid "Shutting down"
+#~ msgstr "正在关闭"
+
+#~ msgid "Success"
+#~ msgstr "成功"
+
+#~ msgid "Error"
+#~ msgstr "错误"
+
+#~ msgid "Warning"
+#~ msgstr "警告"
+
+#~ msgid "Info"
+#~ msgstr "信息"
+
+#~ msgid "Debug"
+#~ msgstr "调试"
+
+#~ msgid "Complete"
+#~ msgstr "完成"
+
+#~ msgid "Processing"
+#~ msgstr "处理中"
+
+#~ msgid "Loading"
+#~ msgstr "加载中"
+
+#~ msgid "Saving"
+#~ msgstr "保存中"
+
+#~ msgid "Validating"
+#~ msgstr "验证中"
+
+#~ msgid "Completed"
+#~ msgstr "已完成"
+
+#~ msgid "Started"
+#~ msgstr "已开始"
+
+#~ msgid "Finished"
+#~ msgstr "已完成"
+
+#~ msgid "File"
+#~ msgstr "文件"
+
+#~ msgid "Directory"
+#~ msgstr "目录"
+
+#~ msgid "Path"
+#~ msgstr "路径"
+
+#~ msgid "Document"
+#~ msgstr "文档"
+
+#~ msgid "Configuration"
+#~ msgstr "配置"
+
+#~ msgid "Settings"
+#~ msgstr "设置"
+
+#~ msgid "Create"
+#~ msgstr "创建"
+
+#~ msgid "Update"
+#~ msgstr "更新"
+
+#~ msgid "Delete"
+#~ msgstr "删除"
+
+#~ msgid "Insert"
+#~ msgstr "插入"
+
+#~ msgid "Query"
+#~ msgstr "查询"
+
+#~ msgid "Search"
+#~ msgstr "搜索"
+
+#~ msgid "Process"
+#~ msgstr "处理"
+
+#~ msgid "Analyze"
+#~ msgstr "分析"
+
+#~ msgid "Convert"
+#~ msgstr "转换"
+
+#~ msgid "Export"
+#~ msgstr "导出"
+
+#~ msgid "Import"
+#~ msgstr "导入"
+
+#~ msgid "Ready"
+#~ msgstr "就绪"
+
+#~ msgid "Running"
+#~ msgstr "运行中"
+
+#~ msgid "Stopped"
+#~ msgstr "已停止"
+
+#~ msgid "Paused"
+#~ msgstr "已暂停"
+
+#~ msgid "Active"
+#~ msgstr "活动"
+
+#~ msgid "Inactive"
+#~ msgstr "非活动"
+
+#~ msgid "Enabled"
+#~ msgstr "已启用"
+
+#~ msgid "Disabled"
+#~ msgstr "已禁用"
+
+#~ msgid "Missing"
+#~ msgstr "缺失"
+
+#~ msgid "Not found"
+#~ msgstr "未找到"
+
+#~ msgid "Access denied"
+#~ msgstr "访问被拒绝"
+
+#~ msgid "Timeout"
+#~ msgstr "超时"
+
+#~ msgid "Parse error"
+#~ msgstr "解析错误"
+
+#~ msgid "Validation error"
+#~ msgstr "验证错误"
+
+#~ msgid "Are you sure?"
+#~ msgstr "您确定吗？"
+
+#~ msgid "Confirm"
+#~ msgstr "确认"
+
+#~ msgid "Cancel"
+#~ msgstr "取消"
+
+#~ msgid "OK"
+#~ msgstr "确定"
+
+#~ msgid "Yes"
+#~ msgstr "是"
+
+#~ msgid "No"
+#~ msgstr "否"

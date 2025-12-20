@@ -10,6 +10,7 @@ import httpx
 import psutil
 
 from .core import BaseHealthCheck, ComponentStatus, HealthCheckResult
+from raganything.i18n import _
 
 
 class OllamaHealthCheck(BaseHealthCheck):

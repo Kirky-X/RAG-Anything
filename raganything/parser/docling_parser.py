@@ -12,9 +12,10 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
 
 from .base_parser import Parser
+from raganything.i18n import _
 
 
 class DoclingParser(Parser):
@@ -57,7 +58,7 @@ class DoclingParser(Parser):
             # Convert to Path object for easier handling
             pdf_path = Path(pdf_path)
             if not pdf_path.exists():
-                raise FileNotFoundError(f"PDF file does not exist: {pdf_path}")
+                raise FileNotFoundError(_("PDF file does not exist: {}").format(pdf_path))
 
             name_without_suff = pdf_path.stem
 
@@ -84,7 +85,7 @@ class DoclingParser(Parser):
             return content_list
 
         except Exception as e:
-            logger.error(f"Error in parse_pdf: {str(e)}")
+            logger.error(_("Error in parse_pdf: {}").format(str(e)))
             raise
 
     def parse_document(
@@ -111,7 +112,7 @@ class DoclingParser(Parser):
         # Convert to Path object
         file_path = Path(file_path)
         if not file_path.exists():
-            raise FileNotFoundError(f"File does not exist: {file_path}")
+            raise FileNotFoundError(_("File does not exist: {}").format(file_path))
 
         # Get file extension
         ext = file_path.suffix.lower()
@@ -125,9 +126,9 @@ class DoclingParser(Parser):
             return self.parse_html(file_path, output_dir, lang, **kwargs)
         else:
             raise ValueError(
-                f"Unsupported file format: {ext}. "
-                f"Docling only supports PDF files, Office formats ({', '.join(self.OFFICE_FORMATS)}) "
-                f"and HTML formats ({', '.join(self.HTML_FORMATS)})"
+                _("Unsupported file format: {}. Docling only supports PDF files, Office formats ({}) and HTML formats ({})").format(
+                    ext, ', '.join(self.OFFICE_FORMATS), ', '.join(self.HTML_FORMATS)
+                )
             )
 
     def _run_docling_command(
@@ -187,13 +188,13 @@ class DoclingParser(Parser):
             result_md = subprocess.run(cmd_md, **docling_subprocess_kwargs)
             logger.info("Docling command executed successfully")
             if result_json.stdout:
-                logger.debug(f"JSON cmd output: {result_json.stdout}")
+                logger.debug(_("JSON cmd output: {}").format(result_json.stdout))
             if result_md.stdout:
-                logger.debug(f"Markdown cmd output: {result_md.stdout}")
+                logger.debug(_("Markdown cmd output: {}").format(result_md.stdout))
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error running docling command: {e}")
+            logger.error(_("Error running docling command: {}").format(e))
             if e.stderr:
-                logger.error(f"Error details: {e.stderr}")
+                logger.error(_("Error details: {}").format(e.stderr))
             raise
         except FileNotFoundError:
             raise RuntimeError(
@@ -227,7 +228,7 @@ class DoclingParser(Parser):
                 with open(md_file, "r", encoding="utf-8") as f:
                     md_content = f.read()
             except Exception as e:
-                logger.warning(f"Could not read markdown file {md_file}: {e}")
+                logger.warning(_("Could not read markdown file {}: {}").format(md_file, e))
 
         # Read JSON content and convert format
         content_list = []
@@ -245,7 +246,7 @@ class DoclingParser(Parser):
                         docling_content,
                     )
             except Exception as e:
-                logger.warning(f"Could not read or convert JSON file {json_file}: {e}")
+                logger.warning(_("Could not read or convert JSON file {}: {}").format(json_file, e))
         return content_list, md_content
 
     def read_from_block_recursive(
@@ -322,10 +323,10 @@ class DoclingParser(Parser):
                     "page_idx": cnt // 10,
                 }
             except Exception as e:
-                logger.warning(f"Failed to process image {num}: {e}")
+                logger.warning(_("Failed to process image {}: {}").format(num, e))
                 return {
                     "type": "text",
-                    "text": f"[Image processing failed: {block.get('caption', '')}]",
+                    "text": _("[Image processing failed: {}]").format(block.get('caption', '')),
                     "page_idx": cnt // 10,
                 }
         else:
@@ -339,10 +340,10 @@ class DoclingParser(Parser):
                     "page_idx": cnt // 10,
                 }
             except Exception as e:
-                logger.warning(f"Failed to process table {num}: {e}")
+                logger.warning(_("Failed to process table {}: {}").format(num, e))
                 return {
                     "type": "text",
-                    "text": f"[Table processing failed: {block.get('caption', '')}]",
+                    "text": _("[Table processing failed: {}]").format(block.get('caption', '')),
                     "page_idx": cnt // 10,
                 }
 
@@ -371,10 +372,10 @@ class DoclingParser(Parser):
             # Convert to Path object
             doc_path = Path(doc_path)
             if not doc_path.exists():
-                raise FileNotFoundError(f"Document file does not exist: {doc_path}")
+                raise FileNotFoundError(_("Document file does not exist: {}").format(doc_path))
 
             if doc_path.suffix.lower() not in self.OFFICE_FORMATS:
-                raise ValueError(f"Unsupported office format: {doc_path.suffix}")
+                raise ValueError(_("Unsupported office format: {}").format(doc_path.suffix))
 
             name_without_suff = doc_path.stem
 
@@ -401,7 +402,7 @@ class DoclingParser(Parser):
             return content_list
 
         except Exception as e:
-            logger.error(f"Error in parse_office_doc: {str(e)}")
+            logger.error(_("Error in parse_office_doc: {}").format(str(e)))
             raise
 
     def parse_html(
@@ -429,10 +430,10 @@ class DoclingParser(Parser):
             # Convert to Path object
             html_path = Path(html_path)
             if not html_path.exists():
-                raise FileNotFoundError(f"HTML file does not exist: {html_path}")
+                raise FileNotFoundError(_("HTML file does not exist: {}").format(html_path))
 
             if html_path.suffix.lower() not in self.HTML_FORMATS:
-                raise ValueError(f"Unsupported HTML format: {html_path.suffix}")
+                raise ValueError(_("Unsupported HTML format: {}").format(html_path.suffix))
 
             name_without_suff = html_path.stem
 
@@ -459,7 +460,7 @@ class DoclingParser(Parser):
             return content_list
 
         except Exception as e:
-            logger.error(f"Error in parse_html: {str(e)}")
+            logger.error(_("Error in parse_html: {}").format(str(e)))
             raise
 
     def check_installation(self) -> bool:
@@ -486,7 +487,7 @@ class DoclingParser(Parser):
                 subprocess_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
             result = subprocess.run(["docling", "--version"], **subprocess_kwargs)
-            logger.debug(f"Docling version: {result.stdout.strip()}")
+            logger.debug(_("Docling version: {}").format(result.stdout.strip()))
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             logger.debug(

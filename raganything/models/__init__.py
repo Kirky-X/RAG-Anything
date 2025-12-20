@@ -4,6 +4,7 @@
 from .config import ModelInfo, ModelsConfig, default_models_config
 from .device import DeviceManager, device_manager
 from .manager import ModelManager, model_manager
+from raganything.i18n import _
 
 __all__ = [
     "model_manager",

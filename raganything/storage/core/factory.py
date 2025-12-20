@@ -7,6 +7,7 @@ from typing import Dict, Optional
 from raganything.storage.backends.local_backend import LocalFileSystemBackend
 from raganything.storage.core.interfaces import StorageBackend
 from raganything.storage.manager.storage_manager import StorageManager
+from raganything.i18n import _
 
 # 尝试导入MinIO，如果失败则记录日志并继续
 MINIO_AVAILABLE = False
@@ -50,7 +51,7 @@ class StorageFactory:
                 secure=config.get("minio_secure", False),
             )
         else:
-            raise ValueError(f"Unsupported storage backend: {backend_type}")
+            raise ValueError(_("Unsupported storage backend: {}").format(backend_type))
 
     @staticmethod
     def create_manager(config: Dict) -> StorageManager:

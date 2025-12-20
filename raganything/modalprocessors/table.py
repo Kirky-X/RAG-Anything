@@ -14,6 +14,7 @@ from lightrag.utils import compute_mdhash_id, logger
 from raganything.prompt import PROMPTS
 
 from .base import BaseModalProcessor
+from raganything.i18n import _
 
 
 class TableModalProcessor(BaseModalProcessor):
@@ -102,7 +103,7 @@ class TableModalProcessor(BaseModalProcessor):
             return enhanced_caption, entity_info
 
         except Exception as e:
-            logger.error(f"Error generating table description: {e}")
+            logger.error(_("Error generating table description: {}").format(e))
             # Fallback processing
             fallback_entity = {
                 "entity_name": (
@@ -166,7 +167,7 @@ class TableModalProcessor(BaseModalProcessor):
             )
 
         except Exception as e:
-            logger.error(f"Error processing table content: {e}")
+            logger.error(_("Error processing table content: {}").format(e))
             # Fallback processing
             fallback_entity = {
                 "entity_name": (
@@ -190,12 +191,12 @@ class TableModalProcessor(BaseModalProcessor):
             entity_data = response_data.get("entity_info", {})
 
             if not description or not entity_data:
-                raise ValueError("Missing required fields in response")
+                raise ValueError(_("Missing required fields in response"))
 
             if not all(
                 key in entity_data for key in ["entity_name", "entity_type", "summary"]
             ):
-                raise ValueError("Missing required fields in entity_info")
+                raise ValueError(_("Missing required fields in entity_info"))
 
             entity_data["entity_name"] = (
                 entity_data["entity_name"] + f" ({entity_data['entity_type']})"
@@ -206,8 +207,8 @@ class TableModalProcessor(BaseModalProcessor):
             return description, entity_data
 
         except (json.JSONDecodeError, AttributeError, ValueError) as e:
-            logger.error(f"Error parsing table analysis response: {e}")
-            logger.debug(f"Raw response: {response}")
+            logger.error(_("Error parsing table analysis response: {}").format(e))
+            logger.debug(_("Raw response: {}").format(response))
             fallback_entity = {
                 "entity_name": (
                     entity_name

@@ -15,7 +15,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
 
 
 class Parser:
@@ -30,8 +31,10 @@ class Parser:
     IMAGE_FORMATS = {".png", ".jpeg", ".jpg", ".bmp", ".tiff", ".tif", ".gif", ".webp"}
     TEXT_FORMATS = {".txt", ".md"}
 
-    # Class-level保留占位，统一使用全局logger实例
-    logger = logger
+    # 使用国际化logger
+    @staticmethod
+    def logger():
+        return get_i18n_logger()
 
     def __init__(self) -> None:
         """Initialize the base parser."""
@@ -56,7 +59,7 @@ class Parser:
             # Convert to Path object for easier handling
             doc_path = Path(doc_path)
             if not doc_path.exists():
-                raise FileNotFoundError(f"Office document does not exist: {doc_path}")
+                raise FileNotFoundError(_("Office Document does not exist: {}").format(doc_path))
 
             name_without_suff = doc_path.stem
 
@@ -73,7 +76,7 @@ class Parser:
                 temp_path = Path(temp_dir)
 
                 # Convert to PDF using LibreOffice
-                logger.info(f"Converting {doc_path.name} to PDF using LibreOffice...")
+                logger.info(_("Converting {} to PDF using LibreOffice...").format(doc_path.name))
 
                 # Prepare subprocess parameters to hide console window on Windows
                 import platform
@@ -124,9 +127,9 @@ class Parser:
                                 f"LibreOffice command '{cmd}' failed: {result.stderr}"
                             )
                     except FileNotFoundError:
-                        logger.warning(f"LibreOffice command '{cmd}' not found")
+                        logger.warning(_("LibreOffice command '{}' not found").format(cmd))
                     except subprocess.TimeoutExpired:
-                        logger.warning(f"LibreOffice command '{cmd}' timed out")
+                        logger.warning(_("LibreOffice command '{}' timed out").format(cmd))
                     except Exception as e:
                         logger.error(
                             f"LibreOffice command '{cmd}' failed with exception: {e}"
@@ -172,7 +175,7 @@ class Parser:
                 return final_pdf_path
 
         except Exception as e:
-            logger.error(f"Error in convert_office_to_pdf: {str(e)}")
+            logger.error(_("Error in convert_office_to_pdf: {}").format(str(e)))
             raise
 
     @staticmethod
@@ -192,12 +195,12 @@ class Parser:
         try:
             text_path = Path(text_path)
             if not text_path.exists():
-                raise FileNotFoundError(f"Text file does not exist: {text_path}")
+                raise FileNotFoundError(_("Text file does not exist: {}").format(text_path))
 
             # Supported text formats
             supported_text_formats = {".txt", ".md"}
             if text_path.suffix.lower() not in supported_text_formats:
-                raise ValueError(f"Unsupported text format: {text_path.suffix}")
+                raise ValueError(_("Unsupported text format: {}").format(text_path.suffix))
 
             # Read the text content
             try:
@@ -209,7 +212,7 @@ class Parser:
                     try:
                         with open(text_path, "r", encoding=encoding) as f:
                             text_content = f.read()
-                        logger.info(f"Successfully read file with {encoding} encoding")
+                        logger.info(_("Successfully read file with {} encoding").format(encoding))
                         break
                     except UnicodeDecodeError:
                         continue
@@ -233,7 +236,7 @@ class Parser:
             pdf_path = base_output_dir / f"{text_path.stem}.pdf"
 
             # Convert text to PDF
-            logger.info(f"Converting {text_path.name} to PDF...")
+            logger.info(_("Converting {} to PDF...").format(text_path.name))
 
             try:
                 from reportlab.lib.pagesizes import A4
@@ -381,7 +384,7 @@ class Parser:
                         story.append(Paragraph(safe_line, normal_style))
                         story.append(Spacer(1, 3))
 
-                    logger.info(f"Added {line_count} lines to PDF")
+                    logger.info(_("Added {} lines to PDF").format(line_count))
 
                     # If no content was added, add a placeholder
                     if not story:
@@ -412,7 +415,7 @@ class Parser:
             return pdf_path
 
         except Exception as e:
-            logger.error(f"Error in convert_text_to_pdf: {str(e)}")
+            logger.error(_("Error in convert_text_to_pdf: {}").format(str(e)))
             raise
 
     @staticmethod
@@ -481,7 +484,7 @@ class Parser:
         Returns:
             List[Dict[str, Any]]: List of content blocks
         """
-        raise NotImplementedError("parse_pdf must be implemented by subclasses")
+        raise NotImplementedError(_("parse_pdf must be implemented by subclasses"))
 
     def parse_image(
         self,
@@ -506,7 +509,7 @@ class Parser:
         Returns:
             List[Dict[str, Any]]: List of content blocks
         """
-        raise NotImplementedError("parse_image must be implemented by subclasses")
+        raise NotImplementedError(_("parse_image must be implemented by subclasses"))
 
     def parse_document(
         self,
@@ -530,7 +533,7 @@ class Parser:
         Returns:
             List[Dict[str, Any]]: List of content blocks
         """
-        raise NotImplementedError("parse_document must be implemented by subclasses")
+        raise NotImplementedError(_("parse_document must be implemented by subclasses"))
 
     def check_installation(self) -> bool:
         """

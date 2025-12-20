@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
 
 try:
     from skimage.metrics import structural_similarity as ssim
@@ -43,6 +43,7 @@ except ImportError:
 from raganything.parser.audio_parser import AudioParser
 from raganything.parser.base_parser import Parser
 from raganything.parser.vlm_parser import VlmParser
+from raganything.i18n import _
 
 
 class VideoParser(Parser):
@@ -63,11 +64,11 @@ class VideoParser(Parser):
         self.vlm_parser = VlmParser(config_path=config_path)
 
         if not imagehash:
-            logger.warning(
+            self.logger().warning(
                 "imagehash not found. Frame deduplication will be disabled. Install with `pip install imagehash`"
             )
         if not ssim:
-            logger.warning(
+            self.logger().warning(
                 "scikit-image not found. SSIM check will be disabled. Install with `pip install scikit-image`"
             )
 
@@ -109,7 +110,7 @@ class VideoParser(Parser):
 
         # Need pydub for chunking
         if AudioSegment is None:
-            raise ImportError("pydub not found. Install dependencies.")
+            raise ImportError(_("pydub not found. Install dependencies."))
 
         temp_wav_path = None
         try:
@@ -123,7 +124,7 @@ class VideoParser(Parser):
                 audio = AudioSegment.from_wav(str(temp_wav_path))
                 duration_ms = len(audio)
             except Exception as e:
-                logger.warning(
+                self.logger().warning(
                     f"Failed to read converted WAV {temp_wav_path}: {e}; falling back to single-pass transcription"
                 )
                 audio = None
@@ -156,7 +157,7 @@ class VideoParser(Parser):
 
             segments = []
 
-            logger.info(
+            self.logger().info(
                 f"Transcribing audio from {file_path.name} (Duration: {duration_ms/1000:.2f}s) using 30s chunking..."
             )
 
@@ -249,7 +250,7 @@ class VideoParser(Parser):
                                     )
 
                 except Exception as e:
-                    logger.error(f"Error processing chunk {i}: {e}")
+                    self.logger().error(f"Error processing chunk {i}: {e}")
                     # Continue to next chunk
                 finally:
                     if os.path.exists(chunk_path):
@@ -264,7 +265,7 @@ class VideoParser(Parser):
             return segments
 
         except Exception as e:
-            logger.error(f"Error in audio transcription: {e}")
+            self.logger().error(f"Error in audio transcription: {e}")
             raise
         finally:
             if temp_wav_path and temp_wav_path.exists():
@@ -296,7 +297,7 @@ class VideoParser(Parser):
         cap = cv2.VideoCapture(str(video_path))
 
         if not cap.isOpened():
-            raise RuntimeError(f"Could not open video file {video_path}")
+            raise RuntimeError(_("Could not open video file {}").format(video_path))
 
         video_fps = cap.get(cv2.CAP_PROP_FPS)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -325,7 +326,7 @@ class VideoParser(Parser):
 
         # Calculate expected frame count for logging
         expected_frames = total_frames // step
-        logger.info(
+        self.logger().info(
             f"Extracting frames from {video_path.name} (Duration: {duration:.1f}s, FPS: {fps}, Step: {step}, Expected: ~{expected_frames} frames)"
         )
 
@@ -345,7 +346,7 @@ class VideoParser(Parser):
                 # Progress logging every 10% or every 100 processed frames
                 if processed_frames % max(100, expected_frames // 10) == 0:
                     elapsed = time.time() - start_time
-                    logger.info(
+                    self.logger().info(
                         f"Frame extraction progress: {processed_frames}/{expected_frames} frames, {elapsed:.1f}s elapsed"
                     )
 
@@ -371,7 +372,7 @@ class VideoParser(Parser):
                                     frame, cv2.COLOR_BGR2GRAY
                                 )
                         except Exception as e:
-                            logger.debug(f"Baseline hash setup failed: {e}")
+                            self.logger().debug(f"Baseline hash setup failed: {e}")
                 elif imagehash and last_hash is not None:
                     try:
                         # Fast perceptual hash check - Scene Change Detection
@@ -398,7 +399,7 @@ class VideoParser(Parser):
                                 if score > ssim_threshold:
                                     # High structural similarity - skip this frame
                                     is_keyframe = False
-                                    logger.debug(
+                                    self.logger().debug(
                                         f"Skipped similar frame: hash_diff={diff}, ssim_score={score:.3f}"
                                     )
                                 else:
@@ -406,7 +407,7 @@ class VideoParser(Parser):
                                     is_keyframe = True
                                     last_hash = curr_hash
                                     last_gray_image = gray_image
-                                    logger.debug(
+                                    self.logger().debug(
                                         f"Content change detected: hash_diff={diff}, ssim_score={score:.3f}"
                                     )
                             else:
@@ -420,10 +421,10 @@ class VideoParser(Parser):
                                 last_gray_image = cv2.cvtColor(
                                     frame, cv2.COLOR_BGR2GRAY
                                 )
-                            logger.debug(f"Scene change detected: hash_diff={diff}")
+                            self.logger().debug(f"Scene change detected: hash_diff={diff}")
 
                     except Exception as e:
-                        logger.debug(
+                        self.logger().debug(
                             f"Smart detection failed: {e}, treating as keyframe"
                         )
                         is_keyframe = True
@@ -440,7 +441,7 @@ class VideoParser(Parser):
                         if ssim:
                             last_gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     except Exception as e:
-                        logger.debug(f"Initial hash setup failed: {e}")
+                        self.logger().debug(f"Initial hash setup failed: {e}")
 
                 if is_keyframe:
                     frame_filename = f"frame_{timestamp:.2f}.jpg"
@@ -468,7 +469,7 @@ class VideoParser(Parser):
                         max_frames = 800
 
                     if len(frames) >= max_frames:
-                        logger.info(
+                        self.logger().info(
                             f"Reached maximum frame limit ({max_frames}) for video, stopping extraction"
                         )
                         break
@@ -482,7 +483,7 @@ class VideoParser(Parser):
 
         cap.release()
         elapsed = time.time() - start_time
-        logger.info(
+        self.logger().info(
             f"Extracted {len(frames)} keyframes out of {processed_frames} processed frames in {elapsed:.1f}s"
         )
         return frames
@@ -529,7 +530,7 @@ class VideoParser(Parser):
                 )
 
             except Exception as e:
-                logger.error(f"Failed to analyze frame at {timestamp}s: {e}")
+                self.logger().error(f"Failed to analyze frame at {timestamp}s: {e}")
 
             if progress_callback:
                 progress_callback((i + 1) / total)
@@ -558,7 +559,7 @@ class VideoParser(Parser):
         """
         file_path = Path(file_path)
         if not file_path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
+            raise FileNotFoundError(_("File not found: {}").format(file_path))
 
         if output_dir:
             output_dir = Path(output_dir)
@@ -568,16 +569,16 @@ class VideoParser(Parser):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # 1. Transcribe Audio
-        logger.info("Stage 1: Audio Transcription")
+        self.logger().info("Stage 1: Audio Transcription")
         audio_segments = self._transcribe_with_timestamps(file_path)
 
         # 2. Extract Frames
-        logger.info("Stage 2: Frame Extraction")
+        self.logger().info("Stage 2: Frame Extraction")
         frames = self._extract_frames(
             video_path=file_path,
             fps=fps,
             output_dir=output_dir,
-            progress_callback=lambda p: logger.info(
+            progress_callback=lambda p: self.logger().info(
                 f"Extraction progress: {p*100:.1f}%"
             ),
         )
@@ -596,18 +597,18 @@ class VideoParser(Parser):
             import nest_asyncio
 
             nest_asyncio.apply(loop)
-            logger.info("Using existing loop with nest_asyncio for frame analysis")
+            self.logger().info("Using existing loop with nest_asyncio for frame analysis")
             visual_segments = loop.run_until_complete(
                 self._analyze_frames(
                     frames=frames,
-                    progress_callback=lambda p: logger.info(
+                    progress_callback=lambda p: self.logger().info(
                         f"Analysis progress: {p*100:.1f}%"
                     ),
                 )
             )
         else:
             # No running loop, create a new one
-            logger.info("Creating new loop for frame analysis")
+            self.logger().info("Creating new loop for frame analysis")
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
@@ -621,7 +622,7 @@ class VideoParser(Parser):
                 )
             finally:
                 loop.close()
-        logger.info(f"Visual Analysis Complete. Found {len(visual_segments)} segments.")
+        logger.info(_("Visual Analysis Complete. Found {} segments.").format(len(visual_segments)))
 
         # 4. Alignment & Merging
         logger.info("Stage 4: Alignment & Merging")

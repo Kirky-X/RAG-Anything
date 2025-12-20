@@ -10,6 +10,7 @@ from minio import Minio
 from minio.error import S3Error
 
 from raganything.storage.core.interfaces import StorageBackend
+from raganything.i18n import _
 
 
 class MinIOStorageBackend(StorageBackend):
@@ -100,7 +101,7 @@ class MinIOStorageBackend(StorageBackend):
                 response.release_conn()
         except S3Error as e:
             if e.code == "NoSuchKey":
-                raise FileNotFoundError(f"File not found: {file_id}")
+                raise FileNotFoundError(_("File not found: {}").format(file_id))
             raise
 
     async def delete_file(self, file_id: str) -> bool:
@@ -158,7 +159,7 @@ class MinIOStorageBackend(StorageBackend):
 
         except S3Error as e:
             if e.code == "NoSuchKey":
-                raise FileNotFoundError(f"File not found: {file_id}")
+                raise FileNotFoundError(_("File not found: {}").format(file_id))
             raise
 
     async def update_metadata(self, file_id: str, metadata: Dict) -> bool:

@@ -9,9 +9,11 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from raganything.logger import logger as rag_logger
+from raganything.i18n_logger import get_i18n_logger
+def rag_logger(): return get_i18n_logger()
 
 from .batch_parser import BatchParser, BatchProcessingResult
+from raganything.i18n import _
 
 if TYPE_CHECKING:
     from .config import RAGAnythingConfig
@@ -76,7 +78,7 @@ class BatchMixin:
         # Get all files in the folder
         folder_path_obj = Path(folder_path)
         if not folder_path_obj.exists():
-            raise FileNotFoundError(f"Folder not found: {folder_path}")
+            raise FileNotFoundError(_("Folder not found: {}").format(folder_path))
 
         # Collect files based on supported extensions
         files_to_process = []
@@ -88,7 +90,7 @@ class BatchMixin:
             files_to_process.extend(folder_path_obj.glob(pattern))
 
         if not files_to_process:
-            self.logger.warning(f"No supported files found in {folder_path}")
+            self.logger.warning(_("No supported files found in {}").format(folder_path))
             return
 
         self.logger.info(
@@ -134,7 +136,7 @@ class BatchMixin:
                     )
                     return True, str(file_path), None
                 except Exception as e:
-                    self.logger.error(f"Failed to process {file_path}: {str(e)}")
+                    self.logger.error(_("Failed to process {}: {}").format(file_path, str(e)))
                     return False, str(file_path), str(e)
 
         # Create tasks for all files
@@ -161,12 +163,12 @@ class BatchMixin:
         # Display statistics if requested
         if display_stats:
             self.logger.info("Processing complete!")
-            self.logger.info(f"  Successful: {len(successful_files)} files")
-            self.logger.info(f"  Failed: {len(failed_files)} files")
+            self.logger.info(_("  Successful: {} files").format(len(successful_files)))
+            self.logger.info(_("  Failed: {} files").format(len(failed_files)))
             if failed_files:
                 self.logger.warning("Failed files:")
                 for file_path, error in failed_files:
-                    self.logger.warning(f"  - {file_path}: {error}")
+                    self.logger.warning(_("  - {}: {}").format(file_path, error))
 
     # ==========================================
     # NEW ENHANCED BATCH PROCESSING METHODS

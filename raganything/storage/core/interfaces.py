@@ -3,6 +3,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Dict, List
+from raganything.i18n import _
 
 
 class StorageBackend(ABC):

@@ -60,7 +60,7 @@ async def startup_event():
     if unhealthy:
         logger.error("⚠️ SYSTEM STARTUP WARNING: Some components are unhealthy!")
         for r in unhealthy:
-            logger.error(f"  - {r.component_name}: {r.message}")
+            logger.error(_("  - {}: {}").format(r.component_name, r.message))
         # We continue startup but logged critical warnings
     else:
         logger.info("✅ All system pre-checks passed.")
@@ -176,40 +176,41 @@ async def query_multimodal(body: QueryMultiReq, ensure=Depends(get_auth)):
 
 
 import asyncio
+from raganything.i18n import _
 
 
 async def process_document_background(file_path: str, doc_id: str, user: str):
-    rag.logger.info(f"ENTERING process_document_background for doc_id: {doc_id}")
+    rag.logger.info(_("ENTERING process_document_background for doc_id: {}").format(doc_id))
     try:
         rag.logger.info(
             f"Background processing started for doc_id {doc_id} (file: {file_path})"
         )
-        rag.logger.info(f"RAG instance ID: {id(rag)}")
+        rag.logger.info(_("RAG instance ID: {}").format(id(rag)))
 
         # Ensure initial status is set immediately before calling process_document_complete
         try:
             # Check if we need to initialize
-            rag.logger.info(f"Calling _ensure_lightrag_initialized for {doc_id}")
+            rag.logger.info(_("Calling _ensure_lightrag_initialized for {}").format(doc_id))
             init_res = await rag._ensure_lightrag_initialized()
-            rag.logger.info(f"_ensure_lightrag_initialized returned for {doc_id}")
+            rag.logger.info(_("_ensure_lightrag_initialized returned for {}").format(doc_id))
             if not init_res.get("success"):
                 rag.logger.error(
                     f"Failed to initialize LightRAG in background task: {init_res}"
                 )
 
             if rag.lightrag:
-                rag.logger.info(f"LightRAG instance ID: {id(rag.lightrag)}")
+                rag.logger.info(_("LightRAG instance ID: {}").format(id(rag.lightrag)))
                 import os
                 import time
 
                 from raganything.base import DocStatus
 
-                rag.logger.info(f"Getting status for {doc_id}")
+                rag.logger.info(_("Getting status for {}").format(doc_id))
                 current_status = await rag.lightrag.doc_status.get_by_id(doc_id)
-                rag.logger.info(f"Status for {doc_id} is: {current_status}")
+                rag.logger.info(_("Status for {} is: {}").format(doc_id, current_status))
                 if not current_status:
                     rag.logger.info(
-                        f"Pre-initializing status for {doc_id} in background task wrapper"
+                        _("Pre-initializing status for {} in background task wrapper").format(doc_id)
                     )
                     await rag.lightrag.doc_status.upsert(
                         {
@@ -244,9 +245,9 @@ async def process_document_background(file_path: str, doc_id: str, user: str):
 
             rag.logger.warning(traceback.format_exc())
 
-        rag.logger.info(f"About to call process_document_complete for doc_id: {doc_id}")
+        rag.logger.info(_("About to call process_document_complete for doc_id: {}").format(doc_id))
         await rag.process_document_complete(file_path, doc_id=doc_id, user=user)
-        rag.logger.info(f"Background processing completed for doc_id {doc_id}")
+        rag.logger.info(_("Background processing completed for doc_id {}").format(doc_id))
     except Exception as e:
         rag.logger.error(
             f"Error processing file in background for doc_id {doc_id}: {e}",
@@ -263,9 +264,9 @@ async def upload_document(
     ensure=Depends(get_auth),
 ):
     try:
-        rag.logger.info(f"Received upload request for doc_id: {doc_id}")
+        rag.logger.info(_("Received upload request for doc_id: {}").format(doc_id))
         file_path, final_doc_id = await rag._save_upload_file(file, doc_id=doc_id)
-        rag.logger.info(f"File saved to: {file_path}, final_doc_id: {final_doc_id}")
+        rag.logger.info(_("File saved to: {}, final_doc_id: {}").format(file_path, final_doc_id))
 
         background_tasks.add_task(
             process_document_background, file_path, final_doc_id, user
@@ -291,7 +292,7 @@ async def insert_content_list(body: ContentListInsertReq, ensure=Depends(get_aut
     if rag is None:
         raise HTTPException(
             status_code=500,
-            detail="RAGAnything not initialized",
+            detail=_("RAGAnything not initialized"),
         )
     try:
         await rag.insert_content_list(
@@ -321,7 +322,7 @@ async def doc_status(doc_id: str, ensure=Depends(get_auth)):
     if rag is None:
         raise HTTPException(
             status_code=500,
-            detail="RAGAnything not initialized",
+            detail=_("RAGAnything not initialized"),
         )
     try:
         status = await rag.get_document_processing_status(doc_id)
@@ -343,10 +344,10 @@ async def process_folder(
 ):
     """Batch process an entire folder"""
     if rag is None:
-        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+        raise HTTPException(status_code=500, detail=_("RAGAnything not initialized"))
 
     if not os.path.exists(folder_path):
-        raise HTTPException(status_code=404, detail=f"Folder not found: {folder_path}")
+        raise HTTPException(status_code=404, detail=_("Folder not found: {}").format(folder_path))
 
     total_files = 0
     try:
@@ -376,7 +377,7 @@ async def process_folder(
 async def get_config(ensure=Depends(get_auth)):
     """Get current system configuration"""
     if rag is None:
-        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+        raise HTTPException(status_code=500, detail=_("RAGAnything not initialized"))
     return ConfigResp(
         multimodal=rag.config.multimodal,
         batch=rag.config.batch,
@@ -388,7 +389,7 @@ async def get_config(ensure=Depends(get_auth)):
 async def reload_config(ensure=Depends(get_auth)):
     """Reload configuration"""
     if rag is None:
-        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+        raise HTTPException(status_code=500, detail=_("RAGAnything not initialized"))
     try:
         rag.reload_config()
         return {"status": "success", "message": "Configuration reloaded"}
@@ -400,7 +401,7 @@ async def reload_config(ensure=Depends(get_auth)):
 async def get_stats(ensure=Depends(get_auth)):
     """Get system statistics"""
     if rag is None:
-        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+        raise HTTPException(status_code=500, detail=_("RAGAnything not initialized"))
     stats = await rag.get_system_stats()
     return StatsResp(
         total_documents=stats.total_docs,
@@ -414,7 +415,7 @@ async def get_stats(ensure=Depends(get_auth)):
 async def delete_document(doc_id: str, ensure=Depends(get_auth)):
     """Delete a document"""
     if rag is None:
-        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+        raise HTTPException(status_code=500, detail=_("RAGAnything not initialized"))
     try:
         await rag.delete_document(doc_id)
         return {"status": "success", "message": f"Document {doc_id} deleted"}
@@ -426,7 +427,7 @@ async def delete_document(doc_id: str, ensure=Depends(get_auth)):
 async def cleanup_storage(ensure=Depends(get_auth)):
     """Cleanup storage"""
     if rag is None:
-        raise HTTPException(status_code=500, detail="RAGAnything not initialized")
+        raise HTTPException(status_code=500, detail=_("RAGAnything not initialized"))
     try:
         result = await rag.cleanup_storage()
         return {"status": "success", "deleted_items": result.deleted_count}

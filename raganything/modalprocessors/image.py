@@ -18,6 +18,7 @@ from lightrag.utils import compute_mdhash_id, logger
 from raganything.prompt import PROMPTS
 
 from .base import BaseModalProcessor, ContextExtractor
+from raganything.i18n import _
 
 
 class ImageModalProcessor(BaseModalProcessor):
@@ -45,7 +46,7 @@ class ImageModalProcessor(BaseModalProcessor):
                 encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
             return encoded_string
         except Exception as e:
-            logger.error(f"Failed to encode image {image_path}: {e}")
+            logger.error(_("Failed to encode image {}: {}").format(image_path, e))
             return ""
 
     async def generate_description_only(
@@ -95,7 +96,7 @@ class ImageModalProcessor(BaseModalProcessor):
             # Convert to Path object and check if it exists
             image_path_obj = Path(image_path)
             if not image_path_obj.exists():
-                raise FileNotFoundError(f"Image file not found: {image_path}")
+                raise FileNotFoundError(_("Image file not found: {}").format(image_path))
 
             # Extract context for current item
             context = ""
@@ -132,10 +133,10 @@ class ImageModalProcessor(BaseModalProcessor):
             # Encode image to base64
             image_base64 = self._encode_image_to_base64(image_path)
             if not image_base64:
-                raise RuntimeError(f"Failed to encode image to base64: {image_path}")
+                raise RuntimeError(_("Failed to encode image to base64: {}").format(image_path))
 
             # Call vision model with encoded image
-            logger.info(f"Calling VLM for image analysis: {image_path}")
+            logger.info(_("Calling VLM for image analysis: {}").format(image_path))
             try:
                 # Remove system_prompt as it's not supported by all LLM functions
                 # Some LLM functions (like those using use_llm_func_with_cache) don't accept system_prompt
@@ -151,7 +152,7 @@ class ImageModalProcessor(BaseModalProcessor):
                     ),
                     timeout=300,  # 5 minutes timeout
                 )
-                logger.info(f"VLM response received for image: {image_path}")
+                logger.info(_("VLM response received for image: {}").format(image_path))
             except (asyncio.TimeoutError, Exception) as call_err:
                 error_msg = str(call_err)
                 logger.error(
@@ -201,7 +202,7 @@ class ImageModalProcessor(BaseModalProcessor):
             return enhanced_caption, entity_info
 
         except Exception as e:
-            logger.error(f"Error generating image description: {e}")
+            logger.error(_("Error generating image description: {}").format(e))
             # Fallback processing
             fallback_entity = {
                 "entity_name": (
@@ -266,7 +267,7 @@ class ImageModalProcessor(BaseModalProcessor):
             )
 
         except Exception as e:
-            logger.error(f"Error processing image content: {e}")
+            logger.error(_("Error processing image content: {}").format(e))
             # Fallback processing
             fallback_entity = {
                 "entity_name": (
@@ -286,7 +287,7 @@ class ImageModalProcessor(BaseModalProcessor):
         try:
             # Check if response is empty
             if not response or not response.strip():
-                raise ValueError("Empty response received from model")
+                raise ValueError(_("Empty response received from model"))
 
             response_data = self._robust_json_parse(response)
 
@@ -369,8 +370,8 @@ class ImageModalProcessor(BaseModalProcessor):
             return description, entity_data
 
         except (json.JSONDecodeError, AttributeError, ValueError) as e:
-            logger.error(f"Error parsing image analysis response: {e}")
-            logger.debug(f"Raw response: {response}")
+            logger.error(_("Error parsing image analysis response: {}").format(e))
+            logger.debug(_("Raw response: {}").format(response))
             fallback_entity = {
                 "entity_name": (
                     entity_name

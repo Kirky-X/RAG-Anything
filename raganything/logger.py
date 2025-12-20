@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Optional
 
 from loguru import logger as _logger
+from raganything.i18n import _
 
 _CONFIGURED = False
 

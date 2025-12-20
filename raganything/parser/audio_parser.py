@@ -13,11 +13,12 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
 from raganything.models import (default_models_config, device_manager,
                                 model_manager)
 
 from .base_parser import Parser
+from raganything.i18n import _
 
 # Optional imports for audio processing / ASR
 # Keep dependency flags separate to avoid coupling metadata analysis to ASR model presence
@@ -47,6 +48,11 @@ class AudioParser(Parser):
     Supports automatic format conversion and speech-to-text.
     """
 
+    # 使用国际化logger
+    @staticmethod
+    def logger():
+        return get_i18n_logger()
+
     SUPPORTED_FORMATS = {
         ".aac",
         ".amr",
@@ -74,12 +80,12 @@ class AudioParser(Parser):
         self._model_path = None
 
         if not HAS_PYDUB:
-            logger.warning(
+            self.logger().warning(
                 "pydub not found. Audio conversion/analysis disabled. "
                 "Install with `uv sync --extra audio` or `pip install raganything[audio]`"
             )
         if not HAS_FUNASR:
-            logger.warning(
+            self.logger().warning(
                 "funasr not found. Speech-to-text disabled. "
                 "Install with `uv sync --extra audio` or `pip install raganything[audio]`"
             )
@@ -90,10 +96,11 @@ class AudioParser(Parser):
             return
 
         if not AUDIO_DEPS_AVAILABLE:
-            raise ImportError("Audio dependencies (funasr, pydub) are not installed.")
+            raise ImportError(_("Audio dependencies (funasr, pydub) are not installed."))
 
+        self.logger().info("Loading SenseVoiceSmall model...")
+        
         try:
-            logger.info("Loading SenseVoiceSmall model...")
             # Get model path from manager (downloads if needed)
             self._model_path = model_manager.get_sense_voice_model_path()
 
@@ -108,10 +115,9 @@ class AudioParser(Parser):
                 device=device,
                 disable_update=True,
             )
-            logger.info(f"SenseVoiceSmall model loaded on {device}")
-
+            self.logger().info(f"SenseVoiceSmall model loaded on {device}")
         except Exception as e:
-            logger.error(f"Failed to load SenseVoiceSmall model: {e}")
+            self.logger().error(f"Failed to load SenseVoiceSmall model: {e}")
             raise
 
     def _convert_to_wav_16k(self, input_path: Path) -> Path:
@@ -126,16 +132,16 @@ class AudioParser(Parser):
             Path: Path to the temporary WAV file.
         """
         if AudioSegment is None:
-            raise ImportError("pydub is not installed; audio conversion unavailable.")
+            raise ImportError(_("pydub is not installed; audio conversion unavailable."))
         try:
             # Create temp file
             fd, temp_path = tempfile.mkstemp(suffix=".wav")
             os.close(fd)
 
-            logger.info(f"Converting {input_path.name} to 16kHz WAV...")
+            self.logger().info(f"Converting {input_path.name} to 16kHz WAV...")
 
             # Load audio (pydub handles format detection and video containers)
-            logger.info(f"Step A1: Loading audio from {input_path} with pydub...")
+            self.logger().info(f"Step A1: Loading audio from {input_path} with pydub...")
 
             # Use a signal-based timeout or thread-based timeout if possible.
             # Since pydub calls ffmpeg via subprocess or native python wave module,
@@ -148,7 +154,7 @@ class AudioParser(Parser):
                 pass
 
             def handler(signum, frame):
-                raise TimeoutException("Audio conversion timed out")
+                raise TimeoutException(_("Audio conversion timed out"))
 
             # Register the signal function handler
             # Only works in main thread. If we are not in main thread, this might fail or be ignored.
@@ -163,19 +169,19 @@ class AudioParser(Parser):
             try:
                 with open(str(input_path), "rb") as f:
                     audio = AudioSegment.from_file(f)
-                logger.info(
-                    f"Step A2: Audio loaded. Duration: {len(audio)/1000.0}s, Channels: {audio.channels}, Rate: {audio.frame_rate}"
-                )
+                self.logger().info(
+                f"Step A2: Audio loaded. Duration: {len(audio)/1000.0}s, Channels: {audio.channels}, Rate: {audio.frame_rate}"
+            )
 
                 # Convert: 16kHz, mono, 16-bit
-                logger.info("Step A3: Resampling to 16kHz mono...")
+                self.logger().info("Step A3: Resampling to 16kHz mono...")
                 audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
 
                 # Export
-                logger.info(f"Step A4: Exporting to temp WAV {temp_path}...")
+                self.logger().info(f"Step A4: Exporting to temp WAV {temp_path}...")
                 with open(temp_path, "wb") as f:
                     audio.export(f, format="wav")
-                logger.info(f"Step A5: Export complete to {temp_path}")
+                self.logger().info(f"Step A5: Export complete to {temp_path}")
 
                 return Path(temp_path)
             finally:
@@ -185,11 +191,11 @@ class AudioParser(Parser):
                     pass
 
         except Exception as e:
-            logger.error(f"Audio conversion failed for {input_path}: {e}")
+            self.logger().error(f"Audio conversion failed for {input_path}: {e}")
             # Clean up temp file if created but failed
             if "temp_path" in locals() and os.path.exists(temp_path):
                 os.remove(temp_path)
-            raise RuntimeError(f"Failed to convert audio file: {e}")
+            raise RuntimeError(_("Failed to convert audio file: {}").format(e))
 
     def parse_audio(
         self,
@@ -212,17 +218,17 @@ class AudioParser(Parser):
         """
         file_path = Path(file_path)
         if not file_path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
+            raise FileNotFoundError(_("File not found: {}").format(file_path))
 
         suffix = file_path.suffix.lower()
         if suffix not in self.SUPPORTED_FORMATS:
-            logger.warning(
+            self.logger().warning(
                 f"Format {suffix} might not be supported. Attempting anyway."
             )
 
         # Ensure required deps are present
         if AudioSegment is None:
-            raise ImportError("pydub is not installed; audio conversion unavailable.")
+            raise ImportError(_("pydub is not installed; audio conversion unavailable."))
         # Ensure model is loaded for ASR
         self._load_model()
 
@@ -241,14 +247,14 @@ class AudioParser(Parser):
                         audio_info = AudioSegment.from_file(f)
                     duration_sec = len(audio_info) / 1000.0
                 else:
-                    logger.warning(
-                        f"Temp WAV path {temp_wav_path} not found or AudioSegment unavailable;"
-                        " skipping duration check and proceeding without chunking"
-                    )
+                    self.logger().warning(
+                    f"Temp WAV path {temp_wav_path} not found or AudioSegment unavailable;"
+                    " skipping duration check and proceeding without chunking"
+                )
                     audio_info = None
                     duration_sec = 0.0
             except Exception as e:
-                logger.warning(
+                self.logger().warning(
                     f"Failed to read temp WAV for duration ({temp_wav_path}): {e}; proceeding without chunking"
                 )
                 audio_info = None
@@ -260,7 +266,7 @@ class AudioParser(Parser):
             CHUNK_THRESHOLD = 300
 
             if duration_sec > CHUNK_THRESHOLD and audio_info is not None:
-                logger.info(
+                self.logger().info(
                     f"Audio duration ({duration_sec:.2f}s) exceeds threshold. Processing in chunks..."
                 )
                 # Chunk size: 30 seconds to be safe with VRAM
@@ -281,7 +287,7 @@ class AudioParser(Parser):
                         chunk_path = temp_chunk_file.name
 
                     try:
-                        logger.info(
+                        self.logger().info(
                             f"Processing chunk {i+1} ({chunk_start/1000:.1f}s - {chunk_end/1000:.1f}s)..."
                         )
                         res = self._model.generate(
@@ -305,11 +311,11 @@ class AudioParser(Parser):
 
             else:
                 # Small file, process directly
-                logger.info(f"Transcribing {file_path.name}...")
+                self.logger().info(f"Transcribing {file_path.name}...")
 
                 # Check file size to avoid sending empty file to model
                 if os.path.getsize(str(temp_wav_path)) == 0:
-                    logger.warning("Empty WAV file generated, skipping transcription")
+                    self.logger().warning("Empty WAV file generated, skipping transcription")
                     full_text = ""
                 else:
                     try:
@@ -326,10 +332,10 @@ class AudioParser(Parser):
                         if isinstance(res, list) and len(res) > 0:
                             full_text = res[0].get("text", "")
                     except Exception as model_err:
-                        logger.error(f"Model generation failed: {model_err}")
+                        self.logger().error(f"Model generation failed: {model_err}")
                         full_text = ""
 
-            logger.info(f"Transcription complete. Length: {len(full_text)} chars")
+            self.logger().info(f"Transcription complete. Length: {len(full_text)} chars")
 
             return [
                 {
@@ -345,7 +351,7 @@ class AudioParser(Parser):
             ]
 
         except Exception as e:
-            logger.error(f"Error parsing audio file {file_path}: {e}")
+            self.logger().error(f"Error parsing audio file {file_path}: {e}")
             raise
 
         finally:
@@ -354,7 +360,7 @@ class AudioParser(Parser):
                 try:
                     os.remove(temp_wav_path)
                 except Exception as e:
-                    logger.warning(f"Failed to remove temp file {temp_wav_path}: {e}")
+                    self.logger().warning(f"Failed to remove temp file {temp_wav_path}: {e}")
 
     def analyze_audio(self, file_path: Union[str, Path]) -> Dict[str, Any]:
         """
@@ -367,14 +373,14 @@ class AudioParser(Parser):
             Dictionary containing metadata and waveform statistics
         """
         if not HAS_PYDUB:
-            raise ImportError("pydub is not installed; audio analysis unavailable.")
+            raise ImportError(_("pydub is not installed; audio analysis unavailable."))
 
         file_path = Path(file_path)
         if not file_path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
+            raise FileNotFoundError(_("File not found: {}").format(file_path))
 
         try:
-            logger.info(f"Analyzing audio file: {file_path.name}")
+            self.logger().info(f"Analyzing audio file: {file_path.name}")
             with open(str(file_path), "rb") as f:
                 audio = AudioSegment.from_file(f)
 
@@ -406,11 +412,11 @@ class AudioParser(Parser):
                 },
             }
 
-            logger.info(f"Analysis complete for {file_path.name}")
+            self.logger().info(f"Analysis complete for {file_path.name}")
             return result
 
         except Exception as e:
-            logger.error(f"Failed to analyze audio file {file_path}: {e}")
+            self.logger().error(f"Failed to analyze audio file {file_path}: {e}")
             raise
 
     # Alias for generic parse calls if we implement a router later

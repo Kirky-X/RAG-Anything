@@ -29,6 +29,7 @@ from lightrag.utils import compute_mdhash_id, logger
 
 # Import prompt templates
 from raganything.prompt import PROMPTS
+from raganything.i18n import _
 
 
 @dataclass
@@ -109,7 +110,7 @@ class ContextExtractor:
                     )
                     return ""
         except Exception as e:
-            logger.error(f"Error extracting context: {e}")
+            logger.error(_("Error extracting context: {}").format(e))
             return ""
 
     def _extract_from_content_list(
@@ -422,7 +423,7 @@ class BaseModalProcessor:
         """
         self.content_source = content_source
         self.content_format = content_format
-        logger.info(f"Content source set with format: {content_format}")
+        logger.info(_("Content source set with format: {}").format(content_format))
 
     def _get_context_for_item(self, item_info: Dict[str, Any]) -> str:
         """Get context for current processing item
@@ -446,7 +447,7 @@ class BaseModalProcessor:
                 )
             return context
         except Exception as e:
-            logger.error(f"Error getting context for item {item_info}: {e}")
+            logger.error(_("Error getting context for item {}: {}").format(item_info, e))
             return ""
 
     async def generate_description_only(
@@ -470,7 +471,7 @@ class BaseModalProcessor:
             Tuple of (description, entity_info)
         """
         # Subclasses must implement this method
-        raise NotImplementedError("Subclasses must implement this method")
+        raise NotImplementedError(_("Subclasses must implement this method"))
 
     async def _create_entity_and_chunk(
         self,
@@ -698,7 +699,7 @@ class BaseModalProcessor:
         """Process chunk for entity and relationship extraction"""
         chunk_data = await self.text_chunks_db.get_by_id(chunk_id)
         if not chunk_data:
-            logger.error(f"Chunk {chunk_id} not found")
+            logger.error(_("Chunk {} not found").format(chunk_id))
             return
 
         # Create text chunk for vector database

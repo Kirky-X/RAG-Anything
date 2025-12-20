@@ -4,6 +4,7 @@
 from .app import app
 from .auth import get_auth
 from .models import HealthResp, InfoResp, QueryReq
+from raganything.i18n import _
 
 __all__ = [
     "app",

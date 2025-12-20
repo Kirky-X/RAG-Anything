@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
+from raganything.i18n import _
 
 
 def _import_toml_loader():
@@ -92,9 +93,10 @@ def load_server_configs(
             with open(config_toml_path, "rb") as f:
                 data = loader.load(f)  # type: ignore
         except Exception as e:
-            from raganything.logger import logger
+            from raganything.i18n_logger import get_i18n_logger
 
-            logger.error(f"Failed to load TOML config from {config_toml_path}: {e}")
+            logger = get_i18n_logger(__name__)
+            logger.error(_("Failed to load TOML config from {}: {}").format(config_toml_path, e))
             raise
 
     server_section = data.get("server", {})

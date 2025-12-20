@@ -7,6 +7,7 @@ import uuid
 from typing import Dict, List, Optional
 
 from raganything.storage.core.interfaces import StorageBackend
+from raganything.i18n import _
 
 
 class StorageManager:
@@ -57,7 +58,7 @@ class StorageManager:
         # Note: In a real app, we might stream this.
         # Here we assume the file_path is a local path to read from
         if not os.path.exists(file_path):
-            raise FileNotFoundError(f"Source file not found: {file_path}")
+            raise FileNotFoundError(_("Source file not found: {}").format(file_path))
 
         with open(file_path, "rb") as f:
             content = f.read()
@@ -86,7 +87,7 @@ class StorageManager:
         Path format: documents/{user_id}/{upload_date}/{doc_id}/filename
         """
         if not os.path.exists(doc_path):
-            raise FileNotFoundError(f"Source document not found: {doc_path}")
+            raise FileNotFoundError(_("Source document not found: {}").format(doc_path))
 
         with open(doc_path, "rb") as f:
             content = f.read()

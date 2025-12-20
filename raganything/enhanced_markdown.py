@@ -17,7 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
 
 try:
     import markdown
@@ -88,11 +89,11 @@ class EnhancedMarkdownConverter:
             config: Configuration for conversion
         """
         self.config = config or MarkdownConfig()
-        self.logger = logger
+        self.logger = get_i18n_logger()
 
         # Check available backends
         self.available_backends = self._check_backends()
-        self.logger.info(f"Available backends: {list(self.available_backends.keys())}")
+        self.logger.info(_("Available backends: {}").format(list(self.available_backends.keys())))
 
     def _check_backends(self) -> Dict[str, bool]:
         """Check which conversion backends are available"""
@@ -300,12 +301,12 @@ class EnhancedMarkdownConverter:
             html.write_pdf(output_path)
 
             self.logger.info(
-                f"Successfully converted to PDF using WeasyPrint: {output_path}"
+                _("Successfully converted to PDF using WeasyPrint: {}").format(output_path)
             )
             return True
 
         except Exception as e:
-            self.logger.error(f"WeasyPrint conversion failed: {str(e)}")
+            self.logger.error(_("WeasyPrint conversion failed: {}").format(str(e)))
             return False
 
     def convert_with_pandoc(
@@ -348,15 +349,15 @@ class EnhancedMarkdownConverter:
 
             if result.returncode == 0:
                 self.logger.info(
-                    f"Successfully converted to PDF using Pandoc: {output_path}"
+                    _("Successfully converted to PDF using Pandoc: {}").format(output_path)
                 )
                 return True
             else:
-                self.logger.error(f"Pandoc conversion failed: {result.stderr}")
+                self.logger.error(_("Pandoc conversion failed: {}").format(result.stderr))
                 return False
 
         except Exception as e:
-            self.logger.error(f"Pandoc conversion failed: {str(e)}")
+            self.logger.error(_("Pandoc conversion failed: {}").format(str(e)))
             return False
 
         finally:
@@ -365,7 +366,7 @@ class EnhancedMarkdownConverter:
                     os.unlink(temp_md_path)
                 except OSError as e:
                     self.logger.error(
-                        f"Failed to clean up temp file {temp_md_path}: {str(e)}"
+                        _("Failed to clean up temp file {}: {}").format(temp_md_path, str(e))
                     )
 
     def convert_markdown_to_pdf(
@@ -395,10 +396,10 @@ class EnhancedMarkdownConverter:
                     markdown_content, output_path, use_system_pandoc=True
                 )
             else:
-                raise ValueError(f"Unknown conversion method: {method}")
+                raise ValueError(_("Unknown conversion method: {}").format(method))
 
         except Exception as e:
-            self.logger.error(f"{method.title()} conversion failed: {str(e)}")
+            self.logger.error(_("{} conversion failed: {}").format(method.title(), str(e)))
             return False
 
     def convert_file_to_pdf(
@@ -418,7 +419,7 @@ class EnhancedMarkdownConverter:
         input_path_obj = Path(input_path)
 
         if not input_path_obj.exists():
-            raise FileNotFoundError(f"Input file not found: {input_path}")
+            raise FileNotFoundError(_("Input file not found: {}").format(input_path))
 
         # Read markdown content
         try:
@@ -435,7 +436,7 @@ class EnhancedMarkdownConverter:
                     continue
             else:
                 raise RuntimeError(
-                    f"Could not decode file {input_path} with any supported encoding"
+                    _("Could not decode file {} with any supported encoding").format(input_path)
                 )
 
         # Determine output path
@@ -502,8 +503,8 @@ def main():
         logger.info("Backend Information:")
         for backend, available in info["available_backends"].items():
             status = "✅" if available else "❌"
-            logger.info(f"  {status} {backend}")
-        logger.info(f"Recommended backend: {info['recommended_backend']}")
+            logger.info(_("  {} {}").format(status, backend))
+        logger.info(_("Recommended backend: {}").format(info['recommended_backend']))
         return 0
 
     # Check if input file is provided
@@ -517,14 +518,14 @@ def main():
         )
 
         if success:
-            logger.info(f"✅ Successfully converted {args.input} to PDF")
+            logger.info(_("✅ Successfully converted {} to PDF").format(args.input))
             return 0
         else:
             logger.error("❌ Conversion failed")
             return 1
 
     except Exception as e:
-        logger.error(f"❌ Error: {str(e)}")
+        logger.error(_("❌ Error: {}").format(str(e)))
         return 1
 
 

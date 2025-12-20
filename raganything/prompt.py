@@ -8,6 +8,7 @@ different types of content (images, tables, equations, etc.)
 from __future__ import annotations
 
 from typing import Any
+from raganything.i18n import _
 
 PROMPTS: dict[str, Any] = {}
 

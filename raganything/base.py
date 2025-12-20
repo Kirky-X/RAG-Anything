@@ -1,4 +1,5 @@
 from enum import Enum
+from raganything.i18n import _
 
 
 class DocStatus(str, Enum):

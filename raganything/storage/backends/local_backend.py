@@ -10,6 +10,7 @@ from typing import Dict, List
 import aiofiles
 
 from raganything.storage.core.interfaces import StorageBackend
+from raganything.i18n import _
 
 
 class LocalFileSystemBackend(StorageBackend):
@@ -27,7 +28,7 @@ class LocalFileSystemBackend(StorageBackend):
         """Convert relative path to absolute path and prevent directory traversal."""
         abs_path = os.path.abspath(os.path.join(self.root_dir, file_path))
         if not abs_path.startswith(self.root_dir):
-            raise ValueError("Invalid file path: outside root directory")
+            raise ValueError(_("Invalid file path: outside root directory"))
         return abs_path
 
     def _get_metadata_path(self, file_path: str) -> str:
@@ -62,7 +63,7 @@ class LocalFileSystemBackend(StorageBackend):
     async def retrieve_file(self, file_id: str) -> bytes:
         abs_path = self._get_abs_path(file_id)
         if not os.path.exists(abs_path):
-            raise FileNotFoundError(f"File not found: {file_id}")
+            raise FileNotFoundError(_("File not found: {}").format(file_id))
 
         async with aiofiles.open(abs_path, "rb") as f:
             return await f.read()
@@ -90,7 +91,7 @@ class LocalFileSystemBackend(StorageBackend):
             # Ensure prefix doesn't escape root
             full_prefix = os.path.join(self.root_dir, prefix)
             if not os.path.abspath(full_prefix).startswith(self.root_dir):
-                raise ValueError("Invalid prefix")
+                raise ValueError(_("Invalid prefix"))
 
         for root, dirs, files in os.walk(search_dir):
             # Skip metadata dir
@@ -109,7 +110,7 @@ class LocalFileSystemBackend(StorageBackend):
     async def get_metadata(self, file_id: str) -> Dict:
         meta_path = self._get_metadata_path(file_id)
         if not os.path.exists(meta_path):
-            raise FileNotFoundError(f"Metadata not found for: {file_id}")
+            raise FileNotFoundError(_("Metadata not found for: {}").format(file_id))
 
         async with aiofiles.open(meta_path, "r") as f:
             content = await f.read()

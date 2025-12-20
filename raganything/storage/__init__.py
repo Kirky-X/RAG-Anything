@@ -13,6 +13,7 @@ from .backends.minio_backend import MinIOStorageBackend
 from .core.factory import StorageFactory
 from .core.interfaces import StorageBackend
 from .manager.storage_manager import StorageManager
+from raganything.i18n import _
 
 __all__ = [
     "StorageBackend",

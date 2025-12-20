@@ -8,7 +8,8 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatResult
 from langchain_ollama import ChatOllama
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
 
 
 class RobustOllamaClient:
@@ -78,7 +79,7 @@ class RobustOllamaClient:
                 if attempt < self.max_retries:
                     # Exponential backoff: 1s, 2s, 4s...
                     sleep_time = 1 * (2**attempt)
-                    logger.info(f"Retrying in {sleep_time} seconds...")
+                    logger.info(_("Retrying in {} seconds...").format(sleep_time))
                     await asyncio.sleep(sleep_time)
                 else:
                     logger.error(
@@ -89,6 +90,6 @@ class RobustOllamaClient:
         if last_exception:
             raise last_exception
         else:
-            raise RuntimeError("Unknown error in RobustOllamaClient")
+            raise RuntimeError(_("Unknown error in RobustOllamaClient"))
 
     # Proxy other methods if needed, but ainvoke is the main one used by LLM class

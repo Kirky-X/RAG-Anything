@@ -14,7 +14,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
 
 # --- Re-implementation of missing utils functions ---
 
@@ -331,7 +332,7 @@ def fix_completion_delimiter(
     if stripped_result and (
         stripped_result.endswith("entity") or stripped_result.endswith("relation")
     ):
-        logger.warning(f"Adding missing completion delimiter to LLM output")
+        logger.warning(_("Adding missing completion delimiter to LLM output"))
         return result + "\n" + completion_delimiter
 
     # If result is not empty but doesn't end properly, add delimiter
@@ -484,7 +485,7 @@ def normalize_source_ids_limit_method(method: str) -> str:
     return method
 
 
-logger = logger
+def logger(): return get_i18n_logger()
 
 
 VERBOSE_DEBUG = os.getenv("VERBOSE", "false").lower() == "true"
@@ -616,7 +617,7 @@ async def extract_entities(
 
     except Exception as e:
         # Fallback: return empty results for each chunk
-        logger.warning(f"Error in extract_entities patch, using fallback: {e}")
+        logger.warning(_("Error in extract_entities patch, using fallback: {}").format(e))
 
         # Return minimal structure to prevent downstream errors
         results = []
@@ -718,7 +719,7 @@ def patch_lightrag():
             module.generate_track_id = generate_track_id
             module.subtract_source_ids = subtract_source_ids
             module.normalize_source_ids_limit_method = normalize_source_ids_limit_method
-            module.logger = logger
+            module.logger = get_i18n_logger()
             module.VERBOSE_DEBUG = VERBOSE_DEBUG
             module.verbose_debug = verbose_debug
             module.set_verbose_debug = set_verbose_debug

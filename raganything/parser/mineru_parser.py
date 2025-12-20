@@ -14,9 +14,10 @@ from pathlib import Path
 from queue import Empty, Queue
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
 
 from .base_parser import Parser
+from raganything.i18n import _
 
 
 class MineruExecutionError(Exception):
@@ -42,8 +43,9 @@ class MineruParser(Parser):
 
     __slots__ = ()
 
-    # 使用统一全局 logger
-    logger = logger
+    # 使用国际化 logger
+    def logger():
+        return get_i18n_logger()
 
     def __init__(self) -> None:
         """Initialize MineruParser"""
@@ -118,7 +120,7 @@ class MineruParser(Parser):
             import platform
 
             # Log the command being executed
-            logger.info(f"Executing mineru command: {' '.join(cmd)}")
+            logger.info(_("Executing mineru command: {}").format(' '.join(cmd)))
 
             subprocess_kwargs = {
                 "stdout": subprocess.PIPE,
@@ -171,7 +173,7 @@ class MineruParser(Parser):
                         prefix, line = stdout_queue.get_nowait()
                         output_lines.append(line)
                         # Log mineru output with INFO level, prefixed with [MinerU]
-                        logger.info(f"[MinerU] {line}")
+                        logger.info(_("[MinerU] {}").format(line))
                 except Empty:
                     pass
 
@@ -181,13 +183,13 @@ class MineruParser(Parser):
                         prefix, line = stderr_queue.get_nowait()
                         # Log mineru errors with WARNING level
                         if "warning" in line.lower():
-                            logger.warning(f"[MinerU] {line}")
+                            logger.warning(_("[MinerU] {}").format(line))
                         elif "error" in line.lower():
-                            logger.error(f"[MinerU] {line}")
+                            logger.error(_("[MinerU] {}").format(line))
                             error_message = line.split("\n")[0]
                             error_lines.append(error_message)
                         else:
-                            logger.info(f"[MinerU] {line}")
+                            logger.info(_("[MinerU] {}").format(line))
                 except Empty:
                     pass
 
@@ -201,7 +203,7 @@ class MineruParser(Parser):
                 while True:
                     prefix, line = stdout_queue.get_nowait()
                     output_lines.append(line)
-                    logger.info(f"[MinerU] {line}")
+                    logger.info(_("[MinerU] {}").format(line))
             except Empty:
                 pass
 
@@ -209,13 +211,13 @@ class MineruParser(Parser):
                 while True:
                     prefix, line = stderr_queue.get_nowait()
                     if "warning" in line.lower():
-                        logger.warning(f"[MinerU] {line}")
+                        logger.warning(_("[MinerU] {}").format(line))
                     elif "error" in line.lower():
-                        logger.error(f"[MinerU] {line}")
+                        logger.error(_("[MinerU] {}").format(line))
                         error_message = line.split("\n")[0]
                         error_lines.append(error_message)
                     else:
-                        logger.info(f"[MinerU] {line}")
+                        logger.info(_("[MinerU] {}").format(line))
             except Empty:
                 pass
 
@@ -235,9 +237,9 @@ class MineruParser(Parser):
         except MineruExecutionError:
             raise
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error running mineru subprocess command: {e}")
-            logger.error(f"Command: {' '.join(cmd)}")
-            logger.error(f"Return code: {e.returncode}")
+            logger.error(_("Error running mineru subprocess command: {}").format(e))
+            logger.error(_("Command: {}").format(' '.join(cmd)))
+            logger.error(_("Return code: {}").format(e.returncode))
             raise
         except FileNotFoundError:
             raise RuntimeError(
@@ -281,7 +283,7 @@ class MineruParser(Parser):
                 with open(md_file, "r", encoding="utf-8") as f:
                     md_content = f.read()
             except Exception as e:
-                logger.warning(f"Could not read markdown file {md_file}: {e}")
+                logger.warning(_("Could not read markdown file {}: {}").format(md_file, e))
 
         # Read JSON content list
         content_list = []
@@ -312,7 +314,7 @@ class MineruParser(Parser):
                                 )
 
             except Exception as e:
-                logger.warning(f"Could not read JSON file {json_file}: {e}")
+                logger.warning(_("Could not read JSON file {}: {}").format(json_file, e))
 
         return content_list, md_content
 
@@ -341,7 +343,7 @@ class MineruParser(Parser):
             # Convert to Path object for easier handling
             pdf_path = Path(pdf_path)
             if not pdf_path.exists():
-                raise FileNotFoundError(f"PDF file does not exist: {pdf_path}")
+                raise FileNotFoundError(_("PDF file does not exist: {}").format(pdf_path))
 
             name_without_suff = pdf_path.stem
 
@@ -375,7 +377,7 @@ class MineruParser(Parser):
         except MineruExecutionError:
             raise
         except Exception as e:
-            logger.error(f"Error in parse_pdf: {str(e)}")
+            logger.error(_("Error in parse_pdf: {}").format(str(e)))
             raise
 
     def parse_image(
@@ -404,7 +406,7 @@ class MineruParser(Parser):
             # Convert to Path object for easier handling
             image_path = Path(image_path)
             if not image_path.exists():
-                raise FileNotFoundError(f"Image file does not exist: {image_path}")
+                raise FileNotFoundError(_("Image file does not exist: {}").format(image_path))
 
             # Supported image formats by MinerU 2.0
             mineru_supported_formats = {".png", ".jpeg", ".jpg"}
@@ -525,7 +527,7 @@ class MineruParser(Parser):
                         pass  # Ignore cleanup errors
 
         except Exception as e:
-            logger.error(f"Error in parse_image: {str(e)}")
+            logger.error(_("Error in parse_image: {}").format(str(e)))
             raise
 
     def parse_office_doc(
@@ -562,7 +564,7 @@ class MineruParser(Parser):
             )
 
         except Exception as e:
-            logger.error(f"Error in parse_office_doc: {str(e)}")
+            logger.error(_("Error in parse_office_doc: {}").format(str(e)))
             raise
 
     def parse_text_file(
@@ -596,7 +598,7 @@ class MineruParser(Parser):
             )
 
         except Exception as e:
-            logger.error(f"Error in parse_text_file: {str(e)}")
+            logger.error(_("Error in parse_text_file: {}").format(str(e)))
             raise
 
     def parse_document(
@@ -623,7 +625,7 @@ class MineruParser(Parser):
         # Convert to Path object
         file_path = Path(file_path)
         if not file_path.exists():
-            raise FileNotFoundError(f"File does not exist: {file_path}")
+            raise FileNotFoundError(_("File does not exist: {}").format(file_path))
 
         # Get file extension
         ext = file_path.suffix.lower()
@@ -673,7 +675,7 @@ class MineruParser(Parser):
                 subprocess_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
             result = subprocess.run(["mineru", "--version"], **subprocess_kwargs)
-            logger.debug(f"MinerU version: {result.stdout.strip()}")
+            logger.debug(_("MinerU version: {}").format(result.stdout.strip()))
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             logger.debug(

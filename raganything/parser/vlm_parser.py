@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
 
 # Optional imports handling
 try:
@@ -26,15 +26,21 @@ except ImportError:
 
 from raganything.llm import LLMProviderConfig, build_llm
 from raganything.parser.base_parser import Parser
+from raganything.i18n import _
 
 
 class VlmParser(Parser):
     """
-    VlmParser class for understanding and describing image content.
-    Uses a VLM (Visual Language Model) via the defined LLM interface.
+    Parser for images and video frames using Vision-Language Models (VLM).
+    Supports multiple providers and fallback mechanisms.
     """
 
-    def __init__(self, config_path: str = "config.toml"):
+    # 使用国际化logger
+    @staticmethod
+    def logger():
+        return get_i18n_logger()
+
+    def __init__(self, config_path: str = "config.toml") -> None:
         """Initialize the VlmParser.
 
         Args:
@@ -60,7 +66,7 @@ class VlmParser(Parser):
             Dict[str, Any]: Configuration dictionary.
         """
         if not toml:
-            logger.warning(
+            self.logger().warning(
                 "tomli or tomllib not found. Cannot load config.toml. Using defaults."
             )
             return {}
@@ -71,14 +77,14 @@ class VlmParser(Parser):
             if abs_path.exists():
                 path = abs_path
             else:
-                logger.warning(f"Config file {path} not found. Using defaults.")
+                self.logger().warning(f"Config file {path} not found. Using defaults.")
                 return {}
 
         try:
             with open(path, "rb") as f:
                 return toml.load(f)
         except Exception as e:
-            logger.error(f"Failed to parse config file {path}: {e}")
+            self.logger().error(f"Failed to parse config file {path}: {e}")
             return {}
 
     def _init_llm(self):
@@ -99,7 +105,7 @@ class VlmParser(Parser):
         timeout = int(vision_config.get("timeout", 10))
         max_retries = vision_config.get("max_retries", 3)
 
-        logger.info(
+        self.logger().info(
             f"Initializing VlmParser with model={model}, provider={provider}, base={api_base}, timeout={timeout}"
         )
 
@@ -116,11 +122,11 @@ class VlmParser(Parser):
             s.close()
 
             if result != 0:
-                logger.warning(
+                self.logger().warning(
                     f"Ollama might be unreachable at {api_base} (connect_ex returned {result}). Proceeding anyway as requested."
                 )
         except Exception as e:
-            logger.warning(
+            self.logger().warning(
                 f"Network check failed: {e}. Proceeding anyway as requested."
             )
 
@@ -156,7 +162,7 @@ class VlmParser(Parser):
                     original_size = img.size
                     if max(original_size) > max_size:
                         img.thumbnail((max_size, max_size))
-                        logger.debug(
+                        self.logger().debug(
                             f"Resized image from {original_size} to {img.size}"
                         )
 
@@ -169,7 +175,7 @@ class VlmParser(Parser):
                 img.save(buffered, format="JPEG", quality=85)
                 return base64.b64encode(buffered.getvalue()).decode("utf-8")
         except Exception as e:
-            raise RuntimeError(f"Failed to process image {image_path}: {e}")
+            raise RuntimeError(_("Failed to process image {}: {}").format(image_path, e))
 
     async def parse_image_async(
         self,
@@ -211,12 +217,12 @@ class VlmParser(Parser):
         try:
             # Feature Extraction
             max_size = kwargs.get("max_size", 1024)  # Default max dimension 1024px
-            logger.info(f"Encoding image {file_path} with max_size={max_size}")
+            self.logger().info(f"Encoding image {file_path} with max_size={max_size}")
             image_base64 = self._encode_image(file_path, max_size=max_size)
 
             # Description Generation
             # We pass image_data to the LLM call
-            logger.info(f"Sending request to VLM for {file_path}")
+            self.logger().info(f"Sending request to VLM for {file_path}")
             llm_start_time = time.time()
 
             # Wrap the LLM call with a timeout to prevent indefinite hanging
@@ -239,13 +245,13 @@ class VlmParser(Parser):
                     timeout=vlm_timeout,
                 )
             except asyncio.TimeoutError:
-                logger.error(
+                self.logger().error(
                     f"VLM request timed out after {vlm_timeout}s for {file_path}"
                 )
-                raise TimeoutError(f"Request timed out after {vlm_timeout}s")
+                raise TimeoutError(_("Request timed out after {}s").format(vlm_timeout))
 
             llm_end_time = time.time()
-            logger.info(
+            self.logger().info(
                 f"VLM request for {file_path} completed in {llm_end_time - llm_start_time:.2f}s"
             )
 
@@ -264,7 +270,7 @@ class VlmParser(Parser):
             }
 
         except Exception as e:
-            logger.error(f"Error parsing image {file_path}: {e}")
+            self.logger().error(f"Error parsing image {file_path}: {e}")
             return {
                 "filename": file_path.name,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -297,7 +303,7 @@ class VlmParser(Parser):
                 # But since this is a sync method called potentially from sync code, we assume it's fine.
                 # Ideally, users should use parse_image_async if they are in async context.
                 # For this task, we assume sync execution via script.
-                logger.warning(
+                self.logger().warning(
                     "Calling sync parse() from running event loop is risky. Use parse_image_async() instead."
                 )
                 # Use a separate thread or task? For now, just try to run it.
@@ -312,5 +318,5 @@ class VlmParser(Parser):
 
             return result
         except Exception as e:
-            logger.error(f"Fatal error in parse: {e}")
+            self.logger().error(f"Fatal error in parse: {e}")
             return {"filename": Path(file_path).name, "error": str(e)}

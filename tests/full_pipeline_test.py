@@ -19,16 +19,21 @@ from typing import Any, Dict, List, Optional
 
 import psutil
 
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
+
 # 配置日志
+log_file_handler = logging.FileHandler("/tmp/full_pipeline_test.log")
+stream_handler = logging.StreamHandler()
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("/tmp/full_pipeline_test.log"),
-        logging.StreamHandler(),
+        log_file_handler,
+        stream_handler,
     ],
 )
-logger = logging.getLogger(__name__)
+logger = get_i18n_logger()
 
 
 class PerformanceMonitor:
@@ -64,8 +69,8 @@ class PerformanceMonitor:
                 - self.metrics["start_memory"],
             }
         )
-        logger.info(f"处理耗时: {self.metrics['duration']:.2f}s")
-        logger.info(f"内存增长: {self.metrics['memory_increase']:.2f}MB")
+        logger.info(_("Processing time: {:.2f}s").format(self.metrics['duration']))
+        logger.info(_("Memory increase: {:.2f}MB").format(self.metrics['memory_increase']))
         return self.metrics
 
 
@@ -82,25 +87,25 @@ class FullPipelineTester:
         # 确保输出目录存在
         os.makedirs(output_dir, exist_ok=True)
 
-        logger.info(f"初始化测试器 - 测试视频: {test_video_path}")
-        logger.info(f"输出目录: {output_dir}")
-        logger.info(f"临时目录: {self.temp_dir}")
+        logger.info(_("Initializing tester - test video: {}").format(test_video_path))
+        logger.info(_("Output directory: {}").format(output_dir))
+        logger.info(_("Temporary directory: {}").format(self.temp_dir))
 
     def validate_input_file(self) -> bool:
         """验证输入文件"""
-        logger.info("=== 1. 输入文件验证 ===")
+        logger.info("=== 1. Input file validation ===")
 
         if not os.path.exists(self.test_video_path):
-            logger.error(f"测试视频文件不存在: {self.test_video_path}")
+            logger.error(_("Test video file does not exist: {}").format(self.test_video_path))
             return False
 
         # 检查文件大小和格式
         file_size = os.path.getsize(self.test_video_path)
         file_ext = os.path.splitext(self.test_video_path)[1].lower()
 
-        logger.info(f"文件路径: {self.test_video_path}")
-        logger.info(f"文件大小: {file_size / 1024 / 1024:.2f}MB")
-        logger.info(f"文件格式: {file_ext}")
+        logger.info(_("File path: {}").format(self.test_video_path))
+        logger.info(_("File size: {:.2f}MB").format(file_size / 1024 / 1024))
+        logger.info(_("File format: {}").format(file_ext))
 
         # 验证是否为有效视频文件
         try:
@@ -126,9 +131,9 @@ class FullPipelineTester:
                 video_info = json.loads(result.stdout)
                 if "streams" in video_info and len(video_info["streams"]) > 0:
                     stream = video_info["streams"][0]
-                    logger.info(f"视频编码: {stream.get('codec_name', 'unknown')}")
-                    logger.info(f"视频时长: {stream.get('duration', 'unknown')}s")
-                    logger.info(f"比特率: {stream.get('bit_rate', 'unknown')}bps")
+                    logger.info(_("Video codec: {}").format(stream.get('codec_name', 'unknown')))
+                    logger.info(_("Video duration: {}s").format(stream.get('duration', 'unknown')))
+                    logger.info(_("Bitrate: {}bps").format(stream.get('bit_rate', 'unknown')))
                     self.results["input_validation"] = {
                         "file_size_mb": file_size / 1024 / 1024,
                         "codec": stream.get("codec_name"),
@@ -138,9 +143,9 @@ class FullPipelineTester:
                     return True
 
         except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError) as e:
-            logger.warning(f"ffprobe分析失败: {e}")
+            logger.warning(_("ffprobe analysis failed: {}").format(e))
 
-        logger.info("输入文件验证通过")
+        logger.info("Input file validation passed")
         return True
 
     def test_video_parsing(self) -> bool:
@@ -189,7 +194,7 @@ class FullPipelineTester:
                 else:
                     f.write(str(parse_result))
 
-            logger.info(f"解析结果已保存至: {parse_output}")
+            logger.info(_("Parse results saved to: {}").format(parse_output))
 
             metrics = self.monitor.stop_monitoring()
             self.results["video_parsing"]["performance"] = metrics
@@ -197,7 +202,7 @@ class FullPipelineTester:
             return True
 
         except Exception as e:
-            logger.error(f"视频解析测试失败: {e}")
+            logger.error(_("Video parsing test failed: {}").format(e))
             self.monitor.stop_monitoring()
             return False
 
@@ -226,11 +231,11 @@ class FullPipelineTester:
 
             embeddings = []
             for i, text in enumerate(test_texts):
-                logger.info(f"生成嵌入向量 {i+1}/{len(test_texts)}")
+                logger.info(_("Generating embedding {}/{}").format(i+1, len(test_texts)))
                 embedding = await embedder.func([text])
 
                 if embedding is None:
-                    logger.error(f"文本 {i+1} 嵌入生成失败")
+                    logger.error(_("Text {} embedding generation failed").format(i+1))
                     return False
 
                 # Convert numpy array to list for JSON serialization
@@ -264,9 +269,9 @@ class FullPipelineTester:
                 ),
             }
 
-            logger.info(f"成功生成 {len(embeddings)} 个嵌入向量")
+            logger.info(_("Successfully generated {} embeddings").format(len(embeddings)))
             logger.info(
-                f"嵌入向量维度: {self.results['embedding_generation']['embedding_dimensions']}"
+                _("Embedding dimensions: {}").format(self.results['embedding_generation']['embedding_dimensions'])
             )
 
             metrics = self.monitor.stop_monitoring()
@@ -275,7 +280,7 @@ class FullPipelineTester:
             return True
 
         except Exception as e:
-            logger.error(f"嵌入向量生成测试失败: {e}")
+            logger.error(_("Embedding generation test failed: {}").format(e))
             self.monitor.stop_monitoring()
             return False
 
@@ -314,7 +319,7 @@ class FullPipelineTester:
                 logger.error("文档存储失败")
                 return False
 
-            logger.info(f"文档存储成功，ID: {doc_id}")
+            logger.info(_("Document stored successfully, ID: {}").format(doc_id))
 
             # 检索文档（异步）
             retrieved_content = await storage_manager.retrieve_document(doc_id)
@@ -345,7 +350,7 @@ class FullPipelineTester:
             return True
 
         except Exception as e:
-            logger.error(f"存储操作测试失败: {e}")
+            logger.error(_("Storage operation test failed: {}").format(e))
             self.monitor.stop_monitoring()
             return False
 
@@ -372,14 +377,14 @@ class FullPipelineTester:
 
             query_results = []
             for i, query in enumerate(test_queries):
-                logger.info(f"处理查询 {i+1}: {query}")
+                logger.info(_("Processing query {}: {}").format(i+1, query))
 
                 try:
                     # 执行查询（使用同步方法作为回退）
                     result = query_processor.query(query, mode="mix")
 
                     if not result:
-                        logger.warning(f"查询 {i+1} 返回空结果")
+                        logger.warning(_("Query {} returned empty results").format(i+1))
                         continue
 
                     query_results.append(
@@ -391,7 +396,7 @@ class FullPipelineTester:
                     )
 
                 except Exception as query_error:
-                    logger.warning(f"查询 {i+1} 失败: {query_error}")
+                    logger.warning(_("Query {} failed: {}").format(i+1, query_error))
                     continue
 
             if not query_results:
@@ -413,7 +418,7 @@ class FullPipelineTester:
                 ],
             }
 
-            logger.info(f"成功处理 {len(query_results)}/{len(test_queries)} 个查询")
+            logger.info(_("Successfully processed {}/{} queries").format(len(query_results), len(test_queries)))
 
             metrics = self.monitor.stop_monitoring()
             self.results["query_processing"]["performance"] = metrics
@@ -421,7 +426,7 @@ class FullPipelineTester:
             return True
 
         except Exception as e:
-            logger.error(f"查询处理测试失败: {e}")
+            logger.error(_("Query processing test failed: {}").format(e))
             self.monitor.stop_monitoring()
             return False
 
@@ -453,14 +458,14 @@ class FullPipelineTester:
             with open(report_file, "w", encoding="utf-8") as f:
                 json.dump(final_report, f, ensure_ascii=False, indent=2)
 
-            logger.info(f"测试报告已生成: {report_file}")
+            logger.info(_("Test report generated: {}").format(report_file))
 
             # 生成文本报告
             text_report = os.path.join(self.output_dir, "test_summary.txt")
             with open(text_report, "w", encoding="utf-8") as f:
                 f.write(self.generate_text_summary())
 
-            logger.info(f"文本摘要已生成: {text_report}")
+            logger.info(_("Text summary generated: {}").format(text_report))
 
             self.results["output_generation"] = {
                 "report_file": report_file,
@@ -474,7 +479,7 @@ class FullPipelineTester:
             return True
 
         except Exception as e:
-            logger.error(f"输出生成测试失败: {e}")
+            logger.error(_("Output generation test failed: {}").format(e))
             self.monitor.stop_monitoring()
             return False
 
@@ -537,13 +542,21 @@ RAG-Anything 全流程测试报告
         return text
 
     def cleanup(self):
-        """清理临时文件"""
+        """清理临时文件和日志处理器"""
         try:
             if os.path.exists(self.temp_dir):
                 shutil.rmtree(self.temp_dir)
-                logger.info(f"清理临时目录: {self.temp_dir}")
+                logger.info(_("Cleaned up temporary directory: {}").format(self.temp_dir))
         except Exception as e:
-            logger.warning(f"清理临时文件时出错: {e}")
+            logger.warning(_("Error cleaning up temporary files: {}").format(e))
+        
+        # 关闭日志处理器以避免ResourceWarning
+        try:
+            log_file_handler.close()
+            stream_handler.close()
+            logger.info("日志处理器已关闭")
+        except Exception as e:
+            logger.warning(_("Error closing log handlers: {}").format(e))
 
     async def run_full_pipeline_test_async(self) -> bool:
         """运行完整的流程测试（异步版本）"""
@@ -583,14 +596,14 @@ RAG-Anything 全流程测试报告
             # 生成最终摘要
             summary = self.generate_summary()
             logger.info(
-                f"测试摘要: {summary['passed_tests']}/{summary['total_tests']} 通过"
+                _("Test summary: {}/{} passed").format(summary['passed_tests'], summary['total_tests'])
             )
-            logger.info(f"成功率: {summary['success_rate']:.1f}%")
+            logger.info(_("Success rate: {:.1f}%").format(summary['success_rate']))
 
             return True
 
         except Exception as e:
-            logger.error(f"全流程测试失败: {e}")
+            logger.error(_("Full pipeline test failed: {}").format(e))
             return False
 
         finally:

@@ -3,6 +3,7 @@
 
 from dataclasses import dataclass, field
 from typing import Dict, Optional
+from raganything.i18n import _
 
 
 @dataclass

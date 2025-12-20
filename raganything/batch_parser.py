@@ -14,9 +14,10 @@ from typing import Dict, List, Optional, Tuple
 
 from tqdm import tqdm
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
 
 from .parser import DoclingParser, MineruParser
+from raganything.i18n import _
 
 
 @dataclass
@@ -40,12 +41,12 @@ class BatchProcessingResult:
     def summary(self) -> str:
         """Generate a summary of the batch processing results"""
         return (
-            f"Batch Processing Summary:\n"
-            f"  Total files: {self.total_files}\n"
-            f"  Successful: {len(self.successful_files)} ({self.success_rate:.1f}%)\n"
-            f"  Failed: {len(self.failed_files)}\n"
-            f"  Processing time: {self.processing_time:.2f} seconds\n"
-            f"  Output directory: {self.output_dir}"
+            _("Batch Processing Summary:\n")
+            + _("  Total files: {}\n").format(self.total_files)
+            + _("  Successful: {} ({:.1f}%)\n").format(len(self.successful_files), self.success_rate)
+            + _("  Failed: {}\n").format(len(self.failed_files))
+            + _("  Processing time: {:.2f} seconds\n").format(self.processing_time)
+            + _("  Output directory: {}").format(self.output_dir)
         )
 
 
@@ -79,7 +80,7 @@ class BatchParser:
         self.max_workers = max_workers
         self.show_progress = show_progress
         self.timeout_per_file = timeout_per_file
-        self.logger = logger
+        self.logger = get_i18n_logger()
 
         # Initialize parser
         if parser_type == "mineru":
@@ -87,15 +88,15 @@ class BatchParser:
         elif parser_type == "docling":
             self.parser = DoclingParser()
         else:
-            raise ValueError(f"Unsupported parser type: {parser_type}")
+            raise ValueError(_("Unsupported parser type: {}").format(parser_type))
 
         # Check parser installation (optional)
         if not skip_installation_check:
             if not self.parser.check_installation():
                 self.logger.warning(
-                    f"{parser_type.title()} parser installation check failed. "
-                    f"This may be due to package conflicts. "
-                    f"Use skip_installation_check=True to bypass this check."
+                    _("{} parser installation check failed. "
+                    "This may be due to package conflicts. "
+                    "Use skip_installation_check=True to bypass this check.").format(parser_type.title())
                 )
                 # Don't raise an error, just warn - the parser might still work
 
@@ -131,7 +132,7 @@ class BatchParser:
                 if path.suffix.lower() in supported_extensions:
                     supported_files.append(str(path))
                 else:
-                    self.logger.warning(f"Unsupported file type: {path}")
+                    self.logger.warning(_("Unsupported file type: {}").format(path))
 
             elif path.is_dir():
                 if recursive:
@@ -152,7 +153,7 @@ class BatchParser:
                             supported_files.append(str(file_path))
 
             else:
-                self.logger.warning(f"Path does not exist: {path}")
+                self.logger.warning(_("Path does not exist: {}").format(path))
 
         return supported_files
 
@@ -190,14 +191,14 @@ class BatchParser:
             processing_time = time.time() - start_time
 
             self.logger.info(
-                f"Successfully processed {file_path} "
-                f"({len(content_list)} content blocks, {processing_time:.2f}s)"
+                _("Successfully processed {} "
+                "({} content blocks, {:.2f}s)").format(file_path, len(content_list), processing_time)
             )
 
             return True, file_path, None
 
         except Exception as e:
-            error_msg = f"Failed to process {file_path}: {str(e)}"
+            error_msg = _("Failed to process {}: {}").format(file_path, str(e))
             self.logger.error(error_msg)
             return False, file_path, error_msg
 
@@ -238,7 +239,7 @@ class BatchParser:
                 output_dir=output_dir,
             )
 
-        self.logger.info(f"Found {len(supported_files)} files to process")
+        self.logger.info(_("Found {} files to process").format(len(supported_files)))
 
         # Create output directory
         output_path = Path(output_dir)
@@ -254,7 +255,7 @@ class BatchParser:
         if self.show_progress:
             pbar = tqdm(
                 total=len(supported_files),
-                desc=f"Processing files ({self.parser_type})",
+                desc=_("Processing files ({})").format(self.parser_type),
                 unit="file",
             )
 
@@ -288,13 +289,13 @@ class BatchParser:
                         pbar.update(1)
 
         except Exception as e:
-            self.logger.error(f"Batch processing failed: {str(e)}")
+            self.logger.error(_("Batch processing failed: {}").format(str(e)))
             # Mark remaining files as failed
             for future in future_to_file:
                 if not future.done():
                     file_path = future_to_file[future]
                     failed_files.append(file_path)
-                    errors[file_path] = f"Processing interrupted: {str(e)}"
+                    errors[file_path] = _("Processing interrupted: {}").format(str(e))
                     if pbar:
                         pbar.update(1)
 
@@ -420,7 +421,7 @@ def main():
         return 0
 
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
+        logger.error(_("Error: {}").format(str(e)))
         return 1
 
 

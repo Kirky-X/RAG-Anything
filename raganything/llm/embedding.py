@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
 
 
 def build_embedding_func(
@@ -52,7 +53,7 @@ def build_embedding_func(
         try:
             from langchain_openai import OpenAIEmbeddings
         except Exception as e:
-            raise ValueError(f"LangChain OpenAI embeddings unavailable: {e}")
+            raise ValueError(_("LangChain OpenAI embeddings unavailable: {}").format(e))
 
         # Check for dummy key to use local fallback (e.g. for testing)
         current_key = api_key or os.environ.get("OPENAI_API_KEY")
@@ -91,7 +92,7 @@ def build_embedding_func(
         try:
             from langchain_community.embeddings import OllamaEmbeddings
         except Exception as e:
-            raise ValueError(f"LangChain Ollama embeddings unavailable: {e}")
+            raise ValueError(_("LangChain Ollama embeddings unavailable: {}").format(e))
 
         init_kwargs: Dict[str, Any] = {"model": model}
         if api_base:
@@ -140,7 +141,7 @@ def build_embedding_func(
             func=LocalEmbeddingWrapper(embedding_dim),
         )
 
-    raise ValueError(f"Unsupported embedding provider: {provider}")
+    raise ValueError(_("Unsupported embedding provider: {}").format(provider))
 
 
 class LazyLangChainEmbeddingWrapper:
@@ -185,7 +186,7 @@ class LazyLangChainEmbeddingWrapper:
         try:
             # Check client initialization
             if self._client is None:
-                # logger.debug(f"Initializing client with kwargs: {self.init_kwargs}")
+                # logger.debug(_("Initializing client with kwargs: {}").format(self.init_kwargs))
                 # print(f"[EmbeddingWrapper] Initializing client...", file=sys.stderr, flush=True)
                 # Initialize client immediately (this is sync but fast usually)
                 self._client = self.provider_cls(**self.init_kwargs)
@@ -200,7 +201,7 @@ class LazyLangChainEmbeddingWrapper:
             import traceback
 
             tb = traceback.format_exc()
-            logger.error(f"Embedding generation failed: {e}\n{tb}")
+            logger.error(_("Embedding generation failed: {}\n{}").format(e, tb))
             print(
                 f"[EmbeddingWrapper] Embedding generation failed: {e}\n{tb}",
                 file=sys.stderr,

@@ -15,8 +15,9 @@ except ImportError:
     MODELSCOPE_AVAILABLE = False
 
 from raganything.config import RAGAnythingConfig
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
 from raganything.models.config import ModelInfo, default_models_config
+from raganything.i18n import _
 
 
 class ModelManager:
@@ -30,13 +31,14 @@ class ModelManager:
         Args:
             cache_dir (Optional[str]): Directory to cache models. Defaults to environment variable MODELSCOPE_CACHE or './models_cache'.
         """
+        self.logger = get_i18n_logger()
         self.cache_dir = cache_dir or os.environ.get(
             "MODELSCOPE_CACHE", "./models_cache"
         )
         self._ensure_cache_dir()
 
         if not MODELSCOPE_AVAILABLE:
-            logger.warning(
+            self.logger.warning(
                 "ModelScope is not installed. Model management features will be limited."
             )
 
@@ -62,7 +64,7 @@ class ModelManager:
             # If it's just an ID string, create a temporary ModelInfo
             model_info = ModelInfo(model_id=model_info)
 
-        logger.info(f"Checking/Downloading model: {model_info.model_id}...")
+        self.logger.info(_("Checking/Downloading model: {}...").format(model_info.model_id))
 
         try:
             model_path = snapshot_download(
@@ -70,7 +72,7 @@ class ModelManager:
                 revision=model_info.revision,
                 cache_dir=self.cache_dir,
             )
-            logger.info(f"Model available at: {model_path}")
+            self.logger.info(_("Model available at: {}").format(model_path))
 
             # Update the local path in the config object if provided
             if isinstance(model_info, ModelInfo):
@@ -78,7 +80,7 @@ class ModelManager:
 
             return model_path
         except Exception as e:
-            logger.error(f"Failed to download model {model_info.model_id}: {e}")
+            self.logger.error(_("Failed to download model {}: {}").format(model_info.model_id, e))
             raise
 
     def get_sense_voice_model_path(self) -> str:

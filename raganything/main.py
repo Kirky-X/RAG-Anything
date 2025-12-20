@@ -60,15 +60,20 @@ from dotenv import load_dotenv
 
 from raganything import RAGAnything, RAGAnythingConfig
 from raganything.config import DirectoryConfig, MultimodalConfig, ParsingConfig
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import init_i18n
+from raganything.i18n import _
 
 load_dotenv(dotenv_path=".env", override=False)
 
 
 def configure_logging():
     """Configure logging for the application using local logger"""
-    # Use the local logger that's already configured in raganything.logger
-    # The logger is automatically initialized when imported
+    # Initialize i18n before any logging to ensure translations are available
+    init_i18n()
+    
+    # Use the i18n logger for localized logging
+    logger = get_i18n_logger()
     logger.info("RAGAnything CLI logging initialized")
 
     # Enable verbose debug if needed
@@ -114,31 +119,32 @@ async def process_with_rag(
         # Define LLM model function using Ollama
         def llm_model_func(prompt, system_prompt=None, history_messages=[], **kwargs):
             # Debug logging to trace parameter types
-            print(f"=== DEBUG llm_model_func called ===")
-            print(f"prompt type: {type(prompt)}, value: {repr(prompt)[:200]}")
-            print(
-                f"system_prompt type: {type(system_prompt)}, value: {repr(system_prompt)[:200]}"
+            logger = get_i18n_logger()
+            logger.debug(_("=== DEBUG llm_model_func called ==="))
+            logger.debug(_("prompt type: {}, value: {}").format(type(prompt), repr(prompt)[:200]))
+            logger.debug(
+                _("system_prompt type: {}, value: {}").format(type(system_prompt), repr(system_prompt)[:200])
             )
-            print(
-                f"history_messages type: {type(history_messages)}, length: {len(history_messages)}"
+            logger.debug(
+                _("history_messages type: {}, length: {}").format(type(history_messages), len(history_messages))
             )
-            print(f"kwargs keys: {list(kwargs.keys())}")
+            logger.debug(_("kwargs keys: {}").format(list(kwargs.keys())))
 
             # Check if prompt is a dict (which would cause the encode error)
             if isinstance(prompt, dict):
-                print(f"ERROR: prompt is a dict instead of string!")
-                print(f"prompt content: {prompt}")
+                logger.error(_("ERROR: prompt is a dict instead of string!"))
+                logger.error(_("prompt content: {}").format(prompt))
                 # Try to extract text content from dict
                 if "query" in prompt:
                     prompt = prompt["query"]
-                    print(f"Extracted query from dict: {prompt}")
+                    logger.info(_("Extracted query from dict: {}").format(prompt))
                 elif "content" in prompt:
                     prompt = prompt["content"]
-                    print(f"Extracted content from dict: {prompt}")
+                    logger.info(_("Extracted content from dict: {}").format(prompt))
                 else:
                     # Convert dict to string as fallback
                     prompt = str(prompt)
-                    print(f"Converted dict to string: {prompt}")
+                    logger.info(_("Converted dict to string: {}").format(prompt))
 
             # Handle keyword_extraction for Ollama
             keyword_extraction = kwargs.pop("keyword_extraction", None)
@@ -267,7 +273,8 @@ async def process_with_rag(
         )
 
         # Example queries - demonstrating different query approaches
-        logger.info("\nQuerying processed document:")
+        logger = get_i18n_logger()
+        logger.info("Querying processed document:")
 
         # 1. Pure text queries using aquery()
         text_queries = [
@@ -276,13 +283,13 @@ async def process_with_rag(
         ]
 
         for query in text_queries:
-            logger.info(f"\n[Text Query]: {query}")
+            logger.info(_("[Text Query]: {}").format(query))
             result = await rag.aquery(query, mode="hybrid")
-            logger.info(f"Answer: {result}")
+            logger.info(_("Answer: {}").format(result))
 
         # 2. Multimodal query with specific multimodal content using aquery_with_multimodal()
         logger.info(
-            "\n[Multimodal Query]: Analyzing performance data in context of document"
+            "[Multimodal Query]: Analyzing performance data in context of document"
         )
         multimodal_result = await rag.aquery_with_multimodal(
             "Compare this performance data with any similar results mentioned in the document",
@@ -298,10 +305,10 @@ async def process_with_rag(
             ],
             mode="hybrid",
         )
-        logger.info(f"Answer: {multimodal_result}")
+        logger.info(_("Answer: {}").format(multimodal_result))
 
         # 3. Another multimodal query with equation content
-        logger.info("\n[Multimodal Query]: Mathematical formula analysis")
+        logger.info("[Multimodal Query]: Mathematical formula analysis")
         equation_result = await rag.aquery_with_multimodal(
             "Explain this formula and relate it to any mathematical concepts in the document",
             multimodal_content=[
@@ -313,10 +320,11 @@ async def process_with_rag(
             ],
             mode="hybrid",
         )
-        logger.info(f"Answer: {equation_result}")
+        logger.info(_("Answer: {}").format(equation_result))
 
     except Exception as e:
-        logger.error(f"Error processing with RAG: {str(e)}")
+        logger = get_i18n_logger()
+        logger.error(_("Error processing with RAG: {}").format(str(e)))
         import traceback
 
         logger.error(traceback.format_exc())
@@ -359,9 +367,10 @@ if __name__ == "__main__":
     # Configure logging first
     configure_logging()
 
-    print("RAGAnything CLI")
-    print("=" * 30)
-    print("Processing document with multimodal RAG pipeline")
-    print("=" * 30)
+    logger = get_i18n_logger()
+    logger.info("RAGAnything CLI")
+    logger.info("=" * 30)
+    logger.info("Processing document with multimodal RAG pipeline")
+    logger.info("=" * 30)
 
     main()

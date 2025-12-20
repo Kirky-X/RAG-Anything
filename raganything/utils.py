@@ -10,7 +10,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
 
 T = TypeVar("T")
 
@@ -74,8 +75,8 @@ def separate_content(
     text_content = "\n\n".join(text_parts)
 
     logger.info("Content separation complete:")
-    logger.info(f"  - Text content length: {len(text_content)} characters")
-    logger.info(f"  - Multimodal items count: {len(multimodal_items)}")
+    logger.info(_("  - Text content length: {} characters").format(len(text_content)))
+    logger.info(_("  - Multimodal items count: {}").format(len(multimodal_items)))
 
     # Count multimodal types
     modal_types = {}
@@ -84,7 +85,7 @@ def separate_content(
         modal_types[modal_type] = modal_types.get(modal_type, 0) + 1
 
     if modal_types:
-        logger.info(f"  - Multimodal type distribution: {modal_types}")
+        logger.info(_("  - Multimodal type distribution: {}").format(modal_types))
 
     return text_content, multimodal_items
 
@@ -104,7 +105,7 @@ def encode_image_to_base64(image_path: str) -> str:
             encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
         return encoded_string
     except Exception as e:
-        logger.error(f"Failed to encode image {image_path}: {e}")
+        logger.error(_("Failed to encode image {}: {}").format(image_path, e))
         return ""
 
 
@@ -122,13 +123,13 @@ def validate_image_file(image_path: str, max_size_mb: int = 50) -> bool:
     try:
         path = Path(image_path)
 
-        logger.debug(f"Validating image path: {image_path}")
-        logger.debug(f"Resolved path object: {path}")
-        logger.debug(f"Path exists check: {path.exists()}")
+        logger.debug(_("Validating image path: {}").format(image_path))
+        logger.debug(_("Resolved path object: {}").format(path))
+        logger.debug(_("Path exists check: {}").format(path.exists()))
 
         # Check if file exists
         if not path.exists():
-            logger.warning(f"Image file not found: {image_path}")
+            logger.warning(_("Image file not found: {}").format(image_path))
             return False
 
         # Check file extension
@@ -150,7 +151,7 @@ def validate_image_file(image_path: str, max_size_mb: int = 50) -> bool:
         )
 
         if not has_valid_extension:
-            logger.warning(f"File does not appear to be an image: {image_path}")
+            logger.warning(_("File does not appear to be an image: {}").format(image_path))
             return False
 
         # Check file size
@@ -161,14 +162,14 @@ def validate_image_file(image_path: str, max_size_mb: int = 50) -> bool:
         )
 
         if file_size > max_size:
-            logger.warning(f"Image file too large ({file_size} bytes): {image_path}")
+            logger.warning(_("Image file too large ({} bytes): {}").format(file_size, image_path))
             return False
 
-        logger.debug(f"Image validation successful: {image_path}")
+        logger.debug(_("Image validation successful: {}").format(image_path))
         return True
 
     except Exception as e:
-        logger.error(f"Error validating image file {image_path}: {e}")
+        logger.error(_("Error validating image file {}: {}").format(image_path, e))
         return False
 
 
@@ -228,10 +229,10 @@ async def insert_text_content(
         loop = asyncio.get_running_loop()
         track_id = await loop.run_in_executor(None, lambda: insert_func(**kwargs))
 
-    logger.info(f"Text content insertion initiated with track_id: {track_id}")
+    logger.info(_("Text content insertion initiated with track_id: {}").format(track_id))
 
     if wait_for_processing and doc_ids:
-        logger.info(f"Waiting for document processing to complete for IDs: {doc_ids}")
+        logger.info(_("Waiting for document processing to complete for IDs: {}").format(doc_ids))
         start_time = time.time()
 
         while time.time() - start_time < max_wait_time:
@@ -247,16 +248,16 @@ async def insert_text_content(
                     status = doc_status.get("status", DocStatus.PENDING)
                     if status in [DocStatus.PENDING, DocStatus.PROCESSING]:
                         all_processed = False
-                        logger.info(f"Document {doc_id} status: {status}")
+                        logger.info(_("Document {} status: {}").format(doc_id, status))
                         break
                     elif status == DocStatus.FAILED:
-                        logger.error(f"Document {doc_id} processing failed")
+                        logger.error(_("Document {} processing failed").format(doc_id))
                         # Don't break here, check other documents
                     elif status == DocStatus.PROCESSED:
-                        logger.info(f"Document {doc_id} processing completed")
+                        logger.info(_("Document {} processing completed").format(doc_id))
 
                 except Exception as e:
-                    logger.warning(f"Error checking status for document {doc_id}: {e}")
+                    logger.warning(_("Error checking status for document {}: {}").format(doc_id, e))
                     all_processed = False
                     break
 
@@ -267,7 +268,7 @@ async def insert_text_content(
             # Wait before checking again
             await asyncio.sleep(2.0)
         else:
-            logger.warning(f"Processing wait timeout after {max_wait_time} seconds")
+            logger.warning(_("Processing wait timeout after {} seconds").format(max_wait_time))
 
     logger.info("Text content insertion complete")
     return track_id
@@ -317,7 +318,7 @@ async def insert_text_content_with_multimodal_content(
             )
 
     except Exception as e:
-        logger.info(f"Error: {e}")
+        logger.info(_("Error: {}").format(e))
         logger.info(
             "If the error is caused by the insert function not having a multimodal content parameter, please update the raganything branch of lightrag"
         )

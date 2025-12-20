@@ -14,6 +14,7 @@ from lightrag.utils import compute_mdhash_id, logger
 from raganything.prompt import PROMPTS
 
 from .base import BaseModalProcessor
+from raganything.i18n import _
 
 
 class EquationModalProcessor(BaseModalProcessor):
@@ -96,7 +97,7 @@ class EquationModalProcessor(BaseModalProcessor):
             return enhanced_caption, entity_info
 
         except Exception as e:
-            logger.error(f"Error generating equation description: {e}")
+            logger.error(_("Error generating equation description: {}").format(e))
             # Fallback processing
             fallback_entity = {
                 "entity_name": (
@@ -156,7 +157,7 @@ class EquationModalProcessor(BaseModalProcessor):
             )
 
         except Exception as e:
-            logger.error(f"Error processing equation content: {e}")
+            logger.error(_("Error processing equation content: {}").format(e))
             # Fallback processing
             fallback_entity = {
                 "entity_name": (
@@ -180,12 +181,12 @@ class EquationModalProcessor(BaseModalProcessor):
             entity_data = response_data.get("entity_info", {})
 
             if not description or not entity_data:
-                raise ValueError("Missing required fields in response")
+                raise ValueError(_("Missing required fields in response"))
 
             if not all(
                 key in entity_data for key in ["entity_name", "entity_type", "summary"]
             ):
-                raise ValueError("Missing required fields in entity_info")
+                raise ValueError(_("Missing required fields in entity_info"))
 
             entity_data["entity_name"] = (
                 entity_data["entity_name"] + f" ({entity_data['entity_type']})"
@@ -196,8 +197,8 @@ class EquationModalProcessor(BaseModalProcessor):
             return description, entity_data
 
         except (json.JSONDecodeError, AttributeError, ValueError) as e:
-            logger.error(f"Error parsing equation analysis response: {e}")
-            logger.debug(f"Raw response: {response}")
+            logger.error(_("Error parsing equation analysis response: {}").format(e))
+            logger.debug(_("Raw response: {}").format(response))
             fallback_entity = {
                 "entity_name": (
                     entity_name

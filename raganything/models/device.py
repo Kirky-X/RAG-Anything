@@ -14,7 +14,10 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
-from raganything.logger import logger
+from raganything.i18n_logger import get_i18n_logger
+from raganything.i18n import _
+
+logger = get_i18n_logger()
 
 
 class DeviceManager:
@@ -94,17 +97,18 @@ class DeviceManager:
 
     def _log_resource_status(self):
         """Log current resource usage and device info."""
+        logger = get_i18n_logger()
         logger.info("=" * 30)
         logger.info("Compute Resource Status")
         logger.info("-" * 30)
-        logger.info(f"Selected Device: {self._device.upper()}")
+        logger.info(_("Selected Device: {}").format(self._device.upper()))
 
         # CPU Info
         cpu_percent = psutil.cpu_percent(interval=0.1)
         memory = psutil.virtual_memory()
-        logger.info(f"CPU Usage: {cpu_percent}%")
+        logger.info(_("CPU Usage: {}%").format(cpu_percent))
         logger.info(
-            f"RAM Usage: {memory.percent}% ({memory.used / (1024**3):.2f}GB / {memory.total / (1024**3):.2f}GB)"
+            _("RAM Usage: {}% ({:.2f}GB / {:.2f}GB)").format(memory.percent, memory.used / (1024**3), memory.total / (1024**3))
         )
 
         # GPU Info
@@ -113,11 +117,11 @@ class DeviceManager:
                 gpu_name = torch.cuda.get_device_name(0)
                 gpu_mem_alloc = torch.cuda.memory_allocated(0) / (1024**2)
                 gpu_mem_res = torch.cuda.memory_reserved(0) / (1024**2)
-                logger.info(f"GPU Model: {gpu_name}")
-                logger.info(f"GPU Memory Allocated: {gpu_mem_alloc:.2f}MB")
-                logger.info(f"GPU Memory Reserved: {gpu_mem_res:.2f}MB")
+                logger.info(_("GPU Model: {}").format(gpu_name))
+                logger.info(_("GPU Memory Allocated: {:.2f}MB").format(gpu_mem_alloc))
+                logger.info(_("GPU Memory Reserved: {:.2f}MB").format(gpu_mem_res))
             except Exception as e:
-                logger.error(f"Failed to get GPU details: {e}")
+                logger.error(_("Failed to get GPU details: {}").format(e))
 
         logger.info("=" * 30)
 

@@ -1,0 +1,352 @@
+# English translations for RAG-Anything.
+# Copyright (C) 2024 RAG-Anything
+msgid ""
+msgstr ""
+"Project-Id-Version: RAG-Anything 1.0\n"
+"POT-Creation-Date: 2025-12-20 13:03:55\n"
+"PO-Revision-Date: 2024-12-20 11:30+0800\n"
+"Last-Translator: RAG-Anything Team\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#~ msgid "DEBUG"
+#~ msgstr "DEBUG"
+
+#~ msgid "INFO"
+#~ msgstr "INFO"
+
+#~ msgid "WARNING"
+#~ msgstr "WARNING"
+
+#~ msgid "ERROR"
+#~ msgstr "ERROR"
+
+#~ msgid "CRITICAL"
+#~ msgstr "CRITICAL"
+
+#~ msgid "Inserting additional content list..."
+#~ msgstr "Inserting additional content list..."
+
+#~ msgid "[Multimodal Query]: Mathematical formula analysis"
+#~ msgstr "[Multimodal Query]: Mathematical formula analysis"
+
+#~ msgid "[Multimodal Query]: Mathematical formula analysis completed"
+#~ msgstr "[Multimodal Query]: Mathematical formula analysis completed"
+
+#~ msgid "[Multimodal Query]: Code analysis"
+#~ msgstr "[Multimodal Query]: Code analysis"
+
+#~ msgid "[Multimodal Query]: Code analysis completed"
+#~ msgstr "[Multimodal Query]: Code analysis completed"
+
+#~ msgid "[Multimodal Query]: Chart analysis"
+#~ msgstr "[Multimodal Query]: Chart analysis"
+
+#~ msgid "[Multimodal Query]: Chart analysis completed"
+#~ msgstr "[Multimodal Query]: Chart analysis completed"
+
+#~ msgid "[Multimodal Query]: Image analysis"
+#~ msgstr "[Multimodal Query]: Image analysis"
+
+#~ msgid "[Multimodal Query]: Image analysis completed"
+#~ msgstr "[Multimodal Query]: Image analysis completed"
+
+#~ msgid "[Multimodal Query]: PDF analysis"
+#~ msgstr "[Multimodal Query]: PDF analysis"
+
+#~ msgid "[Multimodal Query]: PDF analysis completed"
+#~ msgstr "[Multimodal Query]: PDF analysis completed"
+
+#~ msgid "[Multimodal Query]: Audio analysis"
+#~ msgstr "[Multimodal Query]: Audio analysis"
+
+#~ msgid "[Multimodal Query]: Audio analysis completed"
+#~ msgstr "[Multimodal Query]: Audio analysis completed"
+
+#~ msgid "[Multimodal Query]: Video analysis"
+#~ msgstr "[Multimodal Query]: Video analysis"
+
+#~ msgid "[Multimodal Query]: Video analysis completed"
+#~ msgstr "[Multimodal Query]: Video analysis completed"
+
+#~ msgid "Processing multimodal query: {}"
+#~ msgstr "Processing multimodal query: {}"
+
+#~ msgid "Multimodal query processing completed"
+#~ msgstr "Multimodal query processing completed"
+
+#~ msgid "Processing text query: {}"
+#~ msgstr "Processing text query: {}"
+
+#~ msgid "Text query processing completed"
+#~ msgstr "Text query processing completed"
+
+#~ msgid "Initializing RAG system..."
+#~ msgstr "Initializing RAG system..."
+
+#~ msgid "RAG system initialized successfully"
+#~ msgstr "RAG system initialized successfully"
+
+#~ msgid "Loading configuration..."
+#~ msgstr "Loading configuration..."
+
+#~ msgid "Configuration loaded successfully"
+#~ msgstr "Configuration loaded successfully"
+
+#~ msgid "Starting server on port {}"
+#~ msgstr "Starting server on port {}"
+
+#~ msgid "Server started successfully"
+#~ msgstr "Server started successfully"
+
+#~ msgid "Shutting down server..."
+#~ msgstr "Shutting down server..."
+
+#~ msgid "Server shutdown complete"
+#~ msgstr "Server shutdown complete"
+
+#~ msgid "Processing request: {}"
+#~ msgstr "Processing request: {}"
+
+#~ msgid "Request processed successfully"
+#~ msgstr "Request processed successfully"
+
+#~ msgid "Error processing request: {}"
+#~ msgstr "Error processing request: {}"
+
+#~ msgid "Invalid request format"
+#~ msgstr "Invalid request format"
+
+#~ msgid "Missing required parameter: {}"
+#~ msgstr "Missing required parameter: {}"
+
+#~ msgid "Authentication failed"
+#~ msgstr "Authentication failed"
+
+#~ msgid "Authorization denied"
+#~ msgstr "Authorization denied"
+
+#~ msgid "Resource not found: {}"
+#~ msgstr "Resource not found: {}"
+
+#~ msgid "Internal server error"
+#~ msgstr "Internal server error"
+
+#~ msgid "Service unavailable"
+#~ msgstr "Service unavailable"
+
+#~ msgid "Timeout occurred"
+#~ msgstr "Timeout occurred"
+
+#~ msgid "Rate limit exceeded"
+#~ msgstr "Rate limit exceeded"
+
+#~ msgid "Database connection failed"
+#~ msgstr "Database connection failed"
+
+#~ msgid "Database query failed"
+#~ msgstr "Database query failed"
+
+#~ msgid "Cache miss for key: {}"
+#~ msgstr "Cache miss for key: {}"
+
+#~ msgid "Cache hit for key: {}"
+#~ msgstr "Cache hit for key: {}"
+
+#~ msgid "Cache set for key: {}"
+#~ msgstr "Cache set for key: {}"
+
+#~ msgid "Cache deleted for key: {}"
+#~ msgstr "Cache deleted for key: {}"
+
+#~ msgid "File not found: {}"
+#~ msgstr "File not found: {}"
+
+#~ msgid "File uploaded: {}"
+#~ msgstr "File uploaded: {}"
+
+#~ msgid "File deleted: {}"
+#~ msgstr "File deleted: {}"
+
+#~ msgid "Directory created: {}"
+#~ msgstr "Directory created: {}"
+
+#~ msgid "Directory deleted: {}"
+#~ msgstr "Directory deleted: {}"
+
+#~ msgid "API call started: {}"
+#~ msgstr "API call started: {}"
+
+#~ msgid "API call completed: {}"
+#~ msgstr "API call completed: {}"
+
+#~ msgid "API call failed: {}"
+#~ msgstr "API call failed: {}"
+
+#~ msgid "Network request started: {}"
+#~ msgstr "Network request started: {}"
+
+#~ msgid "Network request completed: {}"
+#~ msgstr "Network request completed: {}"
+
+#~ msgid "Network request failed: {}"
+#~ msgstr "Network request failed: {}"
+
+#~ msgid "Parsing started: {}"
+#~ msgstr "Parsing started: {}"
+
+#~ msgid "Parsing completed: {}"
+#~ msgstr "Parsing completed: {}"
+
+#~ msgid "Parsing failed: {}"
+#~ msgstr "Parsing failed: {}"
+
+#~ msgid "Validation started: {}"
+#~ msgstr "Validation started: {}"
+
+#~ msgid "Validation completed: {}"
+#~ msgstr "Validation completed: {}"
+
+#~ msgid "Validation failed: {}"
+#~ msgstr "Validation failed: {}"
+
+#~ msgid "Transformation started: {}"
+#~ msgstr "Transformation started: {}"
+
+#~ msgid "Transformation completed: {}"
+#~ msgstr "Transformation completed: {}"
+
+#~ msgid "Transformation failed: {}"
+#~ msgstr "Transformation failed: {}"
+
+#~ msgid "Export started: {}"
+#~ msgstr "Export started: {}"
+
+#~ msgid "Export completed: {}"
+#~ msgstr "Export completed: {}"
+
+#~ msgid "Export failed: {}"
+#~ msgstr "Export failed: {}"
+
+#~ msgid "Import started: {}"
+#~ msgstr "Import started: {}"
+
+#~ msgid "Import completed: {}"
+#~ msgstr "Import completed: {}"
+
+#~ msgid "Import failed: {}"
+#~ msgstr "Import failed: {}"
+
+#~ msgid "Backup created: {}"
+#~ msgstr "Backup created: {}"
+
+#~ msgid "Backup restored: {}"
+#~ msgstr "Backup restored: {}"
+
+#~ msgid "Backup deleted: {}"
+#~ msgstr "Backup deleted: {}"
+
+#~ msgid "Configuration updated: {}"
+#~ msgstr "Configuration updated: {}"
+
+#~ msgid "Configuration reset: {}"
+#~ msgstr "Configuration reset: {}"
+
+#~ msgid "Plugin loaded: {}"
+#~ msgstr "Plugin loaded: {}"
+
+#~ msgid "Plugin unloaded: {}"
+#~ msgstr "Plugin unloaded: {}"
+
+#~ msgid "Plugin activated: {}"
+#~ msgstr "Plugin activated: {}"
+
+#~ msgid "Plugin deactivated: {}"
+#~ msgstr "Plugin deactivated: {}"
+
+#~ msgid "Task queued: {}"
+#~ msgstr "Task queued: {}"
+
+#~ msgid "Task started: {}"
+#~ msgstr "Task started: {}"
+
+#~ msgid "Task completed: {}"
+#~ msgstr "Task completed: {}"
+
+#~ msgid "Task failed: {}"
+#~ msgstr "Task failed: {}"
+
+#~ msgid "Task cancelled: {}"
+#~ msgstr "Task cancelled: {}"
+
+#~ msgid "Task resumed: {}"
+#~ msgstr "Task resumed: {}"
+
+#~ msgid "Task paused: {}"
+#~ msgstr "Task paused: {}"
+
+#~ msgid "Worker started: {}"
+#~ msgstr "Worker started: {}"
+
+#~ msgid "Worker stopped: {}"
+#~ msgstr "Worker stopped: {}"
+
+#~ msgid "Worker restarted: {}"
+#~ msgstr "Worker restarted: {}"
+
+#~ msgid "Queue size: {}"
+#~ msgstr "Queue size: {}"
+
+#~ msgid "Memory usage: {} MB"
+#~ msgstr "Memory usage: {} MB"
+
+#~ msgid "CPU usage: {}%"
+#~ msgstr "CPU usage: {}%"
+
+#~ msgid "Disk usage: {} GB"
+#~ msgstr "Disk usage: {} GB"
+
+#~ msgid "Network usage: {} MB/s"
+#~ msgstr "Network usage: {} MB/s"
+
+#~ msgid "Response time: {} ms"
+#~ msgstr "Response time: {} ms"
+
+#~ msgid "Throughput: {} req/s"
+#~ msgstr "Throughput: {} req/s"
+
+#~ msgid "Error rate: {}%"
+#~ msgstr "Error rate: {}%"
+
+#~ msgid "Success rate: {}%"
+#~ msgstr "Success rate: {}%"
+
+#~ msgid "Uptime: {} hours"
+#~ msgstr "Uptime: {} hours"
+
+#~ msgid "Downtime: {} minutes"
+#~ msgstr "Downtime: {} minutes"
+
+#~ msgid "Maintenance mode: {}"
+#~ msgstr "Maintenance mode: {}"
+
+#~ msgid "Health check: {}"
+#~ msgstr "Health check: {}"
+
+#~ msgid "Status: {}"
+#~ msgstr "Status: {}"
+
+#~ msgid "Version: {}"
+#~ msgstr "Version: {}"
+
+#~ msgid "Build: {}"
+#~ msgstr "Build: {}"
+
+#~ msgid "Environment: {}"
+#~ msgstr "Environment: {}"
+
+#~ msgid "Region: {}"
+#~ msgstr "Region: {}"

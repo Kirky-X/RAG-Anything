@@ -12,10 +12,10 @@ from typing import Any, Dict, List
 
 from lightrag import QueryParam
 from lightrag.utils import always_get_an_event_loop
-
 from raganything.prompt import PROMPTS
 from raganything.utils import (encode_image_to_base64, get_processor_for_type,
                                validate_image_file)
+from raganything.i18n import _
 
 
 class QueryMixin:
@@ -151,7 +151,7 @@ class QueryMixin:
                             ):
                                 unprocessed_docs.append(doc_id)
                 except Exception as e:
-                    self.logger.warning(f"Error checking document status: {e}")
+                    self.logger.warning(_("Error checking document status: {}").format(e))
                     break
 
                 if not unprocessed_docs:
@@ -190,14 +190,14 @@ class QueryMixin:
             not hasattr(self, "vision_model_func") or not self.vision_model_func
         ):
             self.logger.warning(
-                "VLM enhanced query requested but vision_model_func is not available, falling back to normal query"
+                _("VLM enhanced query requested but vision_model_func is not available, falling back to normal query")
             )
 
         # Create query parameters
         query_param = QueryParam(mode=mode, **kwargs)
 
-        self.logger.info(f"Executing text query: {query[:100]}...")
-        self.logger.info(f"Query mode: {mode}")
+        self.logger.info(_("Executing text query: {}...").format(query[:100]))
+        self.logger.info(_("Query mode: {}").format(mode))
 
         # Call LightRAG's query method
         try:
@@ -210,7 +210,7 @@ class QueryMixin:
             except Exception:
                 raise e
 
-        self.logger.info("Text query completed")
+        self.logger.info(_("Text query completed"))
         return result
 
     async def aquery_with_multimodal(
@@ -290,12 +290,12 @@ class QueryMixin:
 
         await self._ensure_lightrag_initialized()
 
-        self.logger.info(f"Executing multimodal query: {query[:100]}...")
-        self.logger.info(f"Query mode: {mode}")
+        self.logger.info(_("Executing multimodal query: {}...").format(query[:100]))
+        self.logger.info(_("Query mode: {}").format(mode))
 
         # If no multimodal content, fallback to pure text query
         if not multimodal_content:
-            self.logger.info("No multimodal content provided, executing text query")
+            self.logger.info(_("No multimodal content provided, executing text query"))
             return await self.aquery(query, mode=mode, **kwargs)
 
         # Generate cache key for multimodal query
@@ -322,11 +322,11 @@ class QueryMixin:
                         result_content = cached_result.get("return")
                         if result_content:
                             self.logger.info(
-                                f"Multimodal query cache hit: {cache_key[:16]}..."
+                                _("Multimodal query cache hit: {}...").format(cache_key[:16])
                             )
                             return result_content
                 except Exception as e:
-                    self.logger.debug(f"Error accessing multimodal query cache: {e}")
+                    self.logger.debug(_("Error accessing multimodal query cache: {}").format(e))
 
         # Process multimodal content to generate enhanced query text
         enhanced_query = await self._process_multimodal_query_content(
@@ -334,7 +334,7 @@ class QueryMixin:
         )
 
         self.logger.info(
-            f"Generated enhanced query length: {len(enhanced_query)} characters"
+            _("Generated enhanced query length: {} characters").format(len(enhanced_query))
         )
 
         # Execute enhanced query
@@ -378,10 +378,10 @@ class QueryMixin:
                         {cache_key: cache_entry}
                     )
                     self.logger.info(
-                        f"Saved multimodal query result to cache: {cache_key[:16]}..."
+                        _("Saved multimodal query result to cache: {}...").format(cache_key[:16])
                     )
                 except Exception as e:
-                    self.logger.debug(f"Error saving multimodal query to cache: {e}")
+                    self.logger.debug(_("Error saving multimodal query to cache: {}").format(e))
 
         # Ensure cache is persisted to disk
         if (
@@ -393,9 +393,9 @@ class QueryMixin:
             try:
                 await self.lightrag.llm_response_cache.index_done_callback()
             except Exception as e:
-                self.logger.debug(f"Error persisting multimodal query cache: {e}")
+                self.logger.debug(_("Error persisting multimodal query cache: {}").format(e))
 
-        self.logger.info("Multimodal query completed")
+        self.logger.info(_("Multimodal query completed"))
         return result
 
     async def aquery_vlm_enhanced(
@@ -423,7 +423,7 @@ class QueryMixin:
         # Ensure LightRAG is initialized
         await self._ensure_lightrag_initialized()
 
-        self.logger.info(f"Executing VLM enhanced query: {query[:100]}...")
+        self.logger.info(_("Executing VLM enhanced query: {}...").format(query[:100]))
 
         # Clear previous image cache
         if hasattr(self, "_current_images_base64"):
@@ -439,7 +439,7 @@ class QueryMixin:
                 query, param=query_param, system_prompt=system_prompt
             )
 
-        self.logger.debug("Retrieved raw prompt from LightRAG")
+        self.logger.debug(_("Retrieved raw prompt from LightRAG"))
 
         # 2. Extract and process image paths
         enhanced_prompt, images_found = await self._process_image_paths_for_vlm(
@@ -447,14 +447,14 @@ class QueryMixin:
         )
 
         if not images_found:
-            self.logger.info("No valid images found, falling back to normal query")
+            self.logger.info(_("No valid images found, falling back to normal query"))
             # Fallback to normal query
             query_param = QueryParam(mode=mode, **kwargs)
             return await self.lightrag.aquery(
                 query, param=query_param, system_prompt=system_prompt
             )
 
-        self.logger.info(f"Processed {images_found} images for VLM")
+        self.logger.info(_("Processed {} images for VLM").format(images_found))
 
         # 3. Build VLM message format
         messages = self._build_vlm_messages_with_images(
@@ -465,7 +465,7 @@ class QueryMixin:
         # result = await self._call_vlm_with_multimodal_content(messages)
         result = enhanced_prompt
 
-        self.logger.info("VLM enhanced query completed")
+        self.logger.info(_("VLM enhanced query completed"))
         return result
 
     async def _process_multimodal_query_content(
@@ -481,14 +481,14 @@ class QueryMixin:
         Returns:
             str: Enhanced query text
         """
-        self.logger.info("Starting multimodal query content processing...")
+        self.logger.info(_("Starting multimodal query content processing..."))
 
         enhanced_parts = [f"User query: {base_query}"]
 
         for i, content in enumerate(multimodal_content):
             content_type = content.get("type", "unknown")
             self.logger.info(
-                f"Processing {i+1}/{len(multimodal_content)} multimodal content: {content_type}"
+                _("Processing {}/{} multimodal content: {}").format(i+1, len(multimodal_content), content_type)
             )
 
             try:
@@ -511,14 +511,14 @@ class QueryMixin:
                     )
 
             except Exception as e:
-                self.logger.error(f"Error processing multimodal content: {str(e)}")
+                self.logger.error(_("Error processing multimodal content: {}").format(str(e)))
                 # Continue processing other content
                 continue
 
         enhanced_query = "\n".join(enhanced_parts)
         enhanced_query += PROMPTS["QUERY_ENHANCEMENT_SUFFIX"]
 
-        self.logger.info("Multimodal query content processing completed")
+        self.logger.info(_("Multimodal query content processing completed"))
         return enhanced_query
 
     async def _generate_query_content_description(
@@ -548,7 +548,7 @@ class QueryMixin:
                 )
 
         except Exception as e:
-            self.logger.error(f"Error generating {content_type} description: {str(e)}")
+            self.logger.error(_("Error generating {} description: {}").format(content_type, str(e)))
             return f"{content_type} content: {str(content)[:100]}"
 
     async def _describe_image_for_query(
@@ -659,31 +659,31 @@ class QueryMixin:
 
         # First, let's see what matches we find
         matches = re.findall(image_path_pattern, prompt)
-        self.logger.info(f"Found {len(matches)} image path matches in prompt")
+        self.logger.info(_("Found {} image path matches in prompt").format(len(matches)))
 
         def replace_image_path(match):
             nonlocal images_processed
 
             image_path = match.group(1).strip()
-            self.logger.debug(f"Processing image path: '{image_path}'")
+            self.logger.debug(_("Processing image path: '{}'").format(image_path))
 
             # Validate path format (basic check)
             if not image_path or len(image_path) < 3:
-                self.logger.warning(f"Invalid image path format: {image_path}")
+                self.logger.warning(_("Invalid image path format: {}").format(image_path))
                 return match.group(0)  # Keep original
 
             # Use utility function to validate image file
-            self.logger.debug(f"Calling validate_image_file for: {image_path}")
+            self.logger.debug(_("Calling validate_image_file for: {}").format(image_path))
             is_valid = validate_image_file(image_path)
-            self.logger.debug(f"Validation result for {image_path}: {is_valid}")
+            self.logger.debug(_("Validation result for {}: {}").format(image_path, is_valid))
 
             if not is_valid:
-                self.logger.warning(f"Image validation failed for: {image_path}")
+                self.logger.warning(_("Image validation failed for: {}").format(image_path))
                 return match.group(0)  # Keep original if validation fails
 
             try:
                 # Encode image to base64 using utility function
-                self.logger.debug(f"Attempting to encode image: {image_path}")
+                self.logger.debug(_("Attempting to encode image: {}").format(image_path))
                 image_base64 = encode_image_to_base64(image_path)
                 if image_base64:
                     images_processed += 1
@@ -693,15 +693,15 @@ class QueryMixin:
                     # Keep original path info and add VLM marker
                     result = f"Image Path: {image_path}\n[VLM_IMAGE_{images_processed}]"
                     self.logger.debug(
-                        f"Successfully processed image {images_processed}: {image_path}"
+                        _("Successfully processed image {}: {}").format(images_processed, image_path)
                     )
                     return result
                 else:
-                    self.logger.error(f"Failed to encode image: {image_path}")
+                    self.logger.error(_("Failed to encode image: {}").format(image_path))
                     return match.group(0)  # Keep original if encoding failed
 
             except Exception as e:
-                self.logger.error(f"Failed to process image {image_path}: {e}")
+                self.logger.error(_("Failed to process image {}: {}").format(image_path, e))
                 return match.group(0)  # Keep original
 
         # Execute replacement
@@ -825,7 +825,7 @@ class QueryMixin:
             return result
 
         except Exception as e:
-            self.logger.error(f"VLM call failed: {e}")
+            self.logger.error(_("VLM call failed: {}").format(e))
             raise
 
     # Synchronous versions of query methods
