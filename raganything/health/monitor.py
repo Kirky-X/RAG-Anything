@@ -4,7 +4,7 @@
 import asyncio
 from typing import Dict, List
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 
 from .core import ComponentStatus, HealthCheck, HealthCheckResult, Notifier
 from raganything.i18n import _

@@ -3,7 +3,7 @@
 
 from typing import List, Optional
 
-from raganything.i18n_logger import get_i18n_logger
+from raganything.logger import get_i18n_logger
 
 from .core import ComponentStatus, HealthCheckResult, Notifier
 from raganything.i18n import _
