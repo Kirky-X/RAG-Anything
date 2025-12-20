@@ -19,8 +19,6 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from .i18n_logger import get_i18n_logger
-
 # 获取当前模块目录
 LOCALE_DIR = Path(__file__).parent.parent / "locale"
 DOMAIN = "raganything"
@@ -69,19 +67,25 @@ def get_system_language() -> str:
         if lang:
             return lang
             
-        # 获取系统locale (使用现代API，避免弃用警告)
+        # 获取系统locale
         try:
             system_lang = locale.getlocale()[0]
             if system_lang:
                 return system_lang.replace("_", "-").replace("-", "_")
-        except (locale.Error, AttributeError):
-            # 如果getlocale失败，尝试备用方法
+        except (ValueError, TypeError):
+            # 如果getlocale失败，尝试getencoding
             try:
-                system_lang = locale.getdefaultlocale()[0]
-                if system_lang:
-                    return system_lang.replace("_", "-").replace("-", "_")
-            except (locale.Error, AttributeError):
-                pass
+                system_lang = locale.getencoding()
+                if system_lang and system_lang.startswith('en'):
+                    return 'en_US'
+                elif system_lang and system_lang.startswith('zh'):
+                    return 'zh_CN'
+                elif system_lang and system_lang.startswith('ja'):
+                    return 'ja_JP'
+                else:
+                    return 'en_US'
+            except Exception:
+                return 'en_US'
             
         # 默认返回英文
         return "en_US"
@@ -131,8 +135,7 @@ def init_i18n(language: Optional[str] = None) -> None:
             
     except Exception as e:
         # 如果gettext失败或工作不正常，使用polib直接加载.mo文件
-        logger = get_i18n_logger()
-        logger.warning(_("gettext failed for {}: {}, trying polib fallback").format(language, e))
+        print(f"gettext failed for {language}: {e}, trying polib fallback")
         try:
             import polib
             mo_file = LOCALE_DIR / language / "LC_MESSAGES" / f"{DOMAIN}.mo"
@@ -145,55 +148,18 @@ def init_i18n(language: Optional[str] = None) -> None:
                         translations[entry.msgid] = entry.msgstr
                 
                 _translator.set_translations_dict(translations)
-                logger.info(_("Loaded translations for {} using polib").format(language))
+                print(f"Loaded translations for {language} using polib")
             else:
-                logger.warning(_("MO file not found for {}: {}").format(language, mo_file))
+                print(f"Warning: MO file not found for {language}: {mo_file}")
         except Exception as e2:
             # 如果翻译文件不存在，使用默认实现
-            logger.error(_("Failed to load translation for {}: {}, fallback to polib failed: {}").format(language, e, e2))
+            print(f"Warning: Failed to load translation for {language}: {e}, fallback to polib failed: {e2}")
     
-    # 刷新logger翻译
+    # 刷新logger翻译 - 延迟导入避免循环依赖
     try:
-        from raganything.i18n_logger import refresh_logger_translations
-        refresh_logger_translations()
-    except Exception:
-        pass
-            
-    except Exception as e:
-        # 如果gettext失败，尝试使用polib直接加载.mo文件
-        try:
-            import polib
-            mo_file = LOCALE_DIR / language / "LC_MESSAGES" / f"{DOMAIN}.mo"
-            if mo_file.exists():
-                mo = polib.mofile(str(mo_file))
-                # 创建翻译字典
-                translations = {}
-                for entry in mo:
-                    if entry.msgstr:
-                        translations[entry.msgid] = entry.msgstr
-                
-                # 定义翻译函数 - 使用新的闭包确保正确的字典引用
-                def translate_func(text):
-                    return translations.get(text, text)
-                
-                _ = translate_func
-                logger.info(_("Loaded translations for {} using polib").format(language))
-            else:
-                logger.warning(_("MO file not found for {}: {}").format(language, mo_file))
-                def identity_func2(x):
-                    return x
-                _ = identity_func2
-        except Exception as e2:
-            # 如果翻译文件不存在，使用默认实现
-            logger.error(_("Failed to load translation for {}: {}, fallback to polib failed: {}").format(language, e, e2))
-            def identity_func3(x):
-                return x
-            _ = identity_func3
-    
-    # 刷新logger翻译
-    try:
-        from raganything.i18n_logger import refresh_logger_translations
-        refresh_logger_translations()
+        from raganything import logger
+        if hasattr(logger, 'refresh_translations'):
+            logger.refresh_translations()
     except Exception:
         pass
 

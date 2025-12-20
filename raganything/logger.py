@@ -25,10 +25,9 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 from loguru import logger as _logger
-from raganything.i18n import _
 
 _CONFIGURED = False
 
@@ -152,7 +151,150 @@ def get_logger():
 
 # 模块导入即完成初始化，并暴露统一实例
 init_logger()
-logger = _logger
+
+
+class I18nLogger:
+    """国际化日志包装器。
+    
+    该类包装了原有的logger，在记录日志时自动翻译消息内容。
+    保持与原有logger API的完全兼容性。
+    """
+    
+    def __init__(self, logger=_logger):
+        """初始化国际化日志包装器。
+        
+        Args:
+            logger: 要包装的logger实例
+        """
+        self._logger = logger
+    
+    def _translate_message(self, message: str) -> str:
+        """翻译日志消息。
+        
+        Args:
+            message: 原始消息
+            
+        Returns:
+            str: 翻译后的消息
+        """
+        try:
+            from raganything.i18n import _
+            return _(message)
+        except ImportError:
+            return message
+    
+    def _translate_level(self, level: str) -> str:
+        """翻译日志级别。
+        
+        Args:
+            level: 原始级别
+            
+        Returns:
+            str: 翻译后的级别
+        """
+        try:
+            from raganything.i18n import _
+            return _(level)
+        except ImportError:
+            return level
+    
+    def debug(self, message: str, *args, **kwargs) -> None:
+        """记录调试日志。"""
+        translated_msg = self._translate_message(message)
+        self._logger.debug(translated_msg, *args, **kwargs)
+    
+    def info(self, message: str, *args, **kwargs) -> None:
+        """记录信息日志。"""
+        translated_msg = self._translate_message(message)
+        self._logger.info(translated_msg, *args, **kwargs)
+    
+    def warning(self, message: str, *args, **kwargs) -> None:
+        """记录警告日志。"""
+        translated_msg = self._translate_message(message)
+        self._logger.warning(translated_msg, *args, **kwargs)
+    
+    def error(self, message: str, *args, **kwargs) -> None:
+        """记录错误日志。"""
+        translated_msg = self._translate_message(message)
+        self._logger.error(translated_msg, *args, **kwargs)
+    
+    def critical(self, message: str, *args, **kwargs) -> None:
+        """记录严重错误日志。"""
+        translated_msg = self._translate_message(message)
+        self._logger.critical(translated_msg, *args, **kwargs)
+    
+    def success(self, message: str, *args, **kwargs) -> None:
+        """记录成功日志。"""
+        translated_msg = self._translate_message(message)
+        self._logger.success(translated_msg, *args, **kwargs)
+    
+    def trace(self, message: str, *args, **kwargs) -> None:
+        """记录跟踪日志。"""
+        translated_msg = self._translate_message(message)
+        self._logger.trace(translated_msg, *args, **kwargs)
+    
+    def log(self, level: str, message: str, *args, **kwargs) -> None:
+        """记录指定级别的日志。"""
+        translated_msg = self._translate_message(message)
+        self._logger.log(level, translated_msg, *args, **kwargs)
+    
+    def exception(self, message: str, *args, **kwargs) -> None:
+        """记录异常日志。"""
+        translated_msg = self._translate_message(message)
+        self._logger.exception(translated_msg, *args, **kwargs)
+    
+    def opt(self, **kwargs) -> Any:
+        """获取logger选项。"""
+        return self._logger.opt(**kwargs)
+    
+    def bind(self, **kwargs) -> "I18nLogger":
+        """绑定额外上下文。"""
+        new_logger = self._logger.bind(**kwargs)
+        return I18nLogger(new_logger)
+    
+    def contextualize(self, **kwargs) -> Any:
+        """添加上下文。"""
+        return self._logger.contextualize(**kwargs)
+    
+    def add(self, *args, **kwargs) -> int:
+        """添加sink。"""
+        return self._logger.add(*args, **kwargs)
+    
+    def remove(self, *args, **kwargs) -> None:
+        """移除sink。"""
+        self._logger.remove(*args, **kwargs)
+    
+    def complete(self) -> Any:
+        """完成日志配置。"""
+        return self._logger.complete()
+    
+    @property
+    def level(self) -> Any:
+        """获取当前日志级别。"""
+        return self._logger.level
+
+
+def get_i18n_logger() -> I18nLogger:
+    """获取国际化logger实例。
+    
+    Returns:
+        I18nLogger: 国际化logger实例
+    """
+    return I18nLogger()
+
+
+def refresh_translations() -> None:
+    """刷新logger翻译。
+    
+    当语言切换时调用此函数刷新翻译。
+    """
+    # 重新创建全局logger实例以确保使用最新的翻译函数
+    global logger
+    logger = I18nLogger()
+
+
+# 创建全局国际化logger实例
+logger = I18nLogger()
 
 
 class BaseLogSink:
